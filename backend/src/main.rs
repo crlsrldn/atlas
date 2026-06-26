@@ -1,0 +1,47 @@
+pub mod engines;
+pub mod api;
+
+use axum::{Router, http::{HeaderValue, Method}};
+use std::net::SocketAddr;
+use tracing_subscriber;
+use tower_http::cors::{Any, AllowOrigin, CorsLayer};
+
+#[tokio::main]
+async fn main() {
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+    
+    // Load .env
+    let _ = dotenvy::dotenv();
+
+    // Initialize Cloud Preferences
+    api::config::init_preferences().await;
+
+    let allowed_origins = [
+        HeaderValue::from_static("http://localhost:5173"),
+        HeaderValue::from_static("http://127.0.0.1:5173"),
+        HeaderValue::from_static("tauri://localhost"),
+    ];
+
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_origin(AllowOrigin::list(allowed_origins))
+        .allow_headers(Any);
+
+    // Build our application with routes
+    let app = Router::new()
+        .nest("/", api::stremio::router())
+        .nest("/", api::config::router())
+        .nest("/", api::resolve::router())
+        .layer(cors);
+
+    // Run it
+    let addr = std::env::var("ATLAS_BIND_ADDR")
+        .ok()
+        .and_then(|value| value.parse::<SocketAddr>().ok())
+        .unwrap_or_else(|| SocketAddr::from(([127, 0, 0, 1], 3000)));
+    tracing::info!("Listening on {}", addr);
+    
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}

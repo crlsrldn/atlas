@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  appwrite:
+    image: appwrite/appwrite:latest
+    container_name: appwrite
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - _APP_ENV=production
+      - _APP_OPTIONS_ABUSE=disabled
+      - _APP_OPTIONS_FORCE_HTTPS=disabled
+    volumes:
+      - ./appwrite/uploads:/storage/uploads:rw
+      - ./appwrite/cache:/storage/cache:rw
+      - ./appwrite/config:/storage/config:rw
+      - ./appwrite/certs:/storage/certs:ro
+    # For a full local dev setup, you usually curl the install script from Appwrite.
+    # This minimal config is a placeholder. For complete local setup:
+    # docker run -it --rm --volume /var/run/docker.sock:/var/run/docker.sock --volume "$(pwd)"/appwrite:/usr/src/code/appwrite:rw entrypoint="install" appwrite/appwrite

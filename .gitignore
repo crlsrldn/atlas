@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+preferences.json
+backend/preferences.json
+appwrite/
+.svelte-kit/
+target/
+.DS_Store
