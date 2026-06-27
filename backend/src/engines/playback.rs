@@ -5,6 +5,7 @@ use crate::engines::ranking::rank_sources;
 use crate::engines::sources::{
     real_debrid::RealDebridProvider, torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider,
 };
+use crate::engines::verification::verify_source;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +64,12 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
         all_results.append(&mut r);
     }
 
+    for source in &mut all_results {
+        let verification = verify_source(source, &metadata);
+        source.verification_score = verification.confidence;
+        source.verification_reasons = verification.reasons;
+    }
+
     // Deduplicate by hash, merging providers
     let mut unique_results: std::collections::HashMap<
         String,
@@ -94,10 +101,22 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     for entry in ranked.into_iter().filter(|r| r.score > 0).take(5) {
         // We already inject the correct /resolve/ URL during search!
         if let Some(direct_url) = entry.source.url.clone() {
+            let explanation = entry
+                .source
+                .verification_reasons
+                .iter()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ");
             streams.push(StremioStream {
                 title: format!(
-                    "🌟 Atlas | {} {}\n{}",
-                    entry.source.provider_name, entry.source.resolution, entry.source.title
+                    "🌟 Atlas | {} {} | Confidence {}%\n{}\n{}",
+                    entry.source.provider_name,
+                    entry.source.resolution,
+                    entry.source.verification_score,
+                    entry.source.title,
+                    explanation
                 ),
                 url: direct_url,
             });

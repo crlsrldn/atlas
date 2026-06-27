@@ -68,6 +68,11 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
         }
     }
 
+    score += u64::from(source.verification_score) * 5;
+    if source.verification_score < 45 {
+        score /= 2;
+    }
+
     score
 }
 
@@ -94,6 +99,7 @@ mod tests {
             provider_priority: 80,
             provider_latency_ms: Some(250),
             title: "Test Source".to_string(),
+            raw_title: "Test Source".to_string(),
             hash: Some("abc".to_string()),
             size_bytes: Some(1),
             resolution: resolution.to_string(),
@@ -101,6 +107,9 @@ mod tests {
             has_hdr,
             is_cached,
             url: Some("http://example.test".to_string()),
+            release_group: Some("GROUP".to_string()),
+            verification_score: 80,
+            verification_reasons: vec!["test".to_string()],
         }
     }
 

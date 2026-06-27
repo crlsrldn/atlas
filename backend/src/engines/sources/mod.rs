@@ -71,6 +71,7 @@ pub struct SourceResult {
     pub provider_priority: u8,
     pub provider_latency_ms: Option<u64>,
     pub title: String,
+    pub raw_title: String,
     pub hash: Option<String>,
     pub size_bytes: Option<u64>,
     pub resolution: String, // e.g. "4K", "1080p"
@@ -78,6 +79,9 @@ pub struct SourceResult {
     pub has_hdr: bool,
     pub is_cached: bool,
     pub url: Option<String>, // if instantly resolvable
+    pub release_group: Option<String>,
+    pub verification_score: u8,
+    pub verification_reasons: Vec<String>,
 }
 
 #[async_trait::async_trait]

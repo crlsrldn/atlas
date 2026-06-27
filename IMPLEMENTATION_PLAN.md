@@ -21,10 +21,10 @@
 
 ## Phase 2: Metadata and Verification
 
-- Replace Torrentio-derived placeholder metadata with normalized metadata from TMDB/IMDb-compatible sources.
-- Introduce a real verification engine that scores runtime, episode match, release group, language, file structure, and known hash history.
-- Preserve season/episode context throughout identity, metadata, source search, ranking, and playback.
-- Add explainable confidence output for each stream.
+- [x] Replace Torrentio-derived placeholder metadata with normalized metadata from TMDB/IMDb-compatible sources.
+- [x] Introduce a real verification engine that scores runtime, episode match, release group, language, file structure, and known hash history.
+- [x] Preserve season/episode context throughout identity, metadata, source search, ranking, and playback.
+- [x] Add explainable confidence output for each stream.
 
 ## Phase 3: Ranking and Playback Intelligence
 

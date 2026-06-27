@@ -83,4 +83,23 @@ impl AtlasID {
             None
         }
     }
+
+    pub fn season_episode(&self) -> Option<(u32, u32)> {
+        match self {
+            AtlasID::IMDb {
+                season: Some(season),
+                episode: Some(episode),
+                ..
+            } => Some((*season, *episode)),
+            _ => None,
+        }
+    }
+
+    pub fn media_type(&self) -> &'static str {
+        if self.season_episode().is_some() {
+            "series"
+        } else {
+            "movie"
+        }
+    }
 }

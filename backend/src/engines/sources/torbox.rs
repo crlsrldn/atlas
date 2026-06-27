@@ -77,6 +77,7 @@ impl SourceProvider for TorBoxProvider {
                     provider_priority: self.priority(),
                     provider_latency_ms: Some(latency_ms),
                     title: format!("{} ({})", metadata.title, t.quality),
+                    raw_title: t.raw_title.clone(),
                     hash: Some(t.hash.clone()),
                     size_bytes: Some(t.size_bytes),
                     resolution: t.quality.clone(),
@@ -85,6 +86,9 @@ impl SourceProvider for TorBoxProvider {
                     is_cached: true,
                     // Use the local callback so we can lazily resolve the torrent on click
                     url: Some(format!("http://127.0.0.1:3000/resolve/torbox/{}", t.hash)),
+                    release_group: t.release_group.clone(),
+                    verification_score: 0,
+                    verification_reasons: vec![],
                 });
             }
         }

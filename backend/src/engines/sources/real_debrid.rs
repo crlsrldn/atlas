@@ -68,6 +68,7 @@ impl SourceProvider for RealDebridProvider {
                     provider_priority: self.priority(),
                     provider_latency_ms: Some(started.elapsed().as_millis() as u64),
                     title: format!("{} ({})", metadata.title, t.quality),
+                    raw_title: t.raw_title.clone(),
                     hash: Some(t.hash.clone()),
                     size_bytes: Some(t.size_bytes),
                     resolution: t.quality.clone(),
@@ -78,6 +79,9 @@ impl SourceProvider for RealDebridProvider {
                         "http://127.0.0.1:3000/resolve/realdebrid/{}",
                         t.hash
                     )),
+                    release_group: t.release_group.clone(),
+                    verification_score: 0,
+                    verification_reasons: vec![],
                 });
             }
         }
