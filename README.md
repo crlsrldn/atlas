@@ -152,10 +152,10 @@ FLY_PRODUCTION_APP         # optional repository variable, defaults to cindral-a
 Deployment flow:
 
 ```text
-develop or codex/* branch -> development
-main branch               -> staging
-v* tag                    -> production
-workflow_dispatch         -> selected environment
+development branch -> development
+staging branch     -> staging
+production branch  -> production
+workflow_dispatch  -> selected environment
 ```
 
 ## Privacy and Operations
