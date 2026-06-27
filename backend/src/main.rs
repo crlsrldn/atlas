@@ -18,6 +18,8 @@ async fn main() {
     api::config::init_preferences().await;
 
     let allowed_origins = [
+        HeaderValue::from_static("http://localhost:1420"),
+        HeaderValue::from_static("http://127.0.0.1:1420"),
         HeaderValue::from_static("http://localhost:5173"),
         HeaderValue::from_static("http://127.0.0.1:5173"),
         HeaderValue::from_static("tauri://localhost"),
