@@ -1,13 +1,9 @@
-pub mod billing;
 pub mod cloud;
 pub mod config;
 pub mod health;
-pub mod hosted;
 pub mod inspect;
+pub mod internal;
 pub mod providers;
 pub mod resolve;
-mod secret_store;
-pub mod stremio;
+pub mod secret_store;
 pub mod telemetry;
-pub mod tenants;
-pub mod vault;

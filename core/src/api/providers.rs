@@ -19,17 +19,11 @@ pub struct ProviderStatus {
 pub fn router() -> Router {
     Router::new()
         .route("/providers/status", get(provider_status))
-        .route("/v1/providers/status", get(provider_status_for_tenant))
 }
 
 async fn provider_status() -> Json<Vec<ProviderStatus>> {
     let prefs = current_preferences();
     Json(provider_status_for_preferences(prefs).await)
-}
-
-async fn provider_status_for_tenant(headers: HeaderMap) -> Json<Vec<ProviderStatus>> {
-    let tenant = crate::api::tenants::current_tenant(&headers);
-    Json(provider_status_for_preferences(tenant.hydrated_preferences()).await)
 }
 
 async fn provider_status_for_preferences(

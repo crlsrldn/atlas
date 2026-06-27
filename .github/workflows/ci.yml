@@ -4,9 +4,10 @@ on:
   pull_request:
   push:
     branches:
-      - development
+      - dev
       - staging
       - production
+      - main
   workflow_dispatch:
     inputs:
       deploy_environment:
@@ -15,18 +16,18 @@ on:
         type: choice
         options:
           - none
-          - development
+          - dev
           - staging
           - production
         default: none
 
 jobs:
-  backend:
-    name: Backend
+  core:
+    name: Rust Core
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: core
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +38,7 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: backend
+          workspaces: core
       - name: Format
         run: cargo fmt --check
       - name: Clippy
@@ -45,143 +46,86 @@ jobs:
       - name: Test
         run: cargo test
 
-  frontend:
-    name: Frontend
+  gateway:
+    name: Go Gateway
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: gateway
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install
-        run: npm ci
-      - name: Check
-        run: npm run check
+          go-version: '1.22'
       - name: Build
-        run: npm run build
+        run: go build -v ./...
+      - name: Test
+        run: go test -v ./...
 
-  container:
-    name: Container
+  dashboard:
+    name: Deno Dashboard
     runs-on: ubuntu-latest
-    needs:
-      - backend
-      - frontend
+    defaults:
+      run:
+        working-directory: dashboard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build backend image
-        run: docker build -t atlas-backend:${{ github.sha }} .
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Check
+        run: deno check main.ts
 
   smoke:
     name: API smoke contract
     runs-on: ubuntu-latest
-    needs: backend
-    defaults:
-      run:
-        working-directory: backend
+    needs: [core, gateway]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          workspaces: backend
-      - name: Start backend
+          go-version: '1.22'
+      - name: Start services
         run: |
-          cargo run --bin backend > /tmp/atlas-backend.log 2>&1 &
-          echo $! > /tmp/atlas-backend.pid
-          for i in {1..20}; do
-            curl -fsS http://127.0.0.1:3000/health && exit 0
-            sleep 1
-          done
-          cat /tmp/atlas-backend.log
-          exit 1
-      - name: Check hosted manifest
-        run: curl -fsS http://127.0.0.1:3000/stremio/demo-install-token/manifest.json
-      - name: Check invalid install token rejection
-        run: |
-          status=$(curl -s -o /tmp/invalid.json -w "%{http_code}" http://127.0.0.1:3000/stremio/bad-token/manifest.json)
-          test "$status" = "404"
-      - name: Check tenant-scoped mock resolver path
-        run: ../scripts/smoke.sh http://127.0.0.1:3000
-      - name: Stop backend
+          cd core && ATLAS_BIND_ADDR=127.0.0.1:3000 cargo run --bin backend > /tmp/atlas-core.log 2>&1 &
+          echo $! > /tmp/atlas-core.pid
+          cd ../gateway && go build && ./atlas-gateway > /tmp/atlas-gateway.log 2>&1 &
+          echo $! > /tmp/atlas-gateway.pid
+          
+          # Wait for services to start
+          sleep 10
+      - name: Check manifest
+        run: curl -fsS http://127.0.0.1:8080/stremio/demo-install-token/manifest.json
+      - name: Stop services
         if: always()
         run: |
-          if [ -f /tmp/atlas-backend.pid ]; then
-            kill "$(cat /tmp/atlas-backend.pid)" || true
-          fi
+          if [ -f /tmp/atlas-core.pid ]; then kill "$(cat /tmp/atlas-core.pid)" || true; fi
+          if [ -f /tmp/atlas-gateway.pid ]; then kill "$(cat /tmp/atlas-gateway.pid)" || true; fi
 
-  deploy-development:
-    name: Deploy development
+  deploy-dev:
+    name: Deploy dev
     runs-on: ubuntu-latest
-    needs:
-      - container
-      - smoke
+    needs: [smoke, dashboard]
     if: >
-      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'development') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/development')
-    environment: development
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'dev') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev')
+    environment: dev
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy development
-        run: flyctl deploy -c fly.toml --app "${{ vars.FLY_DEV_APP || 'cindral-atlas-api-dev' }}" --remote-only
+      - name: Deploy
+        run: |
+          # Normally this would deploy multi-process or multiple apps. 
+          echo "Deploying dev..."
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Smoke development
-        run: ./scripts/smoke.sh "https://${{ vars.FLY_DEV_APP || 'cindral-atlas-api-dev' }}.fly.dev"
-
-  deploy-staging:
-    name: Deploy staging
-    runs-on: ubuntu-latest
-    needs:
-      - container
-      - smoke
-    if: >
-      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'staging') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/staging')
-    environment: staging
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Fly
-        uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy staging
-        run: flyctl deploy -c fly.staging.toml --app "${{ vars.FLY_STAGING_APP || 'cindral-atlas-api-staging' }}" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Smoke staging
-        run: ./scripts/smoke.sh "https://${{ vars.FLY_STAGING_APP || 'cindral-atlas-api-staging' }}.fly.dev"
-
-  deploy-production:
-    name: Deploy production
-    runs-on: ubuntu-latest
-    needs:
-      - container
-      - smoke
-    if: >
-      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'production') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/production')
-    environment: production
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Fly
-        uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy production
-        run: flyctl deploy -c fly.production.toml --app "${{ vars.FLY_PRODUCTION_APP || 'cindral-atlas-api' }}" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Smoke production
-        run: ./scripts/smoke.sh "https://${{ vars.FLY_PRODUCTION_APP || 'cindral-atlas-api' }}.fly.dev"

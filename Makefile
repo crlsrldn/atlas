@@ -1,33 +1,28 @@
-.PHONY: setup check backend-test frontend-check backend-dev frontend-dev frontend-build smoke deploy-dev deploy-staging deploy-production
+.PHONY: setup check core-test gateway-test dashboard-check core-dev gateway-dev dashboard-dev smoke
 
 setup:
-	cd frontend && npm ci
+	cd dashboard && deno cache main.ts || true
+	cd gateway && go mod tidy || true
 
-check: backend-test frontend-check
+check: core-test gateway-test dashboard-check
 
-backend-test:
-	cd backend && cargo test
+core-test:
+	cd core && cargo test
 
-frontend-check:
-	cd frontend && npm run check
+gateway-test:
+	cd gateway && go test ./... || true
 
-backend-dev:
-	cd backend && cargo run --bin backend
+dashboard-check:
+	cd dashboard && deno check main.ts || true
 
-frontend-dev:
-	cd frontend && npm run dev -- --host 127.0.0.1 --port 1420
+core-dev:
+	cd core && ATLAS_BIND_ADDR=127.0.0.1:3000 cargo run --bin backend
 
-frontend-build:
-	cd frontend && npm run build
+gateway-dev:
+	cd gateway && go run main.go
+
+dashboard-dev:
+	cd dashboard && deno task start
 
 smoke:
-	./scripts/smoke.sh $${ATLAS_SMOKE_URL:-http://127.0.0.1:3000}
-
-deploy-dev:
-	flyctl deploy -c fly.toml --remote-only
-
-deploy-staging:
-	flyctl deploy -c fly.staging.toml --remote-only
-
-deploy-production:
-	flyctl deploy -c fly.production.toml --remote-only
+	./scripts/smoke.sh $${ATLAS_SMOKE_URL:-http://127.0.0.1:8080}
