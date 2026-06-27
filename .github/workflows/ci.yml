@@ -78,8 +78,11 @@ jobs:
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
-      - name: Check
-        run: deno check main.ts
+      - name: Install npm dependencies
+        run: deno install
+      - name: Build
+        run: deno run -A dev.ts build
+
 
   smoke:
     name: API smoke contract
