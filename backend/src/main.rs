@@ -7,12 +7,13 @@ use axum::{
 };
 use std::net::SocketAddr;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_target(true)
+        .with_thread_ids(false)
+        .init();
 
     // Load .env
     let _ = dotenvy::dotenv();
@@ -53,7 +54,7 @@ async fn main() {
         .ok()
         .and_then(|value| value.parse::<SocketAddr>().ok())
         .unwrap_or_else(|| SocketAddr::from(([127, 0, 0, 1], 3000)));
-    tracing::info!("Listening on {}", addr);
+    tracing::info!(bind_addr = %addr, "backend listening");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();

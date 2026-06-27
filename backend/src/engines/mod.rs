@@ -3,6 +3,7 @@ pub mod history;
 pub mod identity;
 pub mod metadata;
 pub mod playback;
+pub mod privacy;
 pub mod ranking;
 pub mod sources;
 pub mod telemetry;

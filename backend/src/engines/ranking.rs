@@ -125,12 +125,9 @@ mod tests {
 
     fn prefs() -> UserPreferences {
         UserPreferences {
-            torbox_api_key: String::new(),
-            real_debrid_api_key: String::new(),
-            gemini_api_key: String::new(),
             max_resolution: "1080p".to_string(),
-            prefer_hdr: true,
             exclude_av1: true,
+            ..UserPreferences::default()
         }
     }
 

@@ -70,7 +70,6 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
                         "playback_started",
                         serde_json::json!({
                             "provider": "torbox",
-                            "hash": hash,
                             "success": true
                         }),
                     );
@@ -86,7 +85,6 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
         "playback_started",
         serde_json::json!({
             "provider": "torbox",
-            "hash": hash,
             "success": false
         }),
     );
@@ -250,7 +248,6 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
                     "playback_started",
                     serde_json::json!({
                         "provider": "real_debrid",
-                        "hash": hash,
                         "success": true
                     }),
                 );
@@ -264,7 +261,6 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
         "playback_started",
         serde_json::json!({
             "provider": "real_debrid",
-            "hash": hash,
             "success": false
         }),
     );
@@ -325,11 +321,7 @@ async fn resolve_real_debrid_download(
         .ok()?;
 
     if !select_res.status().is_success() {
-        tracing::warn!(
-            "Real Debrid selectFiles failed for torrent {}: {}",
-            torrent_id,
-            select_res.status()
-        );
+        tracing::warn!(status = %select_res.status(), "real debrid selectFiles failed");
         return None;
     }
 

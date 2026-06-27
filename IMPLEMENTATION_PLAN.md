@@ -42,7 +42,7 @@
 
 ## Phase 5: Privacy and Operations
 
-- Move secrets to an OS keychain or encrypted local store for desktop builds.
-- Add structured logs without API keys, hashes where avoidable, or personally identifying playback context.
-- Create repeatable local development setup, CI checks, and release packaging.
-- Document supported providers, configuration, and Stremio install flow.
+- [x] Move secrets to an OS keychain or encrypted local store for desktop builds.
+- [x] Add structured logs without API keys, hashes where avoidable, or personally identifying playback context.
+- [x] Create repeatable local development setup, CI checks, and release packaging.
+- [x] Document supported providers, configuration, and Stremio install flow.

@@ -1,7 +1,14 @@
-# Tauri + SvelteKit + TypeScript
+# Project Atlas Frontend
 
-This template should help get you started developing with Tauri, SvelteKit and TypeScript in Vite.
+SvelteKit and Tauri desktop shell for Project Atlas.
 
-## Recommended IDE Setup
+## Commands
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+```sh
+npm ci
+npm run dev -- --host 127.0.0.1 --port 1420
+npm run check
+npm run tauri build
+```
+
+The app expects the Atlas backend at `http://127.0.0.1:3000`.

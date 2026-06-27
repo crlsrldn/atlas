@@ -7,6 +7,8 @@ static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| Client::new());
 
 pub fn log_event(event_name: &str, payload: Value) {
     let event_name = event_name.to_string();
+    let mut payload = payload;
+    crate::engines::privacy::redact_json(&mut payload);
     let payload_str = serde_json::to_string(&json!({
         "event": event_name,
         "timestamp": chrono::Utc::now().to_rfc3339(),

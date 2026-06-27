@@ -72,11 +72,13 @@ async fn stream_with_extra(Path((_t, id, _extra)): Path<(String, String, String)
 
 async fn handle_stream_request(mut stremio_id: String) -> Json<Value> {
     let start_time = std::time::Instant::now();
-    tracing::info!("Received request for stream id: {}", stremio_id);
 
     if stremio_id.ends_with(".json") {
         stremio_id = stremio_id.trim_end_matches(".json").to_string();
     }
+
+    let media_kind = crate::engines::privacy::media_kind_from_stremio_id(&stremio_id);
+    tracing::info!(media_kind, "stream request received");
 
     let atlas_id = match AtlasID::from_stremio_id(&stremio_id) {
         Some(id) => id,
@@ -89,7 +91,7 @@ async fn handle_stream_request(mut stremio_id: String) -> Json<Value> {
     crate::engines::telemetry::log_event(
         "stream_resolved",
         json!({
-            "stremio_id": stremio_id,
+            "media_kind": media_kind,
             "latency_ms": latency_ms,
             "streams_found": streams.len()
         }),
