@@ -28,19 +28,23 @@ async fn main() {
         HeaderValue::from_static("tauri://localhost"),
     ];
 
-    let cors = CorsLayer::new()
+    let local_app_cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_headers(Any);
 
+    let stremio_cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::OPTIONS])
+        .allow_origin(Any)
+        .allow_headers(Any);
+
     // Build our application with routes
     let app = Router::new()
-        .nest("/", api::stremio::router())
-        .nest("/", api::config::router())
-        .nest("/", api::resolve::router())
-        .nest("/", api::health::router())
-        .nest("/", api::providers::router())
-        .layer(cors);
+        .nest("/", api::stremio::router().layer(stremio_cors.clone()))
+        .nest("/", api::resolve::router().layer(stremio_cors))
+        .nest("/", api::config::router().layer(local_app_cors.clone()))
+        .nest("/", api::health::router().layer(local_app_cors.clone()))
+        .nest("/", api::providers::router().layer(local_app_cors));
 
     // Run it
     let addr = std::env::var("ATLAS_BIND_ADDR")
