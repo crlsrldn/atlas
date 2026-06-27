@@ -95,13 +95,32 @@ jobs:
           go-version: '1.22'
       - name: Start services
         run: |
-          cd core && ATLAS_BIND_ADDR=127.0.0.1:3000 cargo run --bin backend > /tmp/atlas-core.log 2>&1 &
+          # Build Core
+          cd core && cargo build --bin backend
+          # Build Gateway
+          cd ../gateway && go build -o atlas-gateway main.go
+          
+          # Start Core
+          cd ../core
+          ATLAS_BIND_ADDR=127.0.0.1:3000 ./target/debug/backend > /tmp/atlas-core.log 2>&1 &
           echo $! > /tmp/atlas-core.pid
-          cd ../gateway && go build && ./atlas-gateway > /tmp/atlas-gateway.log 2>&1 &
+          
+          # Wait for Core
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:3000/health && break
+            sleep 1
+          done
+          
+          # Start Gateway
+          cd ../gateway
+          ./atlas-gateway > /tmp/atlas-gateway.log 2>&1 &
           echo $! > /tmp/atlas-gateway.pid
           
-          # Wait for services to start
-          sleep 10
+          # Wait for Gateway
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8080/stremio/demo-install-token/manifest.json > /dev/null && break
+            sleep 1
+          done
       - name: Check manifest
         run: curl -fsS http://127.0.0.1:8080/stremio/demo-install-token/manifest.json
       - name: Stop services
