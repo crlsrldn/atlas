@@ -86,12 +86,10 @@ export const handler: Handlers<AdminData> = {
 export default function AdminDashboard({ data }: PageProps<AdminData>) {
   if (data.needsLogin && data.supabaseUrl && data.supabaseAnonKey) {
     return (
-      <div class="relative z-10 px-4 py-16 mx-auto min-h-screen flex flex-col items-center justify-center">
-        <div class="mb-12 text-center w-full max-w-md mx-auto animate-fade-in-up">
-          <a href="/" class="inline-block text-indigo-400 hover:text-indigo-300 font-medium mb-6 transition-colors">
-            &larr; Back to Home
-          </a>
-          <h1 class="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">Atlas Admin</h1>
+      <div class="px-4 py-16 mx-auto w-full max-w-md animate-fade-in-up flex-grow flex flex-col justify-center">
+        <div class="mb-10 text-center">
+          <h1 class="text-3xl font-bold text-white tracking-tight drop-shadow-sm">Admin Access</h1>
+          <p class="text-zinc-400 mt-2 text-sm">Please sign in to view system metrics.</p>
         </div>
         <AdminLogin supabaseUrl={data.supabaseUrl} supabaseAnonKey={data.supabaseAnonKey} />
       </div>
@@ -99,47 +97,49 @@ export default function AdminDashboard({ data }: PageProps<AdminData>) {
   }
 
   return (
-    <div class="relative z-10 px-4 py-16 mx-auto max-w-screen-md min-h-screen animate-fade-in-up">
-      <div class="mb-12 text-center">
-        <a href="/" class="inline-block text-indigo-400 hover:text-indigo-300 font-medium mb-6 transition-colors">
-          &larr; Back to Home
-        </a>
-        <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-sm">Admin Dashboard</h1>
-        <p class="text-gray-400 mt-4 text-lg">System metrics and overview.</p>
+    <div class="px-4 py-12 mx-auto w-full max-w-4xl animate-fade-in-up">
+      <div class="mb-10 text-left">
+        <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight drop-shadow-sm">System Overview</h1>
+        <p class="text-zinc-400 mt-2 text-base md:text-lg">Live metrics from Atlas Core.</p>
       </div>
 
       {data.error && (
-        <div class="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200">
-          <p class="font-medium">Configuration Error</p>
-          <p class="text-sm mt-1">{data.error}</p>
+        <div class="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 flex items-start gap-3">
+          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div>
+            <p class="font-semibold">Configuration Error</p>
+            <p class="text-sm mt-1 opacity-90">{data.error}</p>
+          </div>
         </div>
       )}
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white/5 border border-white/10 p-8 rounded-2xl shadow-lg backdrop-blur-md">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="p-2 bg-indigo-500/20 rounded-lg">
-              <svg class="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-[#09090b]/50 border border-white/10 p-6 sm:p-8 rounded-2xl shadow-xl backdrop-blur-xl">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="p-3 bg-indigo-500/20 rounded-xl">
+              <svg class="w-7 h-7 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
-            <h2 class="text-xl font-medium text-gray-300">Total Users</h2>
+            <h2 class="text-lg font-medium text-zinc-300">Total Users</h2>
           </div>
-          <p class="text-5xl font-extrabold text-white">
+          <p class="text-5xl md:text-6xl font-extrabold text-white tracking-tight">
             {data.totalUsers.toLocaleString()}
           </p>
         </div>
         
-        <div class="bg-white/5 border border-white/10 p-8 rounded-2xl shadow-lg backdrop-blur-md">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="p-2 bg-purple-500/20 rounded-lg">
-              <svg class="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="bg-[#09090b]/50 border border-white/10 p-6 sm:p-8 rounded-2xl shadow-xl backdrop-blur-xl">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="p-3 bg-purple-500/20 rounded-xl">
+              <svg class="w-7 h-7 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h2 class="text-xl font-medium text-gray-300">Streams Resolved</h2>
+            <h2 class="text-lg font-medium text-zinc-300">Streams Resolved</h2>
           </div>
-          <p class="text-5xl font-extrabold text-white">
+          <p class="text-5xl md:text-6xl font-extrabold text-white tracking-tight">
             {data.streamsResolved.toLocaleString()}
           </p>
         </div>

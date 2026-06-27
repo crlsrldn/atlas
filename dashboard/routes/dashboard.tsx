@@ -6,13 +6,10 @@ export default function SubscriberDashboard() {
   const gatewayUrl = Deno.env.get("PUBLIC_GATEWAY_URL") || "http://127.0.0.1:8080";
 
   return (
-    <div class="relative z-10 px-4 py-16 mx-auto max-w-screen-md min-h-screen animate-fade-in-up">
-      <div class="mb-12 text-center">
-        <a href="/" class="inline-block text-indigo-400 hover:text-indigo-300 font-medium mb-6 transition-colors">
-          &larr; Back to Home
-        </a>
-        <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-sm">Subscriber Dashboard</h1>
-        <p class="text-gray-400 mt-4 text-lg">Manage your integrations and stream preferences.</p>
+    <div class="px-4 py-12 mx-auto w-full max-w-4xl animate-fade-in-up">
+      <div class="mb-10 text-left">
+        <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight drop-shadow-sm">Subscriber Settings</h1>
+        <p class="text-zinc-400 mt-2 text-base md:text-lg">Manage your integrations and stream preferences.</p>
       </div>
       
       <ConfigForm 
