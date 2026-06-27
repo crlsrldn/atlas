@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use crate::engines::sources::{SourceProvider, SourceResult};
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::MediaMetadata;
+use crate::engines::sources::{SourceProvider, SourceResult};
+use async_trait::async_trait;
 use reqwest;
 use serde_json::Value;
 
@@ -24,8 +24,11 @@ impl SourceProvider for RealDebridProvider {
         // RD allows multiple hashes separated by slashes /
         let hash_param = hashes.join("/");
 
-        let url = format!("https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/{}", hash_param);
-        
+        let url = format!(
+            "https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/{}",
+            hash_param
+        );
+
         let client = reqwest::Client::new();
         let mut cached_hashes = Vec::new();
         let mut cache_check_succeeded = false;
@@ -42,18 +45,22 @@ impl SourceProvider for RealDebridProvider {
         } else {
             tracing::error!("Real Debrid network request failed.");
         }
-        
-        tracing::info!("Real Debrid found {} cached hashes out of {}", cached_hashes.len(), hashes.len());
+
+        tracing::info!(
+            "Real Debrid found {} cached hashes out of {}",
+            cached_hashes.len(),
+            hashes.len()
+        );
 
         if !cache_check_succeeded {
             return vec![];
         }
 
         let mut results = Vec::new();
-        
+
         for t in &metadata.torrents {
             let is_cached = cached_hashes.contains(&t.hash.to_lowercase());
-            
+
             if is_cached {
                 results.push(SourceResult {
                     provider_name: self.name().to_string(),
@@ -64,7 +71,10 @@ impl SourceProvider for RealDebridProvider {
                     codec: t.video_codec.clone(),
                     has_hdr: t.has_hdr,
                     is_cached: true, // Optimistically assume true
-                    url: Some(format!("http://127.0.0.1:3000/resolve/realdebrid/{}", t.hash)),
+                    url: Some(format!(
+                        "http://127.0.0.1:3000/resolve/realdebrid/{}",
+                        t.hash
+                    )),
                 });
             }
         }

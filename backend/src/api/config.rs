@@ -1,20 +1,25 @@
 use axum::{
     routing::{get, post},
-    Router,
-    Json,
+    Json, Router,
 };
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::fs;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserPreferences {
+    #[serde(default)]
     pub torbox_api_key: String,
+    #[serde(default)]
     pub real_debrid_api_key: String,
+    #[serde(default)]
     pub gemini_api_key: String,
+    #[serde(default = "default_max_resolution")]
     pub max_resolution: String,
+    #[serde(default = "default_prefer_hdr")]
     pub prefer_hdr: bool,
+    #[serde(default)]
     pub exclude_av1: bool,
 }
 
@@ -60,25 +65,57 @@ impl Default for UserPreferences {
     }
 }
 
-static PREFERENCES: Lazy<Arc<Mutex<UserPreferences>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(UserPreferences::default()))
-});
+fn default_max_resolution() -> String {
+    "4K".to_string()
+}
+
+fn default_prefer_hdr() -> bool {
+    true
+}
+
+impl UserPreferences {
+    pub fn without_secrets(&self) -> Self {
+        let mut prefs = self.clone();
+        prefs.torbox_api_key.clear();
+        prefs.real_debrid_api_key.clear();
+        prefs.gemini_api_key.clear();
+        prefs
+    }
+}
+
+static PREFERENCES: Lazy<Arc<Mutex<UserPreferences>>> =
+    Lazy::new(|| Arc::new(Mutex::new(UserPreferences::default())));
 
 pub async fn init_preferences() {
-    if let Some(cloud_prefs) = crate::api::cloud::get_preferences_from_cloud().await {
+    if let Some(mut cloud_prefs) = crate::api::cloud::get_preferences_from_cloud().await {
+        migrate_secrets_to_keychain(&cloud_prefs);
+        hydrate_secrets(&mut cloud_prefs);
         let mut prefs = PREFERENCES.lock().unwrap();
-        *prefs = cloud_prefs;
+        *prefs = cloud_prefs.clone();
         tracing::info!("Loaded preferences from Appwrite Cloud.");
+        let redacted_prefs = cloud_prefs.without_secrets();
+        let _ = crate::api::cloud::save_preferences_to_cloud(&redacted_prefs).await;
+        save_preferences_to_disk(&redacted_prefs);
     } else {
         // Try to load from local disk as a fallback migration
         if let Ok(data) = fs::read_to_string("preferences.json") {
-            if let Ok(local_prefs) = serde_json::from_str::<UserPreferences>(&data) {
+            if let Ok(mut local_prefs) = serde_json::from_str::<UserPreferences>(&data) {
+                migrate_secrets_to_keychain(&local_prefs);
+                hydrate_secrets(&mut local_prefs);
                 let mut prefs = PREFERENCES.lock().unwrap();
                 *prefs = local_prefs.clone();
-                tracing::info!("Loaded preferences from local disk. Migrating to Cloud...");
-                // Migrate to cloud
-                let _ = crate::api::cloud::save_preferences_to_cloud(&local_prefs).await;
+                tracing::info!(
+                    "Loaded preferences from local disk. Migrating non-secret settings to Cloud..."
+                );
+                let redacted_prefs = local_prefs.without_secrets();
+                let _ = crate::api::cloud::save_preferences_to_cloud(&redacted_prefs).await;
+                save_preferences_to_disk(&redacted_prefs);
             }
+        } else {
+            let mut prefs = UserPreferences::default();
+            hydrate_secrets(&mut prefs);
+            let mut current = PREFERENCES.lock().unwrap();
+            *current = prefs;
         }
     }
 }
@@ -98,7 +135,9 @@ async fn get_preferences() -> Json<PublicUserPreferences> {
     Json(prefs.into())
 }
 
-async fn update_preferences(Json(mut payload): Json<UserPreferences>) -> Json<PublicUserPreferences> {
+async fn update_preferences(
+    Json(mut payload): Json<UserPreferences>,
+) -> Json<PublicUserPreferences> {
     {
         let mut prefs = PREFERENCES.lock().unwrap();
         if payload.torbox_api_key.is_empty() {
@@ -110,18 +149,61 @@ async fn update_preferences(Json(mut payload): Json<UserPreferences>) -> Json<Pu
         if payload.gemini_api_key.is_empty() {
             payload.gemini_api_key = prefs.gemini_api_key.clone();
         }
+        persist_secrets(&payload);
         *prefs = payload.clone();
     }
-    
+
+    let redacted_payload = payload.without_secrets();
+
     // Save to Cloud
-    if let Err(e) = crate::api::cloud::save_preferences_to_cloud(&payload).await {
+    if let Err(e) = crate::api::cloud::save_preferences_to_cloud(&redacted_payload).await {
         tracing::error!("Failed to save preferences to Appwrite: {}", e);
     }
-    
-    // Save to disk as a local backup
-    if let Ok(json_str) = serde_json::to_string_pretty(&payload) {
+
+    save_preferences_to_disk(&redacted_payload);
+
+    Json(payload.into())
+}
+
+fn hydrate_secrets(prefs: &mut UserPreferences) {
+    if prefs.torbox_api_key.is_empty() {
+        prefs.torbox_api_key =
+            crate::api::secret_store::read_secret("torbox_api_key").unwrap_or_default();
+    }
+    if prefs.real_debrid_api_key.is_empty() {
+        prefs.real_debrid_api_key =
+            crate::api::secret_store::read_secret("real_debrid_api_key").unwrap_or_default();
+    }
+    if prefs.gemini_api_key.is_empty() {
+        prefs.gemini_api_key =
+            crate::api::secret_store::read_secret("gemini_api_key").unwrap_or_default();
+    }
+}
+
+fn migrate_secrets_to_keychain(prefs: &UserPreferences) {
+    persist_secret("torbox_api_key", &prefs.torbox_api_key);
+    persist_secret("real_debrid_api_key", &prefs.real_debrid_api_key);
+    persist_secret("gemini_api_key", &prefs.gemini_api_key);
+}
+
+fn persist_secrets(prefs: &UserPreferences) {
+    persist_secret("torbox_api_key", &prefs.torbox_api_key);
+    persist_secret("real_debrid_api_key", &prefs.real_debrid_api_key);
+    persist_secret("gemini_api_key", &prefs.gemini_api_key);
+}
+
+fn persist_secret(account: &str, secret: &str) {
+    if secret.is_empty() {
+        return;
+    }
+
+    if let Err(e) = crate::api::secret_store::write_secret(account, secret) {
+        tracing::error!("Failed to save {} to keychain: {}", account, e);
+    }
+}
+
+fn save_preferences_to_disk(prefs: &UserPreferences) {
+    if let Ok(json_str) = serde_json::to_string_pretty(prefs) {
         let _ = fs::write("preferences.json", json_str);
     }
-    
-    Json(payload.into())
 }

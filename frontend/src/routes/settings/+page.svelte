@@ -16,6 +16,14 @@
   let saveMessage = '';
   let backendOnline = false;
   let loadMessage = 'Checking backend...';
+  let isTestingProviders = false;
+  let providerStatuses: Array<{
+    provider: string;
+    configured: boolean;
+    status: string;
+    latency_ms?: number;
+    message: string;
+  }> = [];
 
   onMount(async () => {
     try {
@@ -87,6 +95,27 @@
       setTimeout(() => saveMessage = '', 3000);
     }
   }
+
+  async function testProviders() {
+    isTestingProviders = true;
+    saveMessage = '';
+
+    try {
+      const res = await backendFetch('/providers/status');
+      if (res.ok) {
+        providerStatuses = await res.json();
+      } else {
+        saveMessage = 'Provider checks failed.';
+      }
+    } catch (err) {
+      console.error(err);
+      saveMessage = err instanceof BackendUnavailableError
+        ? 'Atlas backend is offline. Start it with `cargo run --bin backend` in the backend folder.'
+        : 'Provider checks failed.';
+    } finally {
+      isTestingProviders = false;
+    }
+  }
 </script>
 
 <div class="header">
@@ -118,6 +147,22 @@
       <input type="password" id="gemini-key" bind:value={geminiApiKey} placeholder="Paste your Gemini API key here" />
       <small>{hasGeminiApiKey ? 'A Gemini key is configured. Leave blank to keep it.' : 'Used for the Atlas AI Recommendations catalog. Stored locally and never returned by the API.'}</small>
     </div>
+    <button class="btn-secondary" on:click={testProviders} disabled={isTestingProviders}>
+      {isTestingProviders ? 'Testing...' : 'Test Providers'}
+    </button>
+    {#if providerStatuses.length > 0}
+      <div class="provider-statuses">
+        {#each providerStatuses as provider}
+          <div class:ok={provider.status === 'ok'} class:error={provider.status === 'error'} class="provider-status">
+            <div>
+              <strong>{provider.provider}</strong>
+              <span>{provider.message}</span>
+            </div>
+            <small>{provider.configured ? provider.status : 'not configured'}{provider.latency_ms ? ` · ${provider.latency_ms} ms` : ''}</small>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   <div class="section">
@@ -310,6 +355,57 @@
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s ease;
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 0.7rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .provider-statuses {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .provider-status {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+  }
+
+  .provider-status.ok {
+    border-color: rgba(74, 222, 128, 0.35);
+  }
+
+  .provider-status.error {
+    border-color: rgba(248, 113, 113, 0.35);
+  }
+
+  .provider-status strong,
+  .provider-status span {
+    display: block;
+  }
+
+  .provider-status span {
+    color: #aaa;
+    font-size: 0.9rem;
+    margin-top: 0.2rem;
   }
 
   .btn-primary:hover {

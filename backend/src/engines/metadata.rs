@@ -1,6 +1,6 @@
-use serde::Deserialize;
 use crate::engines::identity::AtlasID;
 use reqwest;
+use serde::Deserialize;
 use tracing::warn;
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ struct TorrentioResponse {
 
 #[derive(Deserialize)]
 struct TorrentioStream {
-    name: Option<String>, // e.g. "Torrentio\n4k HDR"
+    name: Option<String>,  // e.g. "Torrentio\n4k HDR"
     title: Option<String>, // e.g. "Interstellar... \n 16 GB"
     #[serde(rename = "infoHash")]
     info_hash: Option<String>,
@@ -36,11 +36,18 @@ struct TorrentioStream {
 
 pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
     match atlas_id {
-        AtlasID::IMDb { id, season, episode } => {
+        AtlasID::IMDb {
+            id,
+            season,
+            episode,
+        } => {
             // Using Torrentio as a fallback indexer since YTS is blocked
             let (url, media_type) = match (season, episode) {
                 (Some(season), Some(episode)) => (
-                    format!("https://torrentio.strem.fun/stream/series/{}:{}:{}.json", id, season, episode),
+                    format!(
+                        "https://torrentio.strem.fun/stream/series/{}:{}:{}.json",
+                        id, season, episode
+                    ),
                     "series",
                 ),
                 _ => (
@@ -48,7 +55,7 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                     "movie",
                 ),
             };
-            
+
             if let Ok(res) = reqwest::get(&url).await {
                 if let Ok(json) = res.json::<TorrentioResponse>().await {
                     if let Some(streams) = json.streams {
@@ -56,7 +63,7 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                         for stream in streams {
                             if let Some(hash) = stream.info_hash {
                                 let name = stream.name.unwrap_or_default().to_lowercase();
-                                
+
                                 let quality = if name.contains("4k") {
                                     "4K".to_string()
                                 } else if name.contains("1080p") {
@@ -68,13 +75,18 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                                 let title_str = stream.title.unwrap_or_default();
                                 let video_codec = if title_str.to_lowercase().contains("av1") {
                                     "AV1".to_string()
-                                } else if title_str.to_lowercase().contains("hevc") || title_str.to_lowercase().contains("x265") {
+                                } else if title_str.to_lowercase().contains("hevc")
+                                    || title_str.to_lowercase().contains("x265")
+                                {
                                     "HEVC".to_string()
                                 } else {
                                     "H264".to_string()
                                 };
-                                
-                                let has_hdr = name.contains("hdr") || title_str.to_lowercase().contains("hdr") || title_str.to_lowercase().contains("dv") || title_str.to_lowercase().contains("vision");
+
+                                let has_hdr = name.contains("hdr")
+                                    || title_str.to_lowercase().contains("hdr")
+                                    || title_str.to_lowercase().contains("dv")
+                                    || title_str.to_lowercase().contains("vision");
 
                                 torrents.push(YTSTorrent {
                                     hash,
@@ -84,8 +96,9 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                                     video_codec,
                                     has_hdr,
                                 });
-                                
-                                if torrents.len() >= 100 { // Fetch 100 to ensure 1080p and SDR are included
+
+                                if torrents.len() >= 100 {
+                                    // Fetch 100 to ensure 1080p and SDR are included
                                     break;
                                 }
                             }
@@ -107,7 +120,7 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                 media_type: media_type.to_string(),
                 torrents: vec![],
             }
-        },
+        }
         AtlasID::TMDB(id) => MediaMetadata {
             title: format!("TMDB Series ({})", id),
             year: 0,

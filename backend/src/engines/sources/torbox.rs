@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use crate::engines::sources::{SourceProvider, SourceResult};
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::MediaMetadata;
+use crate::engines::sources::{SourceProvider, SourceResult};
+use async_trait::async_trait;
 use reqwest;
 
 pub struct TorBoxProvider {
@@ -24,7 +24,7 @@ impl SourceProvider for TorBoxProvider {
         let hash_param = hashes.join(",");
 
         let url = format!("https://api.torbox.app/v1/api/torrents/checkcached?hash={}&format=list&list_files=false", hash_param);
-        
+
         let client = reqwest::Client::new();
         let mut cached_hashes = Vec::new();
 
@@ -56,17 +56,20 @@ impl SourceProvider for TorBoxProvider {
         }
         let latency_ms = start_time.elapsed().as_millis() as u64;
 
-        crate::engines::telemetry::log_event("torbox_cache_check", serde_json::json!({
-            "latency_ms": latency_ms,
-            "hashes_checked": hashes.len(),
-            "hashes_cached": cached_hashes.len()
-        }));
+        crate::engines::telemetry::log_event(
+            "torbox_cache_check",
+            serde_json::json!({
+                "latency_ms": latency_ms,
+                "hashes_checked": hashes.len(),
+                "hashes_cached": cached_hashes.len()
+            }),
+        );
 
         // 2. Filter metadata torrents by cached hashes
         let mut results = Vec::new();
         for t in &metadata.torrents {
             let is_cached = cached_hashes.contains(&t.hash.to_lowercase());
-            
+
             // Only return if cached for this MVP to ensure immediate playback
             if is_cached {
                 results.push(SourceResult {
@@ -88,7 +91,7 @@ impl SourceProvider for TorBoxProvider {
     }
 
     async fn resolve(&self, result: &SourceResult) -> Option<String> {
-        // Since we are returning the local proxy URL in `search`, this resolve 
+        // Since we are returning the local proxy URL in `search`, this resolve
         // doesn't need to do the heavy lifting. The heavy lifting is done in `/resolve/torbox/:hash`.
         result.url.clone()
     }

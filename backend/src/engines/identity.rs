@@ -20,7 +20,11 @@ mod tests {
         let parsed = AtlasID::from_stremio_id("tt0133093").expect("valid IMDb ID");
 
         match parsed {
-            AtlasID::IMDb { id, season, episode } => {
+            AtlasID::IMDb {
+                id,
+                season,
+                episode,
+            } => {
                 assert_eq!(id, "tt0133093");
                 assert_eq!(season, None);
                 assert_eq!(episode, None);
@@ -34,7 +38,11 @@ mod tests {
         let parsed = AtlasID::from_stremio_id("tt0944947:1:2").expect("valid series ID");
 
         match parsed {
-            AtlasID::IMDb { id, season, episode } => {
+            AtlasID::IMDb {
+                id,
+                season,
+                episode,
+            } => {
                 assert_eq!(id, "tt0944947");
                 assert_eq!(season, Some(1));
                 assert_eq!(episode, Some(2));

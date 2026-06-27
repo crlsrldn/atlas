@@ -1,5 +1,5 @@
-use crate::engines::sources::SourceResult;
 use crate::api::config::UserPreferences;
+use crate::engines::sources::SourceResult;
 
 #[derive(Debug, Clone)]
 pub struct RankedSource {
@@ -8,14 +8,17 @@ pub struct RankedSource {
 }
 
 pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences) -> Vec<RankedSource> {
-    let mut ranked: Vec<RankedSource> = sources.into_iter().map(|source| {
-        let score = calculate_score(&source, prefs);
-        RankedSource { source, score }
-    }).collect();
+    let mut ranked: Vec<RankedSource> = sources
+        .into_iter()
+        .map(|source| {
+            let score = calculate_score(&source, prefs);
+            RankedSource { source, score }
+        })
+        .collect();
 
     // Sort descending by score
     ranked.sort_by(|a, b| b.score.cmp(&a.score));
-    
+
     ranked
 }
 
@@ -24,7 +27,7 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
 
     // Availability (Cached only heavily prioritized based on PRD)
     if !source.is_cached {
-        score /= 10; 
+        score /= 10;
     }
 
     // Quality Matching
@@ -32,7 +35,9 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
         score += 500;
     } else if prefs.max_resolution == "1080p" && source.resolution == "4K" {
         score = 0;
-    } else if prefs.max_resolution == "720p" && (source.resolution == "4K" || source.resolution == "1080p") {
+    } else if prefs.max_resolution == "720p"
+        && (source.resolution == "4K" || source.resolution == "1080p")
+    {
         score = 0;
     }
 
@@ -52,7 +57,7 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     }
 
     // Provider Priority could be injected here, but for now we just use the raw score.
-    
+
     score
 }
 

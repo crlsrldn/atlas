@@ -1,6 +1,6 @@
-use std::env;
 use reqwest::Client;
 use serde_json::json;
+use std::env;
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +16,8 @@ async fn main() {
 
     // 1. Create Database
     let url = format!("{}/databases", endpoint);
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .header("X-Appwrite-Project", &project)
         .header("X-Appwrite-Key", &key)
         .json(&json!({
@@ -30,7 +31,8 @@ async fn main() {
 
     // 2. Create Preferences Collection
     let url = format!("{}/databases/atlas/collections", endpoint);
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .header("X-Appwrite-Project", &project)
         .header("X-Appwrite-Key", &key)
         .json(&json!({
@@ -44,8 +46,12 @@ async fn main() {
     println!("Create Prefs Collection status: {}", res.status());
 
     // 3. Create Preferences prefs_json Attribute
-    let url = format!("{}/databases/atlas/collections/preferences/attributes/string", endpoint);
-    let res = client.post(&url)
+    let url = format!(
+        "{}/databases/atlas/collections/preferences/attributes/string",
+        endpoint
+    );
+    let res = client
+        .post(&url)
         .header("X-Appwrite-Project", &project)
         .header("X-Appwrite-Key", &key)
         .json(&json!({
@@ -60,7 +66,8 @@ async fn main() {
 
     // 4. Create Telemetry Collection
     let url = format!("{}/databases/atlas/collections", endpoint);
-    let res = client.post(&url)
+    let res = client
+        .post(&url)
         .header("X-Appwrite-Project", &project)
         .header("X-Appwrite-Key", &key)
         .json(&json!({
@@ -74,8 +81,12 @@ async fn main() {
     println!("Create Telemetry Collection status: {}", res.status());
 
     // 5. Create Telemetry telemetry_json Attribute
-    let url = format!("{}/databases/atlas/collections/telemetry/attributes/string", endpoint);
-    let res = client.post(&url)
+    let url = format!(
+        "{}/databases/atlas/collections/telemetry/attributes/string",
+        endpoint
+    );
+    let res = client
+        .post(&url)
         .header("X-Appwrite-Project", &project)
         .header("X-Appwrite-Key", &key)
         .json(&json!({

@@ -1,10 +1,12 @@
-use serde::{Deserialize, Serialize};
+use crate::api::config::current_preferences;
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
-use crate::engines::sources::{SourceProvider, torbox::TorBoxProvider, real_debrid::RealDebridProvider};
 use crate::engines::ranking::rank_sources;
-use crate::api::config::current_preferences;
+use crate::engines::sources::{
+    real_debrid::RealDebridProvider, torbox::TorBoxProvider, SourceProvider,
+};
 use futures::future::join_all;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StremioStream {
@@ -14,7 +16,7 @@ pub struct StremioStream {
 
 pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     let prefs = current_preferences();
-    
+
     // 1. Fetch Metadata
     let metadata = get_metadata(&atlas_id).await;
 
@@ -25,7 +27,7 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     let real_debrid = RealDebridProvider {
         api_key: prefs.real_debrid_api_key.clone(),
     };
-    
+
     let mut providers: Vec<&dyn SourceProvider> = Vec::new();
     if !prefs.torbox_api_key.is_empty() {
         providers.push(&torbox);
@@ -38,7 +40,7 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     for provider in providers {
         search_futures.push(provider.search(&atlas_id, &metadata));
     }
-    
+
     let results = join_all(search_futures).await;
     let mut all_results = Vec::new();
     for mut r in results {
@@ -46,12 +48,16 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     }
 
     // Deduplicate by hash, merging providers
-    let mut unique_results: std::collections::HashMap<String, crate::engines::sources::SourceResult> = std::collections::HashMap::new();
+    let mut unique_results: std::collections::HashMap<
+        String,
+        crate::engines::sources::SourceResult,
+    > = std::collections::HashMap::new();
     for res in all_results {
         if let Some(hash) = &res.hash {
             if let Some(existing) = unique_results.get_mut(hash) {
                 if !existing.provider_name.contains(&res.provider_name) {
-                    existing.provider_name = format!("{} + {}", existing.provider_name, res.provider_name);
+                    existing.provider_name =
+                        format!("{} + {}", existing.provider_name, res.provider_name);
                 }
                 // If the new one is TorBox, prefer its URL since TorBox cache is verified, whereas RD is optimistic
                 if res.provider_name.contains("TorBox") {
@@ -72,10 +78,9 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
         // We already inject the correct /resolve/ URL during search!
         if let Some(direct_url) = entry.source.url.clone() {
             streams.push(StremioStream {
-                title: format!("🌟 Atlas | {} {}\n{}", 
-                    entry.source.provider_name, 
-                    entry.source.resolution,
-                    entry.source.title
+                title: format!(
+                    "🌟 Atlas | {} {}\n{}",
+                    entry.source.provider_name, entry.source.resolution, entry.source.title
                 ),
                 url: direct_url,
             });

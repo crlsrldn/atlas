@@ -1,16 +1,19 @@
-pub mod engines;
 pub mod api;
+pub mod engines;
 
-use axum::{Router, http::{HeaderValue, Method}};
+use axum::{
+    http::{HeaderValue, Method},
+    Router,
+};
 use std::net::SocketAddr;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tracing_subscriber;
-use tower_http::cors::{Any, AllowOrigin, CorsLayer};
 
 #[tokio::main]
 async fn main() {
     // Initialize tracing
     tracing_subscriber::fmt::init();
-    
+
     // Load .env
     let _ = dotenvy::dotenv();
 
@@ -36,6 +39,7 @@ async fn main() {
         .nest("/", api::config::router())
         .nest("/", api::resolve::router())
         .nest("/", api::health::router())
+        .nest("/", api::providers::router())
         .layer(cors);
 
     // Run it
@@ -44,7 +48,7 @@ async fn main() {
         .and_then(|value| value.parse::<SocketAddr>().ok())
         .unwrap_or_else(|| SocketAddr::from(([127, 0, 0, 1], 3000)));
     tracing::info!("Listening on {}", addr);
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

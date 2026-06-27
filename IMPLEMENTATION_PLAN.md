@@ -8,12 +8,12 @@
 - [x] Return no streams instead of invalid empty playback URLs.
 - [x] Add a backend health endpoint and clearer frontend offline state.
 - [x] Add focused tests around identity parsing, ranking exclusions, and provider cache parsing.
-- [ ] Add provider connection tests in Settings for configured services.
-- [ ] Replace local JSON secret storage with an encrypted/OS-native store.
+- [x] Add provider connection tests in Settings for configured services.
+- [x] Replace local JSON secret storage with an encrypted/OS-native store.
 
 ## Phase 1: Provider Correctness
 
-- Finish TorBox resolution by selecting the largest playable file instead of assuming `file_id=1`.
+- [x] Finish TorBox resolution by selecting the largest playable file instead of assuming `file_id=1`.
 - Finish Real Debrid integration with cache verification, file selection, unrestriction, and telemetry.
 - Add provider health checks that feed ranking rather than static placeholder values.
 - Normalize provider errors into structured internal statuses.

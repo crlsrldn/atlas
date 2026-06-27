@@ -1,5 +1,7 @@
-pub mod stremio;
-pub mod config;
-pub mod resolve;
 pub mod cloud;
+pub mod config;
 pub mod health;
+pub mod providers;
+pub mod resolve;
+mod secret_store;
+pub mod stremio;
