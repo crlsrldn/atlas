@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { BackendUnavailableError, backendFetch, checkBackendHealth } from '$lib/backend';
 
   let torboxApiKey = '';
   let realDebridApiKey = '';
@@ -13,10 +14,13 @@
   
   let isSaving = false;
   let saveMessage = '';
+  let backendOnline = false;
+  let loadMessage = 'Checking backend...';
 
   onMount(async () => {
     try {
-      const res = await fetch('http://127.0.0.1:3000/user/preferences');
+      backendOnline = await checkBackendHealth();
+      const res = await backendFetch('/user/preferences');
       if (res.ok) {
         const data = await res.json();
         torboxApiKey = data.torbox_api_key || '';
@@ -28,9 +32,16 @@
         maxResolution = data.max_resolution || '4K';
         preferHdr = data.prefer_hdr ?? true;
         excludeAv1 = data.exclude_av1 ?? false;
+        loadMessage = '';
+      } else {
+        loadMessage = 'Backend responded, but settings could not be loaded.';
       }
     } catch (err) {
       console.error("Could not load settings:", err);
+      backendOnline = false;
+      loadMessage = err instanceof BackendUnavailableError
+        ? 'Atlas backend is offline. Start it with `cargo run` in the backend folder.'
+        : 'Settings could not be loaded.';
     }
   });
 
@@ -48,7 +59,7 @@
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:3000/user/preferences', {
+      const res = await backendFetch('/user/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -68,7 +79,9 @@
       }
     } catch (err) {
       console.error(err);
-      saveMessage = 'Error connecting to backend.';
+      saveMessage = err instanceof BackendUnavailableError
+        ? 'Atlas backend is offline. Start it with `cargo run` in the backend folder.'
+        : 'Error connecting to backend.';
     } finally {
       isSaving = false;
       setTimeout(() => saveMessage = '', 3000);
@@ -82,6 +95,12 @@
 </div>
 
 <div class="settings-container">
+  {#if loadMessage}
+    <div class:online={backendOnline} class="backend-status">
+      {loadMessage}
+    </div>
+  {/if}
+
   <div class="section">
     <h3>Providers</h3>
     <div class="form-group">
@@ -161,6 +180,21 @@
 
   .settings-container {
     max-width: 600px;
+  }
+
+  .backend-status {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    border-radius: 0.5rem;
+    color: #fecaca;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .backend-status.online {
+    background: rgba(74, 222, 128, 0.12);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #bbf7d0;
   }
 
   .section {

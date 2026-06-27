@@ -2,11 +2,14 @@
 
 ## Phase 0: Stabilize the MVP
 
-- Restrict local backend exposure and remove plaintext secret reads from public API responses.
-- Make provider status honest: no optimistic cached streams when cache checks fail.
-- Support Stremio episode IDs without treating series requests as movie requests.
-- Return no streams instead of invalid empty playback URLs.
-- Add focused tests around identity parsing, ranking exclusions, and provider failure behavior.
+- [x] Restrict local backend exposure and remove plaintext secret reads from public API responses.
+- [x] Make provider status honest: no optimistic cached streams when cache checks fail.
+- [x] Support Stremio episode IDs without treating series requests as movie requests.
+- [x] Return no streams instead of invalid empty playback URLs.
+- [x] Add a backend health endpoint and clearer frontend offline state.
+- [x] Add focused tests around identity parsing, ranking exclusions, and provider cache parsing.
+- [ ] Add provider connection tests in Settings for configured services.
+- [ ] Replace local JSON secret storage with an encrypted/OS-native store.
 
 ## Phase 1: Provider Correctness
 

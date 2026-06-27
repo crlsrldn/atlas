@@ -34,15 +34,7 @@ impl SourceProvider for RealDebridProvider {
             if res.status().is_success() {
                 cache_check_succeeded = true;
                 if let Ok(json) = res.json::<Value>().await {
-                    if let Some(obj) = json.as_object() {
-                        for (hash, data) in obj {
-                            if let Some(rd_data) = data.get("rd").and_then(|rd| rd.as_array()) {
-                                if !rd_data.is_empty() {
-                                    cached_hashes.push(hash.to_lowercase());
-                                }
-                            }
-                        }
-                    }
+                    cached_hashes = cached_hashes_from_availability(&json);
                 }
             } else {
                 tracing::error!("Real Debrid cache check failed: {}", res.status());
@@ -90,5 +82,47 @@ impl SourceProvider for RealDebridProvider {
 
     fn priority(&self) -> u8 {
         95 // High priority for RD
+    }
+}
+
+fn cached_hashes_from_availability(json: &Value) -> Vec<String> {
+    let mut cached_hashes = Vec::new();
+
+    if let Some(obj) = json.as_object() {
+        for (hash, data) in obj {
+            if let Some(rd_data) = data.get("rd").and_then(|rd| rd.as_array()) {
+                if !rd_data.is_empty() {
+                    cached_hashes.push(hash.to_lowercase());
+                }
+            }
+        }
+    }
+
+    cached_hashes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cached_hashes_from_availability;
+    use serde_json::json;
+
+    #[test]
+    fn parses_cached_hashes_from_real_debrid_response() {
+        let response = json!({
+            "ABC123": { "rd": [{ "id": "1" }] },
+            "DEF456": { "rd": [] }
+        });
+
+        assert_eq!(cached_hashes_from_availability(&response), vec!["abc123"]);
+    }
+
+    #[test]
+    fn missing_cache_entries_are_not_treated_as_cached() {
+        let response = json!({
+            "ABC123": {},
+            "DEF456": { "rd": [] }
+        });
+
+        assert!(cached_hashes_from_availability(&response).is_empty());
     }
 }

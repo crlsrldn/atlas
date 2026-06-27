@@ -11,6 +11,49 @@ pub enum AtlasID {
     // ... TVDB, Trakt, AniDB to be added later
 }
 
+#[cfg(test)]
+mod tests {
+    use super::AtlasID;
+
+    #[test]
+    fn parses_movie_imdb_id() {
+        let parsed = AtlasID::from_stremio_id("tt0133093").expect("valid IMDb ID");
+
+        match parsed {
+            AtlasID::IMDb { id, season, episode } => {
+                assert_eq!(id, "tt0133093");
+                assert_eq!(season, None);
+                assert_eq!(episode, None);
+            }
+            _ => panic!("expected IMDb ID"),
+        }
+    }
+
+    #[test]
+    fn preserves_series_episode_context() {
+        let parsed = AtlasID::from_stremio_id("tt0944947:1:2").expect("valid series ID");
+
+        match parsed {
+            AtlasID::IMDb { id, season, episode } => {
+                assert_eq!(id, "tt0944947");
+                assert_eq!(season, Some(1));
+                assert_eq!(episode, Some(2));
+            }
+            _ => panic!("expected IMDb ID"),
+        }
+    }
+
+    #[test]
+    fn parses_tmdb_id() {
+        let parsed = AtlasID::from_stremio_id("tmdb:550").expect("valid TMDB ID");
+
+        match parsed {
+            AtlasID::TMDB(id) => assert_eq!(id, 550),
+            _ => panic!("expected TMDB ID"),
+        }
+    }
+}
+
 impl AtlasID {
     /// Normalize a Stremio ID into an AtlasID.
     /// Stremio IDs are typically IMDb IDs (e.g., "tt1234567") or Kitsu IDs for anime.

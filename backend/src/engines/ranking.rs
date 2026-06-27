@@ -55,3 +55,63 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     
     score
 }
+
+#[cfg(test)]
+mod tests {
+    use super::rank_sources;
+    use crate::api::config::UserPreferences;
+    use crate::engines::sources::SourceResult;
+
+    fn prefs() -> UserPreferences {
+        UserPreferences {
+            torbox_api_key: String::new(),
+            real_debrid_api_key: String::new(),
+            gemini_api_key: String::new(),
+            max_resolution: "1080p".to_string(),
+            prefer_hdr: true,
+            exclude_av1: true,
+        }
+    }
+
+    fn source(resolution: &str, codec: &str, has_hdr: bool, is_cached: bool) -> SourceResult {
+        SourceResult {
+            provider_name: "Test".to_string(),
+            title: "Test Source".to_string(),
+            hash: Some("abc".to_string()),
+            size_bytes: Some(1),
+            resolution: resolution.to_string(),
+            codec: codec.to_string(),
+            has_hdr,
+            is_cached,
+            url: Some("http://example.test".to_string()),
+        }
+    }
+
+    #[test]
+    fn excludes_av1_when_preference_is_enabled() {
+        let ranked = rank_sources(vec![source("1080p", "AV1", false, true)], &prefs());
+
+        assert_eq!(ranked[0].score, 0);
+    }
+
+    #[test]
+    fn excludes_resolution_above_user_maximum() {
+        let ranked = rank_sources(vec![source("4K", "HEVC", false, true)], &prefs());
+
+        assert_eq!(ranked[0].score, 0);
+    }
+
+    #[test]
+    fn demotes_uncached_sources() {
+        let ranked = rank_sources(
+            vec![
+                source("1080p", "HEVC", false, false),
+                source("1080p", "HEVC", false, true),
+            ],
+            &prefs(),
+        );
+
+        assert!(ranked[0].source.is_cached);
+        assert!(ranked[0].score > ranked[1].score);
+    }
+}

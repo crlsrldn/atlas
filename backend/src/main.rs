@@ -33,6 +33,7 @@ async fn main() {
         .nest("/", api::stremio::router())
         .nest("/", api::config::router())
         .nest("/", api::resolve::router())
+        .nest("/", api::health::router())
         .layer(cors);
 
     // Run it
