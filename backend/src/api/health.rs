@@ -9,29 +9,8 @@ struct HealthResponse {
     environment: String,
 }
 
-#[derive(Serialize)]
-struct RootResponse {
-    service: &'static str,
-    status: &'static str,
-    environment: String,
-    health: &'static str,
-    demo_manifest: &'static str,
-}
-
 pub fn router() -> Router {
-    Router::new()
-        .route("/", get(root))
-        .route("/health", get(health))
-}
-
-async fn root() -> Json<RootResponse> {
-    Json(RootResponse {
-        service: "atlas-backend",
-        status: "ok",
-        environment: current_environment(),
-        health: "/health",
-        demo_manifest: "/stremio/demo-install-token/manifest.json",
-    })
+    Router::new().route("/health", get(health))
 }
 
 async fn health() -> Json<HealthResponse> {

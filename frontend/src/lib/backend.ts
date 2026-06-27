@@ -1,4 +1,5 @@
-export const BACKEND_BASE_URL = import.meta.env.VITE_ATLAS_BACKEND_URL ?? 'http://127.0.0.1:3000';
+export const BACKEND_BASE_URL =
+  import.meta.env.VITE_ATLAS_BACKEND_URL ?? (import.meta.env.DEV ? 'http://127.0.0.1:3000' : '');
 export const ATLAS_USER_ID = import.meta.env.VITE_ATLAS_USER_ID ?? 'demo-user';
 
 export class BackendUnavailableError extends Error {

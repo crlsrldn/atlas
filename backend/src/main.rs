@@ -6,7 +6,9 @@ use axum::{
     Router,
 };
 use std::net::SocketAddr;
+use std::path::Path;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
 
 #[tokio::main]
 async fn main() {
@@ -51,6 +53,15 @@ async fn main() {
         .nest("/", api::tenants::router().layer(local_app_cors.clone()))
         .nest("/", api::billing::router().layer(local_app_cors.clone()))
         .nest("/", api::telemetry::router().layer(local_app_cors));
+    let static_dir = std::env::var("ATLAS_STATIC_DIR").unwrap_or_else(|_| "public".to_string());
+    let app = if Path::new(&static_dir).exists() {
+        let index_path = format!("{}/index.html", static_dir);
+        app.fallback_service(
+            ServeDir::new(&static_dir).not_found_service(ServeFile::new(index_path)),
+        )
+    } else {
+        app
+    };
 
     // Run it
     let addr = std::env::var("ATLAS_BIND_ADDR")
