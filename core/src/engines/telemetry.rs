@@ -10,7 +10,6 @@ pub fn log_event(event_name: &str, payload: Value) {
     let mut payload = payload;
     crate::engines::privacy::redact_json(&mut payload);
 
-
     tokio::spawn(async move {
         if let (Ok(endpoint), Ok(key)) = (
             env::var("SUPABASE_URL"),

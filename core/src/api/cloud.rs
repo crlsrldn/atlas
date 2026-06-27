@@ -33,7 +33,9 @@ pub async fn get_preferences_from_cloud() -> Option<crate::api::config::UserPref
     if res.status().is_success() {
         if let Ok(json) = res.json::<serde_json::Value>().await {
             if let Some(prefs_obj) = json.get("prefs_json") {
-                if let Ok(prefs) = serde_json::from_value::<crate::api::config::UserPreferences>(prefs_obj.clone()) {
+                if let Ok(prefs) =
+                    serde_json::from_value::<crate::api::config::UserPreferences>(prefs_obj.clone())
+                {
                     return Some(prefs);
                 }
             }
@@ -94,7 +96,7 @@ pub async fn get_recent_telemetry(limit: usize) -> Result<Vec<Value>, Box<dyn st
     }
 
     let array = response.json::<Vec<Value>>().await?;
-    
+
     Ok(array
         .into_iter()
         .map(|document| {
