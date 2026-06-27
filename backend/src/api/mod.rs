@@ -6,3 +6,4 @@ pub mod providers;
 pub mod resolve;
 mod secret_store;
 pub mod stremio;
+pub mod telemetry;

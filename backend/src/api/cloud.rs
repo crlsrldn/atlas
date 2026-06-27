@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde_json::json;
+use serde_json::Value;
 use std::env;
 
 use once_cell::sync::Lazy;
@@ -81,4 +82,48 @@ pub async fn save_preferences_to_cloud(
     }
 
     Ok(())
+}
+
+pub async fn get_recent_telemetry(limit: usize) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    let endpoint = env::var("APPWRITE_ENDPOINT")?;
+    let project = env::var("APPWRITE_PROJECT_ID")?;
+    let key = env::var("APPWRITE_API_KEY")?;
+
+    let url = format!(
+        "{}/databases/atlas/collections/telemetry/documents",
+        endpoint
+    );
+
+    let limit_query = format!("limit({})", limit.clamp(1, 100));
+    let response = HTTP_CLIENT
+        .get(&url)
+        .header("X-Appwrite-Project", &project)
+        .header("X-Appwrite-Key", &key)
+        .query(&[
+            ("queries[]", "orderDesc(\"$createdAt\")"),
+            ("queries[]", limit_query.as_str()),
+        ])
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        return Err(format!("Appwrite telemetry request failed: {}", response.status()).into());
+    }
+
+    let json = response.json::<Value>().await?;
+    let documents = json
+        .get("documents")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    Ok(documents
+        .into_iter()
+        .filter_map(|document| {
+            document
+                .get("telemetry_json")
+                .and_then(Value::as_str)
+                .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
+        })
+        .collect())
 }

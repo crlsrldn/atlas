@@ -45,7 +45,8 @@ async fn main() {
         .nest("/", api::inspect::router().layer(local_app_cors.clone()))
         .nest("/", api::config::router().layer(local_app_cors.clone()))
         .nest("/", api::health::router().layer(local_app_cors.clone()))
-        .nest("/", api::providers::router().layer(local_app_cors));
+        .nest("/", api::providers::router().layer(local_app_cors.clone()))
+        .nest("/", api::telemetry::router().layer(local_app_cors));
 
     // Run it
     let addr = std::env::var("ATLAS_BIND_ADDR")

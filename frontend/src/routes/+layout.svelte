@@ -8,7 +8,7 @@
       <h1>Project Atlas</h1>
     </div>
     <ul class="nav-links">
-      <li><a href="/" class:active={$page.url.pathname === '/'}>Overview</a></li>
+      <li><a href="/" class:active={$page.url.pathname === '/'}>Smart Play</a></li>
       <li><a href="/streams" class:active={$page.url.pathname === '/streams'}>Streams</a></li>
       <li><a href="/settings" class:active={$page.url.pathname === '/settings'}>Settings</a></li>
       <li><a href="/health" class:active={$page.url.pathname === '/health'}>Health</a></li>

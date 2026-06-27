@@ -21,6 +21,18 @@ pub struct UserPreferences {
     pub prefer_hdr: bool,
     #[serde(default)]
     pub exclude_av1: bool,
+    #[serde(default = "default_profile")]
+    pub profile: String,
+    #[serde(default)]
+    pub mobile_data_saver: bool,
+    #[serde(default)]
+    pub home_theater_mode: bool,
+    #[serde(default)]
+    pub family_mode: bool,
+    #[serde(default = "default_language")]
+    pub preferred_language: String,
+    #[serde(default = "default_subtitle_mode")]
+    pub subtitle_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -34,6 +46,12 @@ pub struct PublicUserPreferences {
     pub max_resolution: String,
     pub prefer_hdr: bool,
     pub exclude_av1: bool,
+    pub profile: String,
+    pub mobile_data_saver: bool,
+    pub home_theater_mode: bool,
+    pub family_mode: bool,
+    pub preferred_language: String,
+    pub subtitle_mode: String,
 }
 
 impl From<UserPreferences> for PublicUserPreferences {
@@ -48,6 +66,12 @@ impl From<UserPreferences> for PublicUserPreferences {
             max_resolution: prefs.max_resolution,
             prefer_hdr: prefs.prefer_hdr,
             exclude_av1: prefs.exclude_av1,
+            profile: prefs.profile,
+            mobile_data_saver: prefs.mobile_data_saver,
+            home_theater_mode: prefs.home_theater_mode,
+            family_mode: prefs.family_mode,
+            preferred_language: prefs.preferred_language,
+            subtitle_mode: prefs.subtitle_mode,
         }
     }
 }
@@ -61,6 +85,12 @@ impl Default for UserPreferences {
             max_resolution: "4K".to_string(),
             prefer_hdr: true,
             exclude_av1: false,
+            profile: default_profile(),
+            mobile_data_saver: false,
+            home_theater_mode: false,
+            family_mode: false,
+            preferred_language: default_language(),
+            subtitle_mode: default_subtitle_mode(),
         }
     }
 }
@@ -71,6 +101,18 @@ fn default_max_resolution() -> String {
 
 fn default_prefer_hdr() -> bool {
     true
+}
+
+fn default_profile() -> String {
+    "home_theater".to_string()
+}
+
+fn default_language() -> String {
+    "English".to_string()
+}
+
+fn default_subtitle_mode() -> String {
+    "auto".to_string()
 }
 
 impl UserPreferences {

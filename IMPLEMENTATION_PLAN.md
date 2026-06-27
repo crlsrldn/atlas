@@ -35,10 +35,10 @@
 
 ## Phase 4: Product Surface
 
-- Make the first screen a real Smart Play control surface rather than an overview page.
-- Add settings validation, provider connection tests, and clear provider health states.
-- Move telemetry behind the backend so Appwrite permissions and schema are not exposed directly to the frontend.
-- Add profile-level preferences for mobile, home theater, family, language, and subtitles.
+- [x] Make the first screen a real Smart Play control surface rather than an overview page.
+- [x] Add settings validation, provider connection tests, and clear provider health states.
+- [x] Move telemetry behind the backend so Appwrite permissions and schema are not exposed directly to the frontend.
+- [x] Add profile-level preferences for mobile, home theater, family, language, and subtitles.
 
 ## Phase 5: Privacy and Operations
 

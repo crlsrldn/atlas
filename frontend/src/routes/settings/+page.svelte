@@ -8,6 +8,12 @@
   let maxResolution = '4K';
   let preferHdr = true;
   let excludeAv1 = false;
+  let profile = 'home_theater';
+  let mobileDataSaver = false;
+  let homeTheaterMode = true;
+  let familyMode = false;
+  let preferredLanguage = 'English';
+  let subtitleMode = 'auto';
   let hasTorboxApiKey = false;
   let hasRealDebridApiKey = false;
   let hasGeminiApiKey = false;
@@ -25,6 +31,13 @@
     message: string;
   }> = [];
 
+  $: validationErrors = [
+    torboxApiKey.trim() && torboxApiKey.trim().length < 12 ? 'TorBox API key looks too short.' : '',
+    realDebridApiKey.trim() && realDebridApiKey.trim().length < 12 ? 'Real Debrid API key looks too short.' : '',
+    geminiApiKey.trim() && geminiApiKey.trim().length < 12 ? 'Gemini API key looks too short.' : '',
+    familyMode && subtitleMode === 'off' ? 'Family profiles should keep subtitles on or automatic.' : ''
+  ].filter(Boolean);
+
   onMount(async () => {
     try {
       backendOnline = await checkBackendHealth();
@@ -40,6 +53,12 @@
         maxResolution = data.max_resolution || '4K';
         preferHdr = data.prefer_hdr ?? true;
         excludeAv1 = data.exclude_av1 ?? false;
+        profile = data.profile || 'home_theater';
+        mobileDataSaver = data.mobile_data_saver ?? false;
+        homeTheaterMode = data.home_theater_mode ?? false;
+        familyMode = data.family_mode ?? false;
+        preferredLanguage = data.preferred_language || 'English';
+        subtitleMode = data.subtitle_mode || 'auto';
         loadMessage = '';
       } else {
         loadMessage = 'Backend responded, but settings could not be loaded.';
@@ -54,6 +73,11 @@
   });
 
   async function saveSettings() {
+    if (validationErrors.length > 0) {
+      saveMessage = validationErrors[0];
+      return;
+    }
+
     isSaving = true;
     saveMessage = '';
     
@@ -64,6 +88,12 @@
       max_resolution: maxResolution,
       prefer_hdr: preferHdr,
       exclude_av1: excludeAv1,
+      profile,
+      mobile_data_saver: mobileDataSaver,
+      home_theater_mode: homeTheaterMode,
+      family_mode: familyMode,
+      preferred_language: preferredLanguage,
+      subtitle_mode: subtitleMode,
     };
 
     try {
@@ -116,6 +146,13 @@
       isTestingProviders = false;
     }
   }
+
+  function providerStateLabel(status: string, configured: boolean) {
+    if (!configured) return 'Needs key';
+    if (status === 'ok') return 'Healthy';
+    if (status === 'error') return 'Attention';
+    return 'Unknown';
+  }
 </script>
 
 <div class="header">
@@ -147,18 +184,18 @@
       <input type="password" id="gemini-key" bind:value={geminiApiKey} placeholder="Paste your Gemini API key here" />
       <small>{hasGeminiApiKey ? 'A Gemini key is configured. Leave blank to keep it.' : 'Used for the Atlas AI Recommendations catalog. Stored locally and never returned by the API.'}</small>
     </div>
-    <button class="btn-secondary" on:click={testProviders} disabled={isTestingProviders}>
+    <button class="btn-secondary" on:click={testProviders} disabled={isTestingProviders || !backendOnline}>
       {isTestingProviders ? 'Testing...' : 'Test Providers'}
     </button>
     {#if providerStatuses.length > 0}
       <div class="provider-statuses">
         {#each providerStatuses as provider}
-          <div class:ok={provider.status === 'ok'} class:error={provider.status === 'error'} class="provider-status">
+          <div class:ok={provider.status === 'ok'} class:error={provider.status === 'error'} class:not-configured={!provider.configured} class="provider-status">
             <div>
               <strong>{provider.provider}</strong>
               <span>{provider.message}</span>
             </div>
-            <small>{provider.configured ? provider.status : 'not configured'}{provider.latency_ms ? ` · ${provider.latency_ms} ms` : ''}</small>
+            <small>{providerStateLabel(provider.status, provider.configured)}{provider.latency_ms ? ` · ${provider.latency_ms} ms` : ''}</small>
           </div>
         {/each}
       </div>
@@ -196,8 +233,70 @@
     </div>
   </div>
 
+  <div class="section">
+    <h3>Profiles</h3>
+
+    <div class="form-group">
+      <label for="profile">Active Profile</label>
+      <select id="profile" bind:value={profile}>
+        <option value="mobile">Mobile</option>
+        <option value="home_theater">Home Theater</option>
+        <option value="family">Family</option>
+        <option value="balanced">Balanced</option>
+      </select>
+    </div>
+
+    <div class="profile-grid">
+      <label class="toggle panel-toggle">
+        <input type="checkbox" bind:checked={mobileDataSaver} />
+        <span class="slider"></span>
+        <span class="label-text">Mobile data saver</span>
+      </label>
+
+      <label class="toggle panel-toggle">
+        <input type="checkbox" bind:checked={homeTheaterMode} />
+        <span class="slider"></span>
+        <span class="label-text">Home theater priority</span>
+      </label>
+
+      <label class="toggle panel-toggle">
+        <input type="checkbox" bind:checked={familyMode} />
+        <span class="slider"></span>
+        <span class="label-text">Family mode</span>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label for="language">Language</label>
+      <select id="language" bind:value={preferredLanguage}>
+        <option value="English">English</option>
+        <option value="Spanish">Spanish</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Japanese">Japanese</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="subtitles">Subtitles</label>
+      <select id="subtitles" bind:value={subtitleMode}>
+        <option value="auto">Automatic</option>
+        <option value="always">Always on</option>
+        <option value="forced">Forced only</option>
+        <option value="off">Off</option>
+      </select>
+    </div>
+  </div>
+
   <div class="actions">
-    <button class="btn-primary" on:click={saveSettings} disabled={isSaving}>
+    {#if validationErrors.length > 0}
+      <div class="validation">
+        {#each validationErrors as error}
+          <span>{error}</span>
+        {/each}
+      </div>
+    {/if}
+    <button class="btn-primary" on:click={saveSettings} disabled={isSaving || validationErrors.length > 0}>
       {isSaving ? 'Saving...' : 'Save Settings'}
     </button>
     {#if saveMessage}
@@ -224,13 +323,13 @@
   }
 
   .settings-container {
-    max-width: 600px;
+    max-width: 760px;
   }
 
   .backend-status {
     background: rgba(248, 113, 113, 0.12);
     border: 1px solid rgba(248, 113, 113, 0.35);
-    border-radius: 0.5rem;
+    border-radius: 8px;
     color: #fecaca;
     margin-bottom: 1rem;
     padding: 0.85rem 1rem;
@@ -245,7 +344,7 @@
   .section {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 1rem;
+    border-radius: 8px;
     padding: 2rem;
     margin-bottom: 2rem;
   }
@@ -274,7 +373,7 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #fff;
     padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
+    border-radius: 8px;
     font-size: 1rem;
     outline: none;
     transition: border-color 0.2s;
@@ -340,8 +439,9 @@
   }
 
   .actions {
-    display: flex;
+    display: grid;
     align-items: center;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 1rem;
   }
 
@@ -350,7 +450,7 @@
     color: #000;
     border: none;
     padding: 0.8rem 2rem;
-    border-radius: 2rem;
+    border-radius: 8px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -362,7 +462,7 @@
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.18);
     padding: 0.7rem 1rem;
-    border-radius: 0.5rem;
+    border-radius: 8px;
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
@@ -383,7 +483,7 @@
     align-items: center;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0.5rem;
+    border-radius: 8px;
     display: flex;
     justify-content: space-between;
     padding: 0.8rem 1rem;
@@ -395,6 +495,10 @@
 
   .provider-status.error {
     border-color: rgba(248, 113, 113, 0.35);
+  }
+
+  .provider-status.not-configured {
+    border-color: rgba(250, 204, 21, 0.28);
   }
 
   .provider-status strong,
@@ -421,5 +525,42 @@
   .msg {
     color: #4ade80;
     font-weight: 500;
+  }
+
+  .profile-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 1.5rem;
+  }
+
+  .panel-toggle {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin: 0;
+    min-height: 52px;
+    padding: 0.8rem;
+  }
+
+  .validation {
+    color: #fecaca;
+    display: grid;
+    font-size: 0.9rem;
+    gap: 0.35rem;
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 720px) {
+    .profile-grid,
+    .actions {
+      grid-template-columns: 1fr;
+    }
+
+    .provider-status {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
   }
 </style>

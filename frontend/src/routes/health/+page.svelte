@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { databases } from '$lib/appwrite';
-  import { Query } from 'appwrite';
+  import { BackendUnavailableError, backendFetch } from '$lib/backend';
   import Chart from 'chart.js/auto';
 
   let status = {
@@ -12,21 +11,21 @@
     subtitle: 'Healthy',
     startup: '0 sec'
   };
+  let telemetryMessage = '';
 
   let chartCanvas: HTMLCanvasElement;
   let latencyChart: Chart;
 
   async function fetchTelemetry() {
     try {
-      // Fetch latest 50 telemetry events
-      const res = await databases.listDocuments(
-        'atlas',
-        'telemetry',
-        [
-          Query.orderDesc('$createdAt'),
-          Query.limit(50)
-        ]
-      );
+      const res = await backendFetch('/telemetry/recent');
+      if (!res.ok) {
+        telemetryMessage = 'Telemetry is unavailable.';
+        return;
+      }
+
+      const payload = await res.json();
+      telemetryMessage = payload.message ?? '';
 
       let totalLatency = 0;
       let latencyCount = 0;
@@ -36,23 +35,18 @@
       let chartLabels: string[] = [];
       let chartData: number[] = [];
 
-      // Process in chronological order for chart (reverse of desc)
-      const docs = res.documents.reverse();
-
-      docs.forEach(doc => {
-        if (!doc.telemetry_json) return;
+      const events = [...(payload.events ?? [])].reverse();
+      events.forEach((event) => {
         try {
-          const payload = JSON.parse(doc.telemetry_json);
-          
-          if (payload.event === 'torbox_cache_check') {
-            const data = payload.data;
+          if (event.event === 'torbox_cache_check') {
+            const data = event.data;
             totalLatency += data.latency_ms;
             latencyCount++;
             
             hashesChecked += data.hashes_checked;
             hashesCached += data.hashes_cached;
 
-            chartLabels.push(new Date(payload.timestamp).toLocaleTimeString());
+            chartLabels.push(new Date(event.timestamp).toLocaleTimeString());
             chartData.push(data.latency_ms);
           }
         } catch (e) {}
@@ -75,6 +69,9 @@
 
     } catch (e) {
       console.error("Failed to fetch telemetry:", e);
+      telemetryMessage = e instanceof BackendUnavailableError
+        ? 'Atlas backend is offline.'
+        : 'Telemetry is unavailable.';
     }
   }
 
@@ -119,6 +116,10 @@
   <h2>Health Dashboard</h2>
   <p>Real-time telemetry of your Atlas Core engines.</p>
 </div>
+
+{#if telemetryMessage}
+  <div class="notice">{telemetryMessage}</div>
+{/if}
 
 <div class="grid">
   <div class="stat-card">
@@ -205,7 +206,16 @@
     margin-top: 2rem;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 1rem;
+    border-radius: 8px;
     padding: 2rem;
+  }
+
+  .notice {
+    background: rgba(250, 204, 21, 0.12);
+    border: 1px solid rgba(250, 204, 21, 0.35);
+    border-radius: 8px;
+    color: #fef3c7;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
   }
 </style>
