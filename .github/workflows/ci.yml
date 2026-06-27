@@ -135,7 +135,7 @@ jobs:
     needs: [smoke, dashboard]
     if: >
       (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'development') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/development')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     environment: development
     steps:
       - name: Checkout

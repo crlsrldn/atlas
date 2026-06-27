@@ -1,12 +1,24 @@
 import { useState, useEffect } from "preact/hooks";
-import { supabase } from "../utils/supabase.ts";
+import { getSupabaseClient } from "../utils/supabase.ts";
 
-export default function ConfigForm({ projectId }: { projectId: string }) {
+export default function ConfigForm({ 
+  projectId, 
+  supabaseUrl, 
+  supabaseAnonKey, 
+  gatewayUrl 
+}: { 
+  projectId: string, 
+  supabaseUrl: string, 
+  supabaseAnonKey: string, 
+  gatewayUrl: string 
+}) {
   const [torboxKey, setTorboxKey] = useState("");
   const [rdKey, setRdKey] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -74,8 +86,11 @@ export default function ConfigForm({ projectId }: { projectId: string }) {
     return <div class="p-6">Loading configurations...</div>;
   }
 
+  // gatewayUrl example: http://127.0.0.1:8080 or https://cindral-atlas-gateway-dev.fly.dev
+  // We need to convert it to stremio:// for the installation
+  const baseDomain = gatewayUrl.replace("https://", "").replace("http://", "");
   const installLink = userId 
-    ? `stremio://cindral-atlas-gateway-dev.fly.dev/stremio/${userId}/manifest.json`
+    ? `stremio://${baseDomain}/stremio/${userId}/manifest.json`
     : "#";
 
   return (
