@@ -12,7 +12,11 @@ pub fn router() -> Router {
 }
 
 async fn manifest() -> Json<Value> {
-    Json(json!({
+    Json(manifest_payload())
+}
+
+fn manifest_payload() -> Value {
+    json!({
         "id": "com.cindrallabs.atlas",
         "version": "0.1.0",
         "name": "Project Atlas",
@@ -30,7 +34,7 @@ async fn manifest() -> Json<Value> {
             "catalog"
         ],
         "idPrefixes": ["tt", "tmdb:"]
-    }))
+    })
 }
 
 async fn catalog(Path((_t, id)): Path<(String, String)>) -> Json<Value> {
@@ -92,4 +96,33 @@ async fn handle_stream_request(mut stremio_id: String) -> Json<Value> {
     );
 
     Json(json!({ "streams": streams }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::manifest_payload;
+
+    #[test]
+    fn manifest_exposes_stremio_addon_contract() {
+        let manifest = manifest_payload();
+
+        assert_eq!(manifest["id"], "com.cindrallabs.atlas");
+        assert_eq!(manifest["resources"][0], "stream");
+        assert_eq!(manifest["resources"][1], "catalog");
+        assert!(manifest["types"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item == "movie"));
+        assert!(manifest["types"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item == "series"));
+        assert!(manifest["idPrefixes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item == "tt"));
+    }
 }

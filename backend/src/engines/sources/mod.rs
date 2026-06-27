@@ -5,8 +5,71 @@ use crate::engines::identity::AtlasID;
 use crate::engines::metadata::MediaMetadata;
 
 #[derive(Debug, Clone)]
+pub enum ProviderHealthStatus {
+    Ok,
+    NotConfigured,
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProviderHealth {
+    pub provider_name: String,
+    pub configured: bool,
+    pub status: ProviderHealthStatus,
+    pub latency_ms: Option<u64>,
+    pub priority: u8,
+    pub message: String,
+}
+
+impl ProviderHealth {
+    pub fn ok(provider_name: &str, latency_ms: u64, priority: u8) -> Self {
+        Self {
+            provider_name: provider_name.to_string(),
+            configured: true,
+            status: ProviderHealthStatus::Ok,
+            latency_ms: Some(latency_ms),
+            priority,
+            message: "Connection verified.".to_string(),
+        }
+    }
+
+    pub fn not_configured(provider_name: &str, priority: u8) -> Self {
+        Self {
+            provider_name: provider_name.to_string(),
+            configured: false,
+            status: ProviderHealthStatus::NotConfigured,
+            latency_ms: None,
+            priority,
+            message: "No API key configured.".to_string(),
+        }
+    }
+
+    pub fn error(
+        provider_name: &str,
+        latency_ms: Option<u64>,
+        priority: u8,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            provider_name: provider_name.to_string(),
+            configured: true,
+            status: ProviderHealthStatus::Error,
+            latency_ms,
+            priority,
+            message: message.into(),
+        }
+    }
+
+    pub fn is_healthy(&self) -> bool {
+        matches!(self.status, ProviderHealthStatus::Ok)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SourceResult {
     pub provider_name: String,
+    pub provider_priority: u8,
+    pub provider_latency_ms: Option<u64>,
     pub title: String,
     pub hash: Option<String>,
     pub size_bytes: Option<u64>,
@@ -27,8 +90,8 @@ pub trait SourceProvider: Send + Sync {
     /// Resolve a specific SourceResult into a playable stream URL
     async fn resolve(&self, result: &SourceResult) -> Option<String>;
 
-    /// Get the health latency of the provider in milliseconds
-    async fn health(&self) -> u64;
+    /// Get structured health for the provider.
+    async fn health(&self) -> ProviderHealth;
 
     /// Returns 1-100 priority score
     fn priority(&self) -> u8;

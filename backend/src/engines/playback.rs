@@ -3,7 +3,7 @@ use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
 use crate::engines::sources::{
-    real_debrid::RealDebridProvider, torbox::TorBoxProvider, SourceProvider,
+    real_debrid::RealDebridProvider, torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider,
 };
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
@@ -38,6 +38,22 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
 
     let mut search_futures = Vec::new();
     for provider in providers {
+        let health = provider.health().await;
+        crate::engines::telemetry::log_event(
+            "provider_health",
+            serde_json::json!({
+                "provider": health.provider_name,
+                "configured": health.configured,
+                "healthy": health.is_healthy(),
+                "latency_ms": health.latency_ms,
+                "priority": health.priority,
+                "message": health.message
+            }),
+        );
+
+        if !matches!(health.status, ProviderHealthStatus::Ok) {
+            continue;
+        }
         search_futures.push(provider.search(&atlas_id, &metadata));
     }
 
@@ -59,9 +75,10 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
                     existing.provider_name =
                         format!("{} + {}", existing.provider_name, res.provider_name);
                 }
-                // If the new one is TorBox, prefer its URL since TorBox cache is verified, whereas RD is optimistic
-                if res.provider_name.contains("TorBox") {
+                if res.provider_priority > existing.provider_priority {
                     existing.url = res.url;
+                    existing.provider_priority = res.provider_priority;
+                    existing.provider_latency_ms = res.provider_latency_ms;
                 }
             } else {
                 unique_results.insert(hash.clone(), res);

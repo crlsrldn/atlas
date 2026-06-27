@@ -1,6 +1,6 @@
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::MediaMetadata;
-use crate::engines::sources::{SourceProvider, SourceResult};
+use crate::engines::sources::{ProviderHealth, SourceProvider, SourceResult};
 use async_trait::async_trait;
 use reqwest;
 
@@ -74,6 +74,8 @@ impl SourceProvider for TorBoxProvider {
             if is_cached {
                 results.push(SourceResult {
                     provider_name: self.name().to_string(),
+                    provider_priority: self.priority(),
+                    provider_latency_ms: Some(latency_ms),
                     title: format!("{} ({})", metadata.title, t.quality),
                     hash: Some(t.hash.clone()),
                     size_bytes: Some(t.size_bytes),
@@ -96,8 +98,36 @@ impl SourceProvider for TorBoxProvider {
         result.url.clone()
     }
 
-    async fn health(&self) -> u64 {
-        42
+    async fn health(&self) -> ProviderHealth {
+        if self.api_key.is_empty() {
+            return ProviderHealth::not_configured(self.name(), self.priority());
+        }
+
+        let started = std::time::Instant::now();
+        match reqwest::Client::new()
+            .get("https://api.torbox.app/v1/api/user/me")
+            .bearer_auth(&self.api_key)
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => ProviderHealth::ok(
+                self.name(),
+                started.elapsed().as_millis() as u64,
+                self.priority(),
+            ),
+            Ok(response) => ProviderHealth::error(
+                self.name(),
+                Some(started.elapsed().as_millis() as u64),
+                self.priority(),
+                format!("HTTP {}", response.status()),
+            ),
+            Err(err) => ProviderHealth::error(
+                self.name(),
+                Some(started.elapsed().as_millis() as u64),
+                self.priority(),
+                err.to_string(),
+            ),
+        }
     }
 
     fn priority(&self) -> u8 {

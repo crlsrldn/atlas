@@ -34,11 +34,11 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     if source.resolution == prefs.max_resolution {
         score += 500;
     } else if prefs.max_resolution == "1080p" && source.resolution == "4K" {
-        score = 0;
+        return 0;
     } else if prefs.max_resolution == "720p"
         && (source.resolution == "4K" || source.resolution == "1080p")
     {
-        score = 0;
+        return 0;
     }
 
     if source.has_hdr {
@@ -53,10 +53,20 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
 
     // Compatibility
     if prefs.exclude_av1 && source.codec == "AV1" {
-        score = 0; // completely exclude
+        return 0; // completely exclude
     }
 
-    // Provider Priority could be injected here, but for now we just use the raw score.
+    score += u64::from(source.provider_priority) * 4;
+
+    if let Some(latency_ms) = source.provider_latency_ms {
+        if latency_ms <= 250 {
+            score += 200;
+        } else if latency_ms <= 1000 {
+            score += 100;
+        } else if latency_ms > 3000 {
+            score /= 2;
+        }
+    }
 
     score
 }
@@ -81,6 +91,8 @@ mod tests {
     fn source(resolution: &str, codec: &str, has_hdr: bool, is_cached: bool) -> SourceResult {
         SourceResult {
             provider_name: "Test".to_string(),
+            provider_priority: 80,
+            provider_latency_ms: Some(250),
             title: "Test Source".to_string(),
             hash: Some("abc".to_string()),
             size_bytes: Some(1),
@@ -118,5 +130,22 @@ mod tests {
 
         assert!(ranked[0].source.is_cached);
         assert!(ranked[0].score > ranked[1].score);
+    }
+
+    #[test]
+    fn prefers_healthier_provider_when_quality_matches() {
+        let mut slow = source("1080p", "HEVC", false, true);
+        slow.provider_name = "Slow".to_string();
+        slow.provider_priority = 50;
+        slow.provider_latency_ms = Some(4_000);
+
+        let mut fast = source("1080p", "HEVC", false, true);
+        fast.provider_name = "Fast".to_string();
+        fast.provider_priority = 95;
+        fast.provider_latency_ms = Some(100);
+
+        let ranked = rank_sources(vec![slow, fast], &prefs());
+
+        assert_eq!(ranked[0].source.provider_name, "Fast");
     }
 }

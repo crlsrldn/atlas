@@ -1,6 +1,6 @@
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::MediaMetadata;
-use crate::engines::sources::{SourceProvider, SourceResult};
+use crate::engines::sources::{ProviderHealth, SourceProvider, SourceResult};
 use async_trait::async_trait;
 use reqwest;
 use serde_json::Value;
@@ -33,6 +33,7 @@ impl SourceProvider for RealDebridProvider {
         let mut cached_hashes = Vec::new();
         let mut cache_check_succeeded = false;
 
+        let started = std::time::Instant::now();
         if let Ok(res) = client.get(&url).bearer_auth(&self.api_key).send().await {
             if res.status().is_success() {
                 cache_check_succeeded = true;
@@ -64,13 +65,15 @@ impl SourceProvider for RealDebridProvider {
             if is_cached {
                 results.push(SourceResult {
                     provider_name: self.name().to_string(),
+                    provider_priority: self.priority(),
+                    provider_latency_ms: Some(started.elapsed().as_millis() as u64),
                     title: format!("{} ({})", metadata.title, t.quality),
                     hash: Some(t.hash.clone()),
                     size_bytes: Some(t.size_bytes),
                     resolution: t.quality.clone(),
                     codec: t.video_codec.clone(),
                     has_hdr: t.has_hdr,
-                    is_cached: true, // Optimistically assume true
+                    is_cached: true,
                     url: Some(format!(
                         "http://127.0.0.1:3000/resolve/realdebrid/{}",
                         t.hash
@@ -86,8 +89,36 @@ impl SourceProvider for RealDebridProvider {
         result.url.clone()
     }
 
-    async fn health(&self) -> u64 {
-        15 // ping representation
+    async fn health(&self) -> ProviderHealth {
+        if self.api_key.is_empty() {
+            return ProviderHealth::not_configured(self.name(), self.priority());
+        }
+
+        let started = std::time::Instant::now();
+        match reqwest::Client::new()
+            .get("https://api.real-debrid.com/rest/1.0/user")
+            .bearer_auth(&self.api_key)
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => ProviderHealth::ok(
+                self.name(),
+                started.elapsed().as_millis() as u64,
+                self.priority(),
+            ),
+            Ok(response) => ProviderHealth::error(
+                self.name(),
+                Some(started.elapsed().as_millis() as u64),
+                self.priority(),
+                format!("HTTP {}", response.status()),
+            ),
+            Err(err) => ProviderHealth::error(
+                self.name(),
+                Some(started.elapsed().as_millis() as u64),
+                self.priority(),
+                err.to_string(),
+            ),
+        }
     }
 
     fn priority(&self) -> u8 {
