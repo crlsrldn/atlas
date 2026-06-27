@@ -9,6 +9,22 @@ interface AdminData {
 
 export const handler: Handlers<AdminData> = {
   async GET(req, ctx) {
+    // Basic Auth Check
+    const adminPassword = Deno.env.get("ADMIN_PASSWORD");
+    if (adminPassword) {
+      const authHeader = req.headers.get("Authorization");
+      const expectedAuth = `Basic ${btoa(`admin:${adminPassword}`)}`;
+      
+      if (authHeader !== expectedAuth) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": 'Basic realm="Admin Access"',
+          },
+        });
+      }
+    }
+
     const supabase = getAdminSupabaseClient();
     if (!supabase) {
       return ctx.render({ 
