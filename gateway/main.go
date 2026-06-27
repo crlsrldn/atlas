@@ -7,10 +7,18 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
+var coreUrl string
+
 func main() {
+	coreUrl = os.Getenv("ATLAS_CORE_URL")
+	if coreUrl == "" {
+		coreUrl = "http://127.0.0.1:3000"
+	}
+
 	http.HandleFunc("/stremio/", handleStremio)
 
 	log.Println("Starting API gateway on :8080")
@@ -92,7 +100,7 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 		},
 	})
 
-	resp, err := http.Post("http://127.0.0.1:3000/internal/resolve", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(coreUrl+"/internal/resolve", "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -114,7 +122,7 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	provider := parts[1]
 	hash := parts[2]
 
-	url := fmt.Sprintf("http://127.0.0.1:3000/internal/resolve_hash/%s/%s", provider, hash)
+	url := fmt.Sprintf("%s/internal/resolve_hash/%s/%s", coreUrl, provider, hash)
 
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
