@@ -71,9 +71,14 @@ impl SourceProvider for RealDebridProvider {
                     raw_title: t.raw_title.clone(),
                     hash: Some(t.hash.clone()),
                     size_bytes: Some(t.size_bytes),
+                    bitrate_mbps: t.bitrate_mbps,
                     resolution: t.quality.clone(),
                     codec: t.video_codec.clone(),
+                    audio_codec: t.audio_codec.clone(),
+                    audio_channels: t.audio_channels.clone(),
                     has_hdr: t.has_hdr,
+                    has_dolby_vision: t.has_dolby_vision,
+                    has_subtitles: t.has_subtitles,
                     is_cached: true,
                     url: Some(format!(
                         "http://127.0.0.1:3000/resolve/realdebrid/{}",
@@ -82,6 +87,8 @@ impl SourceProvider for RealDebridProvider {
                     release_group: t.release_group.clone(),
                     verification_score: 0,
                     verification_reasons: vec![],
+                    playback_successes: 0,
+                    playback_failures: 0,
                 });
             }
         }

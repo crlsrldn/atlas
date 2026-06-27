@@ -28,10 +28,10 @@
 
 ## Phase 3: Ranking and Playback Intelligence
 
-- Expand ranking inputs to include bitrate, codec, audio format, HDR/DV, subtitle availability, latency, reliability, provider health, and user device constraints.
-- Add automatic retry/fallback behavior when a selected stream fails.
-- Track playback success/failure locally and feed it back into ranking.
-- Add an advanced stream inspection view for power users.
+- [x] Expand ranking inputs to include bitrate, codec, audio format, HDR/DV, subtitle availability, latency, reliability, provider health, and user device constraints.
+- [x] Add automatic retry/fallback behavior when a selected stream fails.
+- [x] Track playback success/failure locally and feed it back into ranking.
+- [x] Add an advanced stream inspection view for power users.
 
 ## Phase 4: Product Surface
 

@@ -156,14 +156,21 @@ mod tests {
             raw_title: raw_title.to_string(),
             hash: Some("1234567890abcdef1234567890abcdef".to_string()),
             size_bytes: Some(1_000_000_000),
+            bitrate_mbps: Some(12.0),
             resolution: "1080p".to_string(),
             codec: "HEVC".to_string(),
+            audio_codec: Some("AAC".to_string()),
+            audio_channels: Some("2.0".to_string()),
             has_hdr: false,
+            has_dolby_vision: false,
+            has_subtitles: true,
             is_cached: true,
             url: Some("http://example.test".to_string()),
             release_group: Some("GROUP".to_string()),
             verification_score: 0,
             verification_reasons: vec![],
+            playback_successes: 0,
+            playback_failures: 0,
         }
     }
 

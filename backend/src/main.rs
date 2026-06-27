@@ -42,6 +42,7 @@ async fn main() {
     let app = Router::new()
         .nest("/", api::stremio::router().layer(stremio_cors.clone()))
         .nest("/", api::resolve::router().layer(stremio_cors))
+        .nest("/", api::inspect::router().layer(local_app_cors.clone()))
         .nest("/", api::config::router().layer(local_app_cors.clone()))
         .nest("/", api::health::router().layer(local_app_cors.clone()))
         .nest("/", api::providers::router().layer(local_app_cors));

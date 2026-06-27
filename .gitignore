@@ -5,6 +5,7 @@ build/
 .env.local
 preferences.json
 backend/preferences.json
+backend/playback_history.json
 appwrite/
 .svelte-kit/
 target/

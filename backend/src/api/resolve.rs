@@ -1,4 +1,5 @@
 use crate::api::config::current_preferences;
+use crate::engines::history::{fallback_candidates, media_key_from_hash, record_playback};
 use axum::{extract::Path, response::Redirect, routing::get, Router};
 use reqwest;
 use serde::Deserialize;
@@ -64,6 +65,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
                     };
                     let dl_url = format!("https://api.torbox.app/v1/api/torrents/requestdl?token={}&torrent_id={}&file_id={}&redirect=true", api_key, torrent_id, file_id);
 
+                    record_playback("TorBox", &hash, true);
                     crate::engines::telemetry::log_event(
                         "playback_started",
                         serde_json::json!({
@@ -79,6 +81,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
         }
     }
 
+    record_playback("TorBox", &hash, false);
     crate::engines::telemetry::log_event(
         "playback_started",
         serde_json::json!({
@@ -88,7 +91,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
         }),
     );
 
-    Redirect::temporary("https://torbox.app")
+    fallback_redirect_for_hash(&hash, "https://torbox.app")
 }
 
 async fn find_largest_torbox_file_id(
@@ -242,6 +245,7 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
             let id = json.id;
 
             if let Some(download) = resolve_real_debrid_download(&client, &api_key, &id).await {
+                record_playback("Real Debrid", &hash, true);
                 crate::engines::telemetry::log_event(
                     "playback_started",
                     serde_json::json!({
@@ -255,6 +259,7 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
         }
     }
 
+    record_playback("Real Debrid", &hash, false);
     crate::engines::telemetry::log_event(
         "playback_started",
         serde_json::json!({
@@ -264,7 +269,21 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
         }),
     );
 
-    Redirect::temporary("https://real-debrid.com")
+    fallback_redirect_for_hash(&hash, "https://real-debrid.com")
+}
+
+fn fallback_redirect_for_hash(hash: &str, provider_home: &'static str) -> Redirect {
+    if let Some(media_key) = media_key_from_hash(hash) {
+        let failed_hash_fragment = hash.to_lowercase();
+        if let Some(candidate) = fallback_candidates(&media_key, "")
+            .into_iter()
+            .find(|candidate| !candidate.hash.eq_ignore_ascii_case(&failed_hash_fragment))
+        {
+            return Redirect::temporary(&candidate.url);
+        }
+    }
+
+    Redirect::temporary(provider_home)
 }
 
 async fn resolve_real_debrid_download(

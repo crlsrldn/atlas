@@ -25,7 +25,12 @@ pub struct YTSTorrent {
     pub type_field: Option<String>,
     pub size_bytes: u64,
     pub video_codec: String,
+    pub audio_codec: Option<String>,
+    pub audio_channels: Option<String>,
+    pub bitrate_mbps: Option<f32>,
     pub has_hdr: bool,
+    pub has_dolby_vision: bool,
+    pub has_subtitles: bool,
     pub raw_title: String,
     pub release_group: Option<String>,
 }
@@ -221,14 +226,26 @@ async fn fetch_torrentio_sources(url: &str) -> Option<Vec<YTSTorrent>> {
                 || title_lower.contains("hdr")
                 || title_lower.contains("dv")
                 || title_lower.contains("vision");
+            let has_dolby_vision = title_lower.contains(" dolby vision")
+                || title_lower.contains(" dovi")
+                || title_lower.contains(".dv.")
+                || title_lower.contains(" dv ");
+            let audio_codec = infer_audio_codec(&title_lower);
+            let audio_channels = infer_audio_channels(&title_lower);
+            let size_bytes = parse_size_bytes(&title_str).unwrap_or(0);
 
             torrents.push(YTSTorrent {
                 hash,
                 quality,
                 type_field: None,
-                size_bytes: parse_size_bytes(&title_str).unwrap_or(0),
+                size_bytes,
                 video_codec,
+                audio_codec,
+                audio_channels,
+                bitrate_mbps: estimate_bitrate_mbps(size_bytes, None),
                 has_hdr,
+                has_dolby_vision,
+                has_subtitles: has_subtitle_evidence(&title_lower),
                 raw_title: title_str.clone(),
                 release_group: infer_release_group(&title_str),
             });
@@ -283,9 +300,53 @@ fn infer_release_group(title: &str) -> Option<String> {
         .map(ToString::to_string)
 }
 
+fn infer_audio_codec(value: &str) -> Option<String> {
+    if value.contains("truehd") {
+        Some("TrueHD".to_string())
+    } else if value.contains("atmos") {
+        Some("Atmos".to_string())
+    } else if value.contains("dts") {
+        Some("DTS".to_string())
+    } else if value.contains("aac") {
+        Some("AAC".to_string())
+    } else if value.contains("ac3") || value.contains("ddp") || value.contains("eac3") {
+        Some("Dolby Digital".to_string())
+    } else {
+        None
+    }
+}
+
+fn infer_audio_channels(value: &str) -> Option<String> {
+    if value.contains("7.1") {
+        Some("7.1".to_string())
+    } else if value.contains("5.1") {
+        Some("5.1".to_string())
+    } else if value.contains("2.0") {
+        Some("2.0".to_string())
+    } else {
+        None
+    }
+}
+
+fn has_subtitle_evidence(value: &str) -> bool {
+    value.contains("sub")
+        || value.contains("multi")
+        || value.contains("vost")
+        || value.contains("cc")
+}
+
+fn estimate_bitrate_mbps(size_bytes: u64, runtime_minutes: Option<u32>) -> Option<f32> {
+    let runtime_minutes = runtime_minutes.unwrap_or(100);
+    if size_bytes == 0 || runtime_minutes == 0 {
+        return None;
+    }
+    let megabits = (size_bytes as f32 * 8.0) / 1_000_000.0;
+    Some(megabits / (runtime_minutes as f32 * 60.0))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{parse_runtime_minutes, parse_size_bytes, parse_year};
+    use super::{infer_audio_codec, parse_runtime_minutes, parse_size_bytes, parse_year};
 
     #[test]
     fn parses_cinemeta_year_and_runtime() {
@@ -297,5 +358,14 @@ mod tests {
     fn parses_torrentio_size_text() {
         assert_eq!(parse_size_bytes("Movie\n1.5 GB"), Some(1_500_000_000));
         assert_eq!(parse_size_bytes("Episode\n700 MB"), Some(700_000_000));
+    }
+
+    #[test]
+    fn infers_audio_codec() {
+        assert_eq!(
+            infer_audio_codec("movie truehd atmos 7.1"),
+            Some("TrueHD".to_string())
+        );
+        assert_eq!(infer_audio_codec("movie aac 2.0"), Some("AAC".to_string()));
     }
 }

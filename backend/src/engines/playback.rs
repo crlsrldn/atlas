@@ -1,4 +1,5 @@
 use crate::api::config::current_preferences;
+use crate::engines::history::{remember_candidates, stats_for, PlaybackCandidate};
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
@@ -15,7 +16,41 @@ pub struct StremioStream {
     pub url: String,
 }
 
-pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetailedStream {
+    pub title: String,
+    pub provider_name: String,
+    pub url: String,
+    pub hash: Option<String>,
+    pub score: u64,
+    pub confidence: u8,
+    pub reasons: Vec<String>,
+    pub resolution: String,
+    pub video_codec: String,
+    pub audio_codec: Option<String>,
+    pub audio_channels: Option<String>,
+    pub bitrate_mbps: Option<f32>,
+    pub has_hdr: bool,
+    pub has_dolby_vision: bool,
+    pub has_subtitles: bool,
+    pub provider_latency_ms: Option<u64>,
+    pub playback_successes: u32,
+    pub playback_failures: u32,
+}
+
+pub fn media_key(atlas_id: &AtlasID) -> String {
+    match atlas_id {
+        AtlasID::IMDb {
+            id,
+            season: Some(season),
+            episode: Some(episode),
+        } => format!("{}:{}:{}", id, season, episode),
+        AtlasID::IMDb { id, .. } => id.clone(),
+        AtlasID::TMDB(id) => format!("tmdb:{}", id),
+    }
+}
+
+pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> {
     let prefs = current_preferences();
 
     // 1. Fetch Metadata
@@ -68,6 +103,9 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
         let verification = verify_source(source, &metadata);
         source.verification_score = verification.confidence;
         source.verification_reasons = verification.reasons;
+        let stats = stats_for(&source.provider_name, source.hash.as_deref());
+        source.playback_successes = stats.successes;
+        source.playback_failures = stats.failures;
     }
 
     // Deduplicate by hash, merging providers
@@ -95,33 +133,74 @@ pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
 
     // 4. Rank the results based on user preferences and PRD rules
     let ranked = rank_sources(unique_results.into_values().collect(), &prefs);
+    remember_candidates(
+        &media_key(&atlas_id),
+        ranked
+            .iter()
+            .filter_map(|entry| {
+                Some(PlaybackCandidate {
+                    provider: entry.source.provider_name.clone(),
+                    hash: entry.source.hash.clone()?,
+                    url: entry.source.url.clone()?,
+                    score: entry.score,
+                })
+            })
+            .collect(),
+    );
 
-    // 5. Convert top ranked results to playable streams for Stremio
-    let mut streams = Vec::new();
-    for entry in ranked.into_iter().filter(|r| r.score > 0).take(5) {
-        // We already inject the correct /resolve/ URL during search!
-        if let Some(direct_url) = entry.source.url.clone() {
-            let explanation = entry
-                .source
-                .verification_reasons
+    ranked
+        .into_iter()
+        .filter(|r| r.score > 0)
+        .filter_map(|entry| {
+            let url = entry.source.url.clone()?;
+            Some(DetailedStream {
+                title: entry.source.title.clone(),
+                provider_name: entry.source.provider_name.clone(),
+                url,
+                hash: entry.source.hash.clone(),
+                score: entry.score,
+                confidence: entry.source.verification_score,
+                reasons: entry.source.verification_reasons.clone(),
+                resolution: entry.source.resolution.clone(),
+                video_codec: entry.source.codec.clone(),
+                audio_codec: entry.source.audio_codec.clone(),
+                audio_channels: entry.source.audio_channels.clone(),
+                bitrate_mbps: entry.source.bitrate_mbps,
+                has_hdr: entry.source.has_hdr,
+                has_dolby_vision: entry.source.has_dolby_vision,
+                has_subtitles: entry.source.has_subtitles,
+                provider_latency_ms: entry.source.provider_latency_ms,
+                playback_successes: entry.source.playback_successes,
+                playback_failures: entry.source.playback_failures,
+            })
+        })
+        .collect()
+}
+
+pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
+    resolve_detailed_streams(atlas_id)
+        .await
+        .into_iter()
+        .take(5)
+        .map(|stream| {
+            let explanation = stream
+                .reasons
                 .iter()
                 .take(3)
                 .cloned()
                 .collect::<Vec<_>>()
                 .join(", ");
-            streams.push(StremioStream {
+            StremioStream {
                 title: format!(
                     "🌟 Atlas | {} {} | Confidence {}%\n{}\n{}",
-                    entry.source.provider_name,
-                    entry.source.resolution,
-                    entry.source.verification_score,
-                    entry.source.title,
+                    stream.provider_name,
+                    stream.resolution,
+                    stream.confidence,
+                    stream.title,
                     explanation
                 ),
-                url: direct_url,
-            });
-        }
-    }
-
-    streams
+                url: stream.url,
+            }
+        })
+        .collect()
 }

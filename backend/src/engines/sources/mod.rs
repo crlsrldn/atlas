@@ -74,14 +74,21 @@ pub struct SourceResult {
     pub raw_title: String,
     pub hash: Option<String>,
     pub size_bytes: Option<u64>,
+    pub bitrate_mbps: Option<f32>,
     pub resolution: String, // e.g. "4K", "1080p"
     pub codec: String,      // e.g. "HEVC", "H264", "AV1"
+    pub audio_codec: Option<String>,
+    pub audio_channels: Option<String>,
     pub has_hdr: bool,
+    pub has_dolby_vision: bool,
+    pub has_subtitles: bool,
     pub is_cached: bool,
     pub url: Option<String>, // if instantly resolvable
     pub release_group: Option<String>,
     pub verification_score: u8,
     pub verification_reasons: Vec<String>,
+    pub playback_successes: u32,
+    pub playback_failures: u32,
 }
 
 #[async_trait::async_trait]
