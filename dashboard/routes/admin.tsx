@@ -1,28 +1,46 @@
 import { Handlers, PageProps } from "$fresh/server.ts";
+import { getCookies } from "$std/http/cookie.ts";
+import { createClient } from "@supabase/supabase-js";
 import { getAdminSupabaseClient } from "../utils/admin_supabase.ts";
+import AdminLogin from "../islands/AdminLogin.tsx";
 
 interface AdminData {
   totalUsers: number;
   streamsResolved: number;
   error?: string;
+  needsLogin?: boolean;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 }
 
 export const handler: Handlers<AdminData> = {
   async GET(req, ctx) {
-    // Basic Auth Check
-    const adminPassword = Deno.env.get("ADMIN_PASSWORD");
-    if (adminPassword) {
-      const authHeader = req.headers.get("Authorization");
-      const expectedAuth = `Basic ${btoa(`admin:${adminPassword}`)}`;
-      
-      if (authHeader !== expectedAuth) {
-        return new Response("Unauthorized", {
-          status: 401,
-          headers: {
-            "WWW-Authenticate": 'Basic realm="Admin Access"',
-          },
-        });
-      }
+    const supabaseUrl = Deno.env.get("PUBLIC_SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("PUBLIC_SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return ctx.render({ 
+        totalUsers: 0, 
+        streamsResolved: 0, 
+        error: "Supabase configuration missing in environment." 
+      });
+    }
+
+    const cookies = getCookies(req.headers);
+    const token = cookies["sb-admin-token"];
+
+    if (!token) {
+      return ctx.render({ totalUsers: 0, streamsResolved: 0, needsLogin: true, supabaseUrl, supabaseAnonKey });
+    }
+
+    // Verify token using Supabase Auth
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+
+    // If there is an auth error, or the user is not found, or they don't have an email (they are an anonymous user)
+    // then they are not an admin.
+    if (authError || !user || !user.email) {
+      return ctx.render({ totalUsers: 0, streamsResolved: 0, needsLogin: true, supabaseUrl, supabaseAnonKey });
     }
 
     const supabase = getAdminSupabaseClient();
@@ -66,6 +84,20 @@ export const handler: Handlers<AdminData> = {
 };
 
 export default function AdminDashboard({ data }: PageProps<AdminData>) {
+  if (data.needsLogin && data.supabaseUrl && data.supabaseAnonKey) {
+    return (
+      <div class="relative z-10 px-4 py-16 mx-auto min-h-screen flex flex-col items-center justify-center">
+        <div class="mb-12 text-center w-full max-w-md mx-auto animate-fade-in-up">
+          <a href="/" class="inline-block text-indigo-400 hover:text-indigo-300 font-medium mb-6 transition-colors">
+            &larr; Back to Home
+          </a>
+          <h1 class="text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">Atlas Admin</h1>
+        </div>
+        <AdminLogin supabaseUrl={data.supabaseUrl} supabaseAnonKey={data.supabaseAnonKey} />
+      </div>
+    );
+  }
+
   return (
     <div class="relative z-10 px-4 py-16 mx-auto max-w-screen-md min-h-screen animate-fade-in-up">
       <div class="mb-12 text-center">
