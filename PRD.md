@@ -817,3 +817,24 @@ Zero manual source selection
 - Privacy is non-negotiable.
 - Performance is a feature.
 - Design for the next decade, not the next release.
+
+---
+
+# Future Technical Opportunities (Supabase Integration)
+
+With the successful migration to Supabase, several advanced features are now available to Atlas for future implementation:
+
+### 1. Supabase Edge Functions
+Native serverless execution for Deno code deployed globally. This is ideal for offloading lightweight compute—like webhooks, Stripe checkout, or isolated metadata routing—from the Rust Core without provisioning new standalone microservices.
+
+### 2. Realtime Database Subscriptions
+Supabase allows frontend clients (like the Dashboard UI) to listen to Postgres changes instantly over WebSockets. We can subscribe to the `preferences` and `telemetry` tables to live-update the UI (e.g., watching a stream resolve in real-time) without custom polling or complex server infrastructure.
+
+### 3. Supabase Vector (pgvector)
+Enables semantic search natively inside Postgres via embeddings. This eliminates the need for an external Meilisearch cluster for "AI Search" (e.g., "movies like Inception but with more action"). We can store vectors directly alongside metadata and query them via SQL.
+
+### 4. Supabase Storage
+An AWS S3-compatible object storage layer backed by Postgres Row Level Security. Ideal for aggressively caching TMDB metadata image blobs or user avatars to improve load speeds and privacy while saving bandwidth.
+
+### 5. Postgres Triggers & Webhooks
+Database-level events that can trigger HTTP POST requests. Inserting a row into the `telemetry` table can automatically trigger an external analytics webhook or a Go Gateway hook, preserving the complete isolation of the Rust compute core.
