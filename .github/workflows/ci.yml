@@ -98,7 +98,7 @@ jobs:
           # Build Core
           cd core && cargo build --bin backend
           # Build Gateway
-          cd ../gateway && go build -o atlas-gateway main.go
+          cd ../gateway && go build -o atlas-gateway .
           
           # Start Core
           cd ../core
