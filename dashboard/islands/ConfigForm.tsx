@@ -21,22 +21,35 @@ export default function ConfigForm({
   const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserId(session.user.id);
-        loadPreferences(session.user.id);
-      } else {
-        supabase.auth.signInAnonymously().then(({ data, error }) => {
-          if (data.user) {
-            setUserId(data.user.id);
-            loadPreferences(data.user.id);
-          } else {
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+        }
+
+        if (session?.user) {
+          setUserId(session.user.id);
+          await loadPreferences(session.user.id);
+        } else {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) {
             console.error("Anonymous sign in failed", error);
-            setLoading(false);
+            // It's possible anonymous sign in is disabled in the Supabase dashboard
+          } else if (data.user) {
+            setUserId(data.user.id);
+            await loadPreferences(data.user.id);
           }
-        });
+        }
+      } catch (err) {
+        console.error("Unexpected error during auth initialization:", err);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
+
+    initializeAuth();
   }, []);
 
   const loadPreferences = async (uid: string) => {
@@ -53,14 +66,15 @@ export default function ConfigForm({
         setRdKey(prefs.real_debrid_api_key || "");
       }
     } catch (e) {
-      console.log("No existing preferences found", e);
-    } finally {
-      setLoading(false);
+      console.log("No existing preferences found or error loading them", e);
     }
   };
 
   const savePreferences = async () => {
-    if (!userId) return;
+    if (!userId) {
+      alert("Error: You are not authenticated. Please ensure Anonymous Sign-In is enabled in Supabase.");
+      return;
+    }
     setSaving(true);
     
     const prefs_json = {
@@ -70,20 +84,33 @@ export default function ConfigForm({
       exclude_av1: false,
     };
 
-    const { error } = await supabase
-      .from('preferences')
-      .upsert({ id: userId, prefs_json });
-      
-    if (error) {
-      alert("Failed to save preferences: " + error.message);
-    } else {
-      alert("Configurations saved!");
+    try {
+      const { error } = await supabase
+        .from('preferences')
+        .upsert({ id: userId, prefs_json });
+        
+      if (error) {
+        alert("Failed to save preferences: " + error.message);
+      } else {
+        // Success
+      }
+    } catch (err) {
+      alert("Unexpected error saving preferences.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   if (loading) {
-    return <div class="p-6">Loading configurations...</div>;
+    return (
+      <div class="flex justify-center items-center p-12">
+        <div class="flex space-x-2 animate-pulse">
+          <div class="w-3 h-3 bg-indigo-500 rounded-full"></div>
+          <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+          <div class="w-3 h-3 bg-indigo-500 rounded-full"></div>
+        </div>
+      </div>
+    );
   }
 
   // gatewayUrl example: http://127.0.0.1:8080 or https://cindral-atlas-gateway-dev.fly.dev
@@ -94,49 +121,98 @@ export default function ConfigForm({
     : "#";
 
   return (
-    <div>
-      <div class="bg-gray-100 p-6 rounded-lg mb-8">
-        <h2 class="text-2xl font-semibold mb-4">Integrations</h2>
+    <div class="space-y-8">
+      <div class="bg-white/5 border border-white/10 p-8 rounded-2xl shadow-lg backdrop-blur-md">
+        <h2 class="text-2xl font-semibold mb-6 text-white flex items-center gap-2">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Provider Integrations
+        </h2>
         
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">TorBox API Key</label>
-          <input 
-            type="password" 
-            value={torboxKey}
-            onInput={(e) => setTorboxKey((e.target as HTMLInputElement).value)}
-            class="w-full px-4 py-2 border rounded-md" 
-            placeholder="Enter your TorBox API key" 
-          />
-        </div>
-        
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">RealDebrid API Key</label>
-          <input 
-            type="password" 
-            value={rdKey}
-            onInput={(e) => setRdKey((e.target as HTMLInputElement).value)}
-            class="w-full px-4 py-2 border rounded-md" 
-            placeholder="Enter your RealDebrid API key" 
-          />
-        </div>
+        {!userId && (
+          <div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200 text-sm">
+            Warning: Could not authenticate. Please ensure Anonymous Sign-In is enabled in your Supabase project settings.
+          </div>
+        )}
 
-        <button 
-          onClick={savePreferences}
-          disabled={saving}
-          class="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save Configurations"}
-        </button>
+        <div class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">TorBox API Key</label>
+            <input 
+              type="password" 
+              value={torboxKey}
+              onInput={(e) => setTorboxKey((e.target as HTMLInputElement).value)}
+              class="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all" 
+              placeholder="Enter your TorBox API key" 
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">RealDebrid API Key</label>
+            <input 
+              type="password" 
+              value={rdKey}
+              onInput={(e) => setRdKey((e.target as HTMLInputElement).value)}
+              class="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" 
+              placeholder="Enter your RealDebrid API key" 
+            />
+          </div>
+
+          <button 
+            onClick={savePreferences}
+            disabled={saving || !userId}
+            class="w-full sm:w-auto relative group inline-flex items-center justify-center px-8 py-3 font-medium text-white bg-indigo-600 rounded-xl overflow-hidden transition-all duration-300 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span class="relative flex items-center gap-2">
+              {saving ? (
+                <>
+                  <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                "Save Configurations"
+              )}
+            </span>
+          </button>
+        </div>
       </div>
 
-      <div class="bg-blue-50 border border-blue-200 p-6 rounded-lg">
-        <h2 class="text-2xl font-semibold mb-2">Stremio Installation</h2>
-        <p class="text-gray-700 mb-4">Click the button below to install Project Atlas to your Stremio.</p>
+      <div class="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 p-8 rounded-2xl shadow-lg backdrop-blur-md relative overflow-hidden">
+        <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl"></div>
+        
+        <h2 class="text-2xl font-semibold mb-2 text-white flex items-center gap-2">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Stremio Installation
+        </h2>
+        <p class="text-gray-300 mb-6 text-lg">Your unique Atlas endpoint is ready. Click below to install it directly into Stremio.</p>
+        
         <a 
-          href={installLink} 
-          class="inline-block bg-blue-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-blue-700 transition"
+          href={installLink}
+          onClick={(e) => {
+            if (!userId) {
+              e.preventDefault();
+              alert("You must wait for authentication to complete before installing.");
+            }
+          }}
+          class={`inline-flex items-center justify-center px-8 py-4 font-bold text-white rounded-xl transition-all duration-300 shadow-lg ${
+            userId 
+              ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 hover:scale-105 hover:shadow-indigo-500/25" 
+              : "bg-gray-700 cursor-not-allowed opacity-50"
+          }`}
         >
-          Install on Stremio
+          <span class="flex items-center gap-2">
+            Install on Stremio
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </span>
         </a>
       </div>
     </div>
