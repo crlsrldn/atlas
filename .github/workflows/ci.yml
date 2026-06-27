@@ -59,7 +59,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          cache-dependency-path: gateway/go.sum
+          cache-dependency-path: gateway/go.mod
       - name: Build
         run: go build -v ./...
       - name: Test
@@ -94,7 +94,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          cache-dependency-path: gateway/go.sum
+          cache-dependency-path: gateway/go.mod
       - name: Start services
         run: |
           # Build Core
