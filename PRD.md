@@ -721,31 +721,26 @@ ClickHouse
 
 # Technology Stack
 
-Core Platform:
+Core Platform (Control Plane):
+Appwrite (Database, Authentication, Encrypted Provider Secrets, Webhooks)
 
-Appwrite
+API Gateway & Routing (Edge):
+Go (Fast, concurrent HTTP request routing and Appwrite token validation)
 
-Backend / Serverless Functions:
+Compute Core (Heavy Lifting):
+Rust (Cryptographic verification, metadata parsing, hashing, quality ranking algorithms)
 
-Rust (Axum, Tokio)
-
-Frontend (Web, Desktop, Mobile Config Dashboard):
-
-SvelteKit + Tauri v2
+Frontend Configuration Dashboard (Edge UI):
+Deno + Fresh (Zero-JS edge-rendered Island architecture)
 
 Queue (if external needed):
-
 NATS
 
 Observability:
-
 OpenTelemetry
 
 Deployment:
-
-Docker
-
-Cloudflare
+Fly.io (Go and Deno exposed publicly, Rust isolated on 6PN private network)
 
 ---
 

@@ -10,13 +10,14 @@
 
 ## Technical Stack Guidelines
 When writing code or suggesting architectural changes, adhere to the approved technology stack:
-- **Core Platform:** **Appwrite** (Database, Authentication, Storage, and Serverless Functions)
-- **Backend/Stremio Addon Logic:** Rust (deployed as Appwrite Functions or standalone services via Tokio/Axum)
-- **Frontend (Configuration Dashboard):** SvelteKit + Tauri v2 (Single codebase deployed to Web, Desktop, iOS, and Android)
+- **Core Platform:** Appwrite (Database, Authentication, Encrypted Provider Secrets, Webhooks)
+- **API Gateway / Router:** Go (Handles incoming Stremio addon requests, token validation, edge routing)
+- **Compute Core (Backend):** Rust (Cryptographic verification, metadata parsing, hashing, quality ranking)
+- **Frontend (Configuration Dashboard):** Deno + Fresh (Edge-rendered Island architecture)
 - **Search:** Meilisearch
 - **Message Queue:** NATS (if needed outside Appwrite)
 - **Telemetry:** ClickHouse, OpenTelemetry
-- **Deployment:** Docker, Cloudflare
+- **Deployment:** Fly.io (Go and Deno exposed publicly, Rust isolated on 6PN private network)
 
 ## Architecture & Modules
 Structure the system into distinct, provider-independent engines:

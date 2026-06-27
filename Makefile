@@ -1,4 +1,4 @@
-.PHONY: setup check backend-test frontend-check backend-dev frontend-dev frontend-build tauri-build smoke deploy-dev deploy-staging deploy-production
+.PHONY: setup check backend-test frontend-check backend-dev frontend-dev frontend-build smoke deploy-dev deploy-staging deploy-production
 
 setup:
 	cd frontend && npm ci
@@ -19,9 +19,6 @@ frontend-dev:
 
 frontend-build:
 	cd frontend && npm run build
-
-tauri-build:
-	cd frontend && npm run tauri build
 
 smoke:
 	./scripts/smoke.sh $${ATLAS_SMOKE_URL:-http://127.0.0.1:3000}

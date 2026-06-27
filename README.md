@@ -1,8 +1,8 @@
 # Project Atlas
 
-Project Atlas is a hosted Stremio companion and Smart Play resolver that ranks playable streams across configured providers, explains the best match, and redirects to provider playback URLs without proxying media bytes.
+Atlas is a hosted Stremio companion and Smart Play resolver that ranks playable streams across configured providers, explains the best match, and redirects to provider playback URLs without proxying media bytes.
 
-Atlas still supports the local desktop workflow, but the primary direction is Atlas Cloud: a Rust Axum service deployed on Fly.io with tenant-scoped Stremio install URLs, encrypted provider secret handles, monthly quotas, and Stripe-compatible billing hooks.
+Atlas Cloud is a Rust Axum service deployed on Fly.io with tenant-scoped Stremio install URLs, encrypted provider secret handles, monthly quotas, and Stripe-compatible billing hooks.
 
 ## Supported Providers
 
@@ -37,7 +37,6 @@ Requirements:
 - Rust stable
 - Node.js 20
 - npm
-- macOS with Xcode Command Line Tools for Tauri desktop packaging
 
 Install and verify:
 
@@ -168,4 +167,4 @@ RUST_LOG=backend=debug make backend-dev
 
 Logs and telemetry avoid API keys, download URLs, magnets, torrent hashes, and raw Stremio playback identifiers. Local playback history stays in `backend/playback_history.json`, which is ignored by Git.
 
-CI runs Rust format, clippy, backend tests, frontend checks, frontend builds, container builds, local API smoke checks, and environment deploy smoke checks. Release packaging is handled by the Tauri release workflow on tags matching `v*`.
+CI runs Rust format, clippy, backend tests, frontend checks, frontend builds, container builds, local API smoke checks, and environment deploy smoke checks.
