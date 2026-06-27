@@ -19,12 +19,24 @@ func main() {
 		coreUrl = "http://127.0.0.1:3000"
 	}
 
+	http.HandleFunc("/", handleRoot)
+	http.HandleFunc("/health", handleRoot)
 	http.HandleFunc("/stremio/", handleStremio)
 
 	log.Println("Starting API gateway on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" && r.URL.Path != "/health" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "ok", "service": "cindral-atlas-gateway"}`))
 }
 
 func handleStremio(w http.ResponseWriter, r *http.Request) {
