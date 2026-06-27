@@ -1,4 +1,4 @@
-app = "atlas-dashboard-dev"
+app = "cindral-atlas-dashboard-dev"
 primary_region = "iad"
 
 [build]

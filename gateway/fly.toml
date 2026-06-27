@@ -1,11 +1,11 @@
-app = "atlas-gateway-dev"
+app = "cindral-atlas-gateway-dev"
 primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  ATLAS_CORE_URL = "http://atlas-core-dev.internal:3000"
+  ATLAS_CORE_URL = "http://cindral-atlas-core-dev.internal:3000"
 
 [http_service]
   internal_port = 8080

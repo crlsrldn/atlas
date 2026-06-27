@@ -143,14 +143,14 @@ jobs:
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy Core
-        run: cd core && flyctl deploy --app "atlas-core-dev" --remote-only
+        run: cd core && flyctl deploy --app "cindral-atlas-core-dev" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Deploy Gateway
-        run: cd gateway && flyctl deploy --app "atlas-gateway-dev" --remote-only
+        run: cd gateway && flyctl deploy --app "cindral-atlas-gateway-dev" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Deploy Dashboard
-        run: cd dashboard && flyctl deploy --app "atlas-dashboard-dev" --remote-only
+        run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-dev" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

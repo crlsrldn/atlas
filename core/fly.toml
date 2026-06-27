@@ -1,4 +1,4 @@
-app = "atlas-core-dev"
+app = "cindral-atlas-core-dev"
 primary_region = "iad"
 
 [build]
