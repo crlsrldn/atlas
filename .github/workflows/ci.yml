@@ -138,7 +138,7 @@ jobs:
     needs: [smoke, dashboard]
     if: >
       (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'development') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      (github.event_name == 'push' && github.ref == 'refs/heads/development')
     environment: development
     steps:
       - name: Checkout
@@ -155,5 +155,57 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Deploy Dashboard
         run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-dev" --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-staging:
+    name: Deploy staging
+    runs-on: ubuntu-latest
+    needs: [smoke, dashboard]
+    if: >
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'staging') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/staging')
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Fly
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy Core
+        run: cd core && flyctl deploy --app "cindral-atlas-core-staging" --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Deploy Gateway
+        run: cd gateway && flyctl deploy --app "cindral-atlas-gateway-staging" --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Deploy Dashboard
+        run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-staging" --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-production:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    needs: [smoke, dashboard]
+    if: >
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'production') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Fly
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy Core
+        run: cd core && flyctl deploy --app "cindral-atlas-core" --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Deploy Gateway
+        run: cd gateway && flyctl deploy --app "cindral-atlas-gateway" --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Deploy Dashboard
+        run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

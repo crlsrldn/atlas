@@ -80,8 +80,10 @@ export default {
         "glow-xl": "0 0 60px rgba(99, 102, 241, 0.5)",
         "glow-purple-sm": "0 0 10px rgba(139, 92, 246, 0.2)",
         "glow-purple-md": "0 0 20px rgba(139, 92, 246, 0.3)",
-        "card": "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5)",
-        "card-hover": "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+        "card":
+          "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5)",
+        "card-hover":
+          "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
         "inner-glow": "inset 0 1px 0 rgba(255, 255, 255, 0.1)",
       },
     },

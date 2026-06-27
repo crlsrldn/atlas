@@ -94,6 +94,23 @@ export const handler: Handlers<AdminData> = {
       });
     }
   },
+  async POST(req, ctx) {
+    const formData = await req.formData();
+    if (formData.get("action") === "logout") {
+      const res = new Response("", {
+        status: 303,
+        headers: {
+          Location: "/admin",
+        },
+      });
+      res.headers.append(
+        "Set-Cookie",
+        "sb-admin-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+      );
+      return res;
+    }
+    return ctx.render();
+  },
 };
 
 // ─── Login View ────────────────────────────────────────────────────────────────
@@ -140,8 +157,18 @@ function DashboardView({ data }: { data: AdminData }) {
       positive: true,
       color: "indigo",
       icon: (
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width={1.75}
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+          />
         </svg>
       ),
       description: "Registered subscribers",
@@ -153,8 +180,18 @@ function DashboardView({ data }: { data: AdminData }) {
       positive: true,
       color: "purple",
       icon: (
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width={1.75}
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
         </svg>
       ),
       description: "Successful stream events",
@@ -166,8 +203,18 @@ function DashboardView({ data }: { data: AdminData }) {
       positive: true,
       color: "emerald",
       icon: (
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width={1.75}
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+          />
         </svg>
       ),
       description: "Stream resolution success",
@@ -179,8 +226,18 @@ function DashboardView({ data }: { data: AdminData }) {
       positive: true,
       color: "amber",
       icon: (
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width={1.75}
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
       ),
       description: "Source selection speed",
@@ -223,8 +280,18 @@ function DashboardView({ data }: { data: AdminData }) {
       <div class="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="icon-box bg-indigo-500/10">
-            <svg class="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <svg
+              class="w-5 h-5 text-indigo-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width={1.75}
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
             </svg>
           </div>
           <div>
@@ -241,7 +308,9 @@ function DashboardView({ data }: { data: AdminData }) {
           {/* Live indicator */}
           <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-            <span class="text-xs font-semibold text-emerald-300">Live Data</span>
+            <span class="text-xs font-semibold text-emerald-300">
+              Live Data
+            </span>
           </div>
           {/* Last refreshed */}
           <span class="text-xs text-zinc-500 hidden sm:block">
@@ -253,8 +322,18 @@ function DashboardView({ data }: { data: AdminData }) {
       {/* Error banner */}
       {data.error && (
         <div class="alert alert-error mb-8">
-          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg
+            class="w-5 h-5 flex-shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width={2}
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
           <div>
             <p class="font-semibold">Configuration Error</p>
@@ -299,8 +378,18 @@ function DashboardView({ data }: { data: AdminData }) {
         <div class="glass-card-strong p-6 rounded-2xl">
           <div class="flex items-center gap-3 mb-5">
             <div class="icon-box icon-box-sm bg-emerald-500/10">
-              <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+              <svg
+                class="w-4 h-4 text-emerald-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width={2}
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
+                />
               </svg>
             </div>
             <h2 class="font-semibold text-white">System Health</h2>
@@ -331,8 +420,18 @@ function DashboardView({ data }: { data: AdminData }) {
               >
                 <span class="text-sm text-zinc-300">{s.name}</span>
                 <div class="flex items-center gap-2">
-                  <span class={`w-1.5 h-1.5 rounded-full ${s.color === "emerald" ? "bg-emerald-400" : "bg-amber-400"}`} />
-                  <span class={`text-xs font-medium ${s.color === "emerald" ? "text-emerald-400" : "text-amber-400"}`}>
+                  <span
+                    class={`w-1.5 h-1.5 rounded-full ${
+                      s.color === "emerald" ? "bg-emerald-400" : "bg-amber-400"
+                    }`}
+                  />
+                  <span
+                    class={`text-xs font-medium ${
+                      s.color === "emerald"
+                        ? "text-emerald-400"
+                        : "text-amber-400"
+                    }`}
+                  >
                     {s.status}
                   </span>
                 </div>
@@ -345,8 +444,18 @@ function DashboardView({ data }: { data: AdminData }) {
         <div class="glass-card-strong p-6 rounded-2xl">
           <div class="flex items-center gap-3 mb-5">
             <div class="icon-box icon-box-sm bg-indigo-500/10">
-              <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              <svg
+                class="w-4 h-4 text-indigo-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width={2}
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                />
               </svg>
             </div>
             <h2 class="font-semibold text-white">Quick Actions</h2>
@@ -391,19 +500,28 @@ function DashboardView({ data }: { data: AdminData }) {
 
           {/* Sign out */}
           <div class="mt-5 pt-4 border-t border-white/[0.06]">
-            <button
-              onClick={() => {
-                document.cookie =
-                  "sb-admin-token=; path=/; max-age=0; samesite=lax";
-                window.location.reload();
-              }}
-              class="btn-ghost w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/10 hover:border-red-500/20 text-sm"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Sign Out
-            </button>
+            <form method="POST">
+              <input type="hidden" name="action" value="logout" />
+              <button
+                type="submit"
+                class="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-xl border border-white/5 shadow-sm transition-all duration-200"
+              >
+                <svg
+                  class="w-4 h-4 text-zinc-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width={2}
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                Sign Out
+              </button>
+            </form>
           </div>
         </div>
       </div>

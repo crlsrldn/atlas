@@ -16,7 +16,10 @@ interface Preferences {
 }
 
 export default function ConfigForm(
-  { projectId, supabaseUrl, supabaseAnonKey, gatewayUrl }: ConfigFormProps,
+  { supabaseUrl, supabaseAnonKey, gatewayUrl }: Omit<
+    ConfigFormProps,
+    "projectId"
+  >,
 ) {
   const [torboxKey, setTorboxKey] = useState("");
   const [rdKey, setRdKey] = useState("");
@@ -46,13 +49,9 @@ export default function ConfigForm(
           setUserId(session.user.id);
           await loadPreferences(session.user.id);
         } else {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (error) {
-            console.error("Anonymous sign in failed", error);
-          } else if (data.user) {
-            setUserId(data.user.id);
-            await loadPreferences(data.user.id);
-          }
+          // Redirect to login if not authenticated
+          globalThis.location.href = "/login";
+          return;
         }
       } catch (err) {
         console.error("Unexpected error during auth initialization:", err);
@@ -62,7 +61,12 @@ export default function ConfigForm(
     };
 
     initializeAuth();
-  }, []);
+  }, [supabase]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    globalThis.location.href = "/login";
+  };
 
   const loadPreferences = async (uid: string) => {
     try {
@@ -153,20 +157,29 @@ export default function ConfigForm(
     ? `stremio://${baseDomain}/stremio/${userId}/manifest.json`
     : "#";
 
-  const hasAtLeastOneKey = torboxKey.trim() || rdKey.trim();
-
   return (
     <div class="space-y-6">
       {/* ── Auth error banner ── */}
       {!userId && (
         <div class="alert alert-error">
-          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg
+            class="w-5 h-5 flex-shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width={2}
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
           <div>
             <p class="font-semibold">Authentication Error</p>
             <p class="mt-0.5 opacity-80">
-              Could not authenticate. Please ensure Anonymous Sign-In is enabled in your Supabase project settings.
+              Could not authenticate. Please ensure Anonymous Sign-In is enabled
+              in your Supabase project settings.
             </p>
           </div>
         </div>
@@ -177,13 +190,25 @@ export default function ConfigForm(
         {/* Card header */}
         <div class="flex items-center gap-3 mb-7">
           <div class="icon-box bg-indigo-500/10">
-            <svg class="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            <svg
+              class="w-5 h-5 text-indigo-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width={1.75}
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+              />
             </svg>
           </div>
           <div>
             <h2 class="text-lg font-semibold text-white">Provider Keys</h2>
-            <p class="text-xs text-zinc-500 mt-0.5">Stored encrypted. Never exposed to clients.</p>
+            <p class="text-xs text-zinc-500 mt-0.5">
+              Stored encrypted. Never exposed to clients.
+            </p>
           </div>
         </div>
 
@@ -191,11 +216,20 @@ export default function ConfigForm(
           {/* TorBox */}
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label class="block text-sm font-medium text-zinc-300" for="torbox-key">
+              <label
+                class="block text-sm font-medium text-zinc-300"
+                for="torbox-key"
+              >
                 TorBox API Key
               </label>
               <div class="flex items-center gap-2">
-                <span class={`w-1.5 h-1.5 rounded-full ${torboxKey ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-700"}`} />
+                <span
+                  class={`w-1.5 h-1.5 rounded-full ${
+                    torboxKey
+                      ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                      : "bg-zinc-700"
+                  }`}
+                />
                 <span class="text-[11px] text-zinc-500 font-medium">
                   {torboxKey ? "Connected" : "Not set"}
                 </span>
@@ -219,21 +253,50 @@ export default function ConfigForm(
               >
                 {showTorboxKey
                   ? (
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width={2}
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
                     </svg>
                   )
                   : (
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width={2}
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
                     </svg>
                   )}
               </button>
             </div>
             <p class="text-xs text-zinc-600">
               Get your key at{" "}
-              <a href="https://torbox.app/settings" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors">
+              <a
+                href="https://torbox.app/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors"
+              >
                 torbox.app/settings
               </a>
             </p>
@@ -245,11 +308,20 @@ export default function ConfigForm(
           {/* Real-Debrid */}
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label class="block text-sm font-medium text-zinc-300" for="rd-key">
+              <label
+                class="block text-sm font-medium text-zinc-300"
+                for="rd-key"
+              >
                 Real-Debrid API Key
               </label>
               <div class="flex items-center gap-2">
-                <span class={`w-1.5 h-1.5 rounded-full ${rdKey ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-700"}`} />
+                <span
+                  class={`w-1.5 h-1.5 rounded-full ${
+                    rdKey
+                      ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                      : "bg-zinc-700"
+                  }`}
+                />
                 <span class="text-[11px] text-zinc-500 font-medium">
                   {rdKey ? "Connected" : "Not set"}
                 </span>
@@ -260,8 +332,7 @@ export default function ConfigForm(
                 id="rd-key"
                 type={showRdKey ? "text" : "password"}
                 value={rdKey}
-                onInput={(e) =>
-                  setRdKey((e.target as HTMLInputElement).value)}
+                onInput={(e) => setRdKey((e.target as HTMLInputElement).value)}
                 class="input-field pr-12"
                 placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
               />
@@ -273,21 +344,50 @@ export default function ConfigForm(
               >
                 {showRdKey
                   ? (
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width={2}
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
                     </svg>
                   )
                   : (
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width={2}
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
                     </svg>
                   )}
               </button>
             </div>
             <p class="text-xs text-zinc-600">
               Get your key at{" "}
-              <a href="https://real-debrid.com/apitoken" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors">
+              <a
+                href="https://real-debrid.com/apitoken"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors"
+              >
                 real-debrid.com/apitoken
               </a>
             </p>
@@ -299,20 +399,37 @@ export default function ConfigForm(
       <div class="glass-card-strong p-6 sm:p-8 rounded-2xl">
         <div class="flex items-center gap-3 mb-7">
           <div class="icon-box bg-purple-500/10">
-            <svg class="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <svg
+              class="w-5 h-5 text-purple-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width={1.75}
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
             </svg>
           </div>
           <div>
-            <h2 class="text-lg font-semibold text-white">Playback Preferences</h2>
-            <p class="text-xs text-zinc-500 mt-0.5">Tune quality and compatibility for your device.</p>
+            <h2 class="text-lg font-semibold text-white">
+              Playback Preferences
+            </h2>
+            <p class="text-xs text-zinc-500 mt-0.5">
+              Tune quality and compatibility for your device.
+            </p>
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Max resolution */}
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-zinc-300" for="max-resolution">
+            <label
+              class="block text-sm font-medium text-zinc-300"
+              for="max-resolution"
+            >
               Maximum Resolution
             </label>
             <div class="relative">
@@ -366,16 +483,36 @@ export default function ConfigForm(
           <div class="min-h-[1.5rem]">
             {saveSuccess && (
               <div class="flex items-center gap-2 text-emerald-400 text-sm font-medium animate-fade-in">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2.5}>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width={2.5}
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 Preferences saved successfully!
               </div>
             )}
             {saveError && (
               <div class="flex items-center gap-2 text-red-400 text-sm animate-fade-in">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  class="w-4 h-4 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width={2}
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
                 {saveError}
               </div>
@@ -383,6 +520,7 @@ export default function ConfigForm(
           </div>
 
           <button
+            type="button"
             onClick={savePreferences}
             disabled={saving || !userId}
             class="btn-primary w-full sm:w-auto"
@@ -390,17 +528,42 @@ export default function ConfigForm(
             {saving
               ? (
                 <>
-                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg
+                    class="animate-spin h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    />
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Saving...
                 </>
               )
               : (
                 <>
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2.5}>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width={2.5}
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                   Save Preferences
                 </>
@@ -419,8 +582,18 @@ export default function ConfigForm(
           {/* Header */}
           <div class="flex items-start gap-3 mb-6">
             <div class="icon-box bg-indigo-500/20 flex-shrink-0">
-              <svg class="w-5 h-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={1.75}>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <svg
+                class="w-5 h-5 text-indigo-300"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width={1.75}
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
               </svg>
             </div>
             <div>
@@ -469,18 +642,47 @@ export default function ConfigForm(
                   : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-white/5"
               }`}
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width={2}
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
               </svg>
               Install Addon
             </a>
 
             {userId && (
-              <div class="flex items-center gap-2 text-xs text-zinc-500">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2.5}>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                <span>Authenticated & ready</span>
+              <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full justify-between">
+                <div class="flex items-center gap-2 text-xs text-zinc-500">
+                  <svg
+                    class="w-3.5 h-3.5 text-emerald-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width={2.5}
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                  </svg>
+                  <span>Authenticated & ready</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  Sign Out
+                </button>
               </div>
             )}
           </div>
