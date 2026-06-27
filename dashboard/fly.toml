@@ -17,4 +17,5 @@ primary_region = "iad"
 [[vm]]
   memory = "512mb"
   cpu_kind = "shared"
-  cpus = 1  processes = ["app"]
+  cpus = 1
+  processes = ["app"]
