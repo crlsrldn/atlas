@@ -101,11 +101,12 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 	}
 	id := strings.TrimSuffix(idParam, ".json")
 
-	client := NewAppwriteClient()
-	prefs, err := client.GetUserPreferences(token)
+	supabase := NewSupabaseClient()
+	prefs, err := supabase.GetUserPreferences(token)
 	if err != nil {
-		log.Printf("Warning: Failed to fetch preferences for token %s: %v", token, err)
-		// Fallback if user not found or error
+		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
+		// Fallback to empty prefs or handle error appropriately.
+		// For MVP, we will send empty strings if fetch fails so the Rust core won't crash
 		prefs = map[string]interface{}{
 			"torbox_api_key":      "",
 			"real_debrid_api_key": "",

@@ -9,33 +9,23 @@ pub fn log_event(event_name: &str, payload: Value) {
     let event_name = event_name.to_string();
     let mut payload = payload;
     crate::engines::privacy::redact_json(&mut payload);
-    let payload_str = serde_json::to_string(&json!({
-        "event": event_name,
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-        "data": payload
-    }))
-    .unwrap_or_default();
+
 
     tokio::spawn(async move {
-        if let (Ok(endpoint), Ok(project), Ok(key)) = (
-            env::var("APPWRITE_ENDPOINT"),
-            env::var("APPWRITE_PROJECT_ID"),
-            env::var("APPWRITE_API_KEY"),
+        if let (Ok(endpoint), Ok(key)) = (
+            env::var("SUPABASE_URL"),
+            env::var("SUPABASE_SERVICE_ROLE_KEY"),
         ) {
-            let url = format!(
-                "{}/databases/atlas/collections/telemetry/documents",
-                endpoint
-            );
+            let url = format!("{}/rest/v1/telemetry", endpoint);
 
             let res = HTTP_CLIENT
                 .post(&url)
-                .header("X-Appwrite-Project", project)
-                .header("X-Appwrite-Key", key)
+                .header("apikey", &key)
+                .header("Authorization", format!("Bearer {}", key))
+                .header("Content-Type", "application/json")
                 .json(&json!({
-                    "documentId": "unique()",
-                    "data": {
-                        "telemetry_json": payload_str
-                    }
+                    "event_type": event_name,
+                    "event_data": payload
                 }))
                 .send()
                 .await;

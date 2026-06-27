@@ -78,9 +78,9 @@ make smoke
 Atlas reads optional Appwrite settings from environment variables:
 
 ```sh
-APPWRITE_ENDPOINT=
-APPWRITE_PROJECT_ID=
-APPWRITE_API_KEY=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ATLAS_ENV=local
 ATLAS_BIND_ADDR=127.0.0.1:3000
 ATLAS_PUBLIC_BASE_URL=http://127.0.0.1:3000

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "preact/hooks";
-import { account, databases, ID } from "../utils/appwrite.ts";
+import { supabase } from "../utils/supabase.ts";
 
 export default function ConfigForm({ projectId }: { projectId: string }) {
   const [torboxKey, setTorboxKey] = useState("");
@@ -9,25 +9,37 @@ export default function ConfigForm({ projectId }: { projectId: string }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Check if logged in
-    account.get().then((user) => {
-      setUserId(user.$id);
-      loadPreferences(user.$id);
-    }).catch(() => {
-      // Not logged in, create anonymous session for MVP
-      account.createAnonymousSession().then((session) => {
-        setUserId(session.userId);
-        loadPreferences(session.userId);
-      }).catch(console.error);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        loadPreferences(session.user.id);
+      } else {
+        supabase.auth.signInAnonymously().then(({ data, error }) => {
+          if (data.user) {
+            setUserId(data.user.id);
+            loadPreferences(data.user.id);
+          } else {
+            console.error("Anonymous sign in failed", error);
+            setLoading(false);
+          }
+        });
+      }
     });
   }, []);
 
   const loadPreferences = async (uid: string) => {
     try {
-      const doc = await databases.getDocument("atlas", "preferences", uid);
-      const prefs = JSON.parse(doc.prefs_json);
-      setTorboxKey(prefs.torbox_api_key || "");
-      setRdKey(prefs.real_debrid_api_key || "");
+      const { data, error } = await supabase
+        .from('preferences')
+        .select('prefs_json')
+        .eq('id', uid)
+        .single();
+        
+      if (data && data.prefs_json) {
+        const prefs = data.prefs_json;
+        setTorboxKey(prefs.torbox_api_key || "");
+        setRdKey(prefs.real_debrid_api_key || "");
+      }
     } catch (e) {
       console.log("No existing preferences found", e);
     } finally {
@@ -39,26 +51,23 @@ export default function ConfigForm({ projectId }: { projectId: string }) {
     if (!userId) return;
     setSaving(true);
     
-    const prefs_json = JSON.stringify({
+    const prefs_json = {
       torbox_api_key: torboxKey,
       real_debrid_api_key: rdKey,
       max_resolution: "4K",
       exclude_av1: false,
-    });
+    };
 
-    try {
-      // Try to update existing document
-      await databases.updateDocument("atlas", "preferences", userId, { prefs_json });
-    } catch (e) {
-      // If it fails (not found), create a new document with userId as document ID
-      try {
-        await databases.createDocument("atlas", "preferences", userId, { prefs_json });
-      } catch (err) {
-        alert("Failed to save preferences: " + String(err));
-      }
+    const { error } = await supabase
+      .from('preferences')
+      .upsert({ id: userId, prefs_json });
+      
+    if (error) {
+      alert("Failed to save preferences: " + error.message);
+    } else {
+      alert("Configurations saved!");
     }
     setSaving(false);
-    alert("Configurations saved!");
   };
 
   if (loading) {
