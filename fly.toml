@@ -1,4 +1,4 @@
-app = "atlas-api-dev"
+app = "cindral-atlas-api-dev"
 primary_region = "iad"
 
 [build]
@@ -7,7 +7,7 @@ primary_region = "iad"
 [env]
   ATLAS_BIND_ADDR = "0.0.0.0:3000"
   ATLAS_ENV = "development"
-  ATLAS_PUBLIC_BASE_URL = "https://atlas-api-dev.fly.dev"
+  ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-api-dev.fly.dev"
 
 [http_service]
   internal_port = 3000

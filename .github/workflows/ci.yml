@@ -138,11 +138,11 @@ jobs:
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy development
-        run: flyctl deploy -c fly.toml --app "${{ vars.FLY_DEV_APP || 'atlas-api-dev' }}" --remote-only
+        run: flyctl deploy -c fly.toml --app "${{ vars.FLY_DEV_APP || 'cindral-atlas-api-dev' }}" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Smoke development
-        run: ./scripts/smoke.sh "https://${{ vars.FLY_DEV_APP || 'atlas-api-dev' }}.fly.dev"
+        run: ./scripts/smoke.sh "https://${{ vars.FLY_DEV_APP || 'cindral-atlas-api-dev' }}.fly.dev"
 
   deploy-staging:
     name: Deploy staging
@@ -160,11 +160,11 @@ jobs:
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy staging
-        run: flyctl deploy -c fly.staging.toml --app "${{ vars.FLY_STAGING_APP || 'atlas-api-staging' }}" --remote-only
+        run: flyctl deploy -c fly.staging.toml --app "${{ vars.FLY_STAGING_APP || 'cindral-atlas-api-staging' }}" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Smoke staging
-        run: ./scripts/smoke.sh "https://${{ vars.FLY_STAGING_APP || 'atlas-api-staging' }}.fly.dev"
+        run: ./scripts/smoke.sh "https://${{ vars.FLY_STAGING_APP || 'cindral-atlas-api-staging' }}.fly.dev"
 
   deploy-production:
     name: Deploy production
@@ -182,8 +182,8 @@ jobs:
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy production
-        run: flyctl deploy -c fly.production.toml --app "${{ vars.FLY_PRODUCTION_APP || 'atlas-api' }}" --remote-only
+        run: flyctl deploy -c fly.production.toml --app "${{ vars.FLY_PRODUCTION_APP || 'cindral-atlas-api' }}" --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       - name: Smoke production
-        run: ./scripts/smoke.sh "https://${{ vars.FLY_PRODUCTION_APP || 'atlas-api' }}.fly.dev"
+        run: ./scripts/smoke.sh "https://${{ vars.FLY_PRODUCTION_APP || 'cindral-atlas-api' }}.fly.dev"

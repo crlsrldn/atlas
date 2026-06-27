@@ -120,9 +120,9 @@ docker run --rm -p 3000:3000 \
 
 Atlas ships with three Fly configs:
 
-- `fly.toml` for development: `atlas-api-dev`
-- `fly.staging.toml` for staging: `atlas-api-staging`
-- `fly.production.toml` for production: `atlas-api`
+- `fly.toml` for development: `cindral-atlas-api-dev`
+- `fly.staging.toml` for staging: `cindral-atlas-api-staging`
+- `fly.production.toml` for production: `cindral-atlas-api`
 
 Deploy to Fly.io from the CLI:
 
@@ -135,18 +135,18 @@ make deploy-production
 Run smoke checks against any deployed environment:
 
 ```sh
-ATLAS_SMOKE_URL=https://atlas-api-dev.fly.dev make smoke
-ATLAS_SMOKE_URL=https://atlas-api-staging.fly.dev make smoke
-ATLAS_SMOKE_URL=https://atlas-api.fly.dev make smoke
+ATLAS_SMOKE_URL=https://cindral-atlas-api-dev.fly.dev make smoke
+ATLAS_SMOKE_URL=https://cindral-atlas-api-staging.fly.dev make smoke
+ATLAS_SMOKE_URL=https://cindral-atlas-api.fly.dev make smoke
 ```
 
 GitHub Actions CI/CD expects:
 
 ```sh
 FLY_API_TOKEN              # repository secret
-FLY_DEV_APP                # optional repository variable, defaults to atlas-api-dev
-FLY_STAGING_APP            # optional repository variable, defaults to atlas-api-staging
-FLY_PRODUCTION_APP         # optional repository variable, defaults to atlas-api
+FLY_DEV_APP                # optional repository variable, defaults to cindral-atlas-api-dev
+FLY_STAGING_APP            # optional repository variable, defaults to cindral-atlas-api-staging
+FLY_PRODUCTION_APP         # optional repository variable, defaults to cindral-atlas-api
 ```
 
 Deployment flow:
