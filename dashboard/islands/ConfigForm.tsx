@@ -17,6 +17,8 @@ export default function ConfigForm({
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [maxResolution, setMaxResolution] = useState("4K");
+  const [excludeAv1, setExcludeAv1] = useState(false);
 
   const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
 
@@ -64,6 +66,8 @@ export default function ConfigForm({
         const prefs = data.prefs_json;
         setTorboxKey(prefs.torbox_api_key || "");
         setRdKey(prefs.real_debrid_api_key || "");
+        if (prefs.max_resolution) setMaxResolution(prefs.max_resolution);
+        if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
       }
     } catch (e) {
       console.log("No existing preferences found or error loading them", e);
@@ -80,8 +84,8 @@ export default function ConfigForm({
     const prefs_json = {
       torbox_api_key: torboxKey,
       real_debrid_api_key: rdKey,
-      max_resolution: "4K",
-      exclude_av1: false,
+      max_resolution: maxResolution,
+      exclude_av1: excludeAv1,
     };
 
     try {
@@ -158,6 +162,35 @@ export default function ConfigForm({
               class="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all" 
               placeholder="Enter your RealDebrid API key" 
             />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Max Resolution</label>
+              <select 
+                value={maxResolution}
+                onChange={(e) => setMaxResolution((e.target as HTMLSelectElement).value)}
+                class="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none"
+              >
+                <option value="4K">4K</option>
+                <option value="1080p">1080p</option>
+                <option value="720p">720p</option>
+              </select>
+            </div>
+            
+            <div class="flex flex-col justify-center">
+              <label class="block text-sm font-medium text-gray-300 mb-3">Device Compatibility</label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={excludeAv1}
+                  onChange={(e) => setExcludeAv1((e.target as HTMLInputElement).checked)}
+                  class="sr-only peer" 
+                />
+                <div class="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                <span class="ml-3 text-sm font-medium text-gray-400">Exclude AV1 Codec</span>
+              </label>
+            </div>
           </div>
 
           <button 
