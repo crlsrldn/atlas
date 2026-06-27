@@ -17,7 +17,7 @@ pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences) -> Vec<
         .collect();
 
     // Sort descending by score
-    ranked.sort_by(|a, b| b.score.cmp(&a.score));
+    ranked.sort_by_key(|entry| std::cmp::Reverse(entry.score));
 
     ranked
 }
@@ -33,11 +33,7 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     // Quality Matching
     if source.resolution == prefs.max_resolution {
         score += 500;
-    } else if prefs.max_resolution == "1080p" && source.resolution == "4K" {
-        return 0;
-    } else if prefs.max_resolution == "720p"
-        && (source.resolution == "4K" || source.resolution == "1080p")
-    {
+    } else if is_above_max_resolution(&source.resolution, &prefs.max_resolution) {
         return 0;
     }
 
@@ -115,6 +111,13 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     }
 
     score
+}
+
+fn is_above_max_resolution(source_resolution: &str, max_resolution: &str) -> bool {
+    matches!(
+        (source_resolution, max_resolution),
+        ("4K", "1080p") | ("4K", "720p") | ("1080p", "720p")
+    )
 }
 
 #[cfg(test)]

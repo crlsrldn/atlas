@@ -5,7 +5,7 @@ use std::env;
 
 use once_cell::sync::Lazy;
 
-static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| Client::new());
+static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
 pub async fn get_preferences_from_cloud() -> Option<crate::api::config::UserPreferences> {
     let endpoint = env::var("APPWRITE_ENDPOINT").ok()?;

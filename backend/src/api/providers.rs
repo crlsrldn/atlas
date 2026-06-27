@@ -1,4 +1,4 @@
-use axum::{routing::get, Json, Router};
+use axum::{http::HeaderMap, routing::get, Json, Router};
 use serde::Serialize;
 
 use crate::api::config::current_preferences;
@@ -17,11 +17,24 @@ pub struct ProviderStatus {
 }
 
 pub fn router() -> Router {
-    Router::new().route("/providers/status", get(provider_status))
+    Router::new()
+        .route("/providers/status", get(provider_status))
+        .route("/v1/providers/status", get(provider_status_for_tenant))
 }
 
 async fn provider_status() -> Json<Vec<ProviderStatus>> {
     let prefs = current_preferences();
+    Json(provider_status_for_preferences(prefs).await)
+}
+
+async fn provider_status_for_tenant(headers: HeaderMap) -> Json<Vec<ProviderStatus>> {
+    let tenant = crate::api::tenants::current_tenant(&headers);
+    Json(provider_status_for_preferences(tenant.hydrated_preferences()).await)
+}
+
+async fn provider_status_for_preferences(
+    prefs: crate::api::config::UserPreferences,
+) -> Vec<ProviderStatus> {
     let torbox = TorBoxProvider {
         api_key: prefs.torbox_api_key,
     };
@@ -35,11 +48,11 @@ async fn provider_status() -> Json<Vec<ProviderStatus>> {
         test_gemini(prefs.gemini_api_key),
     );
 
-    Json(vec![
+    vec![
         torbox_status.into(),
         real_debrid_status.into(),
         gemini_status,
-    ])
+    ]
 }
 
 async fn test_gemini(api_key: String) -> ProviderStatus {

@@ -6,6 +6,7 @@ struct HealthResponse {
     status: &'static str,
     service: &'static str,
     version: &'static str,
+    environment: String,
 }
 
 pub fn router() -> Router {
@@ -17,5 +18,6 @@ async fn health() -> Json<HealthResponse> {
         status: "ok",
         service: "atlas-backend",
         version: env!("CARGO_PKG_VERSION"),
+        environment: std::env::var("ATLAS_ENV").unwrap_or_else(|_| "local".to_string()),
     })
 }

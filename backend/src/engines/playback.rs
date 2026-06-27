@@ -1,4 +1,4 @@
-use crate::api::config::current_preferences;
+use crate::api::config::{current_preferences, UserPreferences};
 use crate::engines::history::{remember_candidates, stats_for, PlaybackCandidate};
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
@@ -52,7 +52,15 @@ pub fn media_key(atlas_id: &AtlasID) -> String {
 
 pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> {
     let prefs = current_preferences();
+    resolve_detailed_streams_with_preferences(atlas_id, prefs, "local", None).await
+}
 
+pub async fn resolve_detailed_streams_with_preferences(
+    atlas_id: AtlasID,
+    prefs: UserPreferences,
+    history_scope: &str,
+    install_token: Option<&str>,
+) -> Vec<DetailedStream> {
     // 1. Fetch Metadata
     let metadata = get_metadata(&atlas_id).await;
 
@@ -103,7 +111,15 @@ pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> 
         let verification = verify_source(source, &metadata);
         source.verification_score = verification.confidence;
         source.verification_reasons = verification.reasons;
-        let stats = stats_for(&source.provider_name, source.hash.as_deref());
+        let stats = if history_scope == "local" {
+            stats_for(&source.provider_name, source.hash.as_deref())
+        } else {
+            crate::engines::history::stats_for_scope(
+                history_scope,
+                &source.provider_name,
+                source.hash.as_deref(),
+            )
+        };
         source.playback_successes = stats.successes;
         source.playback_failures = stats.failures;
     }
@@ -133,26 +149,33 @@ pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> 
 
     // 4. Rank the results based on user preferences and PRD rules
     let ranked = rank_sources(unique_results.into_values().collect(), &prefs);
-    remember_candidates(
-        &media_key(&atlas_id),
-        ranked
-            .iter()
-            .filter_map(|entry| {
-                Some(PlaybackCandidate {
-                    provider: entry.source.provider_name.clone(),
-                    hash: entry.source.hash.clone()?,
-                    url: entry.source.url.clone()?,
-                    score: entry.score,
-                })
+    let candidates: Vec<PlaybackCandidate> = ranked
+        .iter()
+        .filter_map(|entry| {
+            Some(PlaybackCandidate {
+                provider: entry.source.provider_name.clone(),
+                hash: entry.source.hash.clone()?,
+                url: hosted_or_local_url(&entry.source, install_token)?,
+                score: entry.score,
             })
-            .collect(),
-    );
+        })
+        .collect();
+
+    if history_scope == "local" {
+        remember_candidates(&media_key(&atlas_id), candidates);
+    } else {
+        crate::engines::history::remember_candidates_scope(
+            history_scope,
+            &media_key(&atlas_id),
+            candidates,
+        );
+    }
 
     ranked
         .into_iter()
         .filter(|r| r.score > 0)
         .filter_map(|entry| {
-            let url = entry.source.url.clone()?;
+            let url = hosted_or_local_url(&entry.source, install_token)?;
             Some(DetailedStream {
                 title: entry.source.title.clone(),
                 provider_name: entry.source.provider_name.clone(),
@@ -177,30 +200,67 @@ pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> 
         .collect()
 }
 
+fn hosted_or_local_url(
+    source: &crate::engines::sources::SourceResult,
+    install_token: Option<&str>,
+) -> Option<String> {
+    let url = source.url.clone()?;
+    let Some(token) = install_token else {
+        return Some(url);
+    };
+    let hash = source.hash.as_ref()?;
+    let provider_slug = match source.provider_name.as_str() {
+        provider if provider.contains("Real Debrid") => "realdebrid",
+        provider if provider.contains("TorBox") => "torbox",
+        _ => return Some(url),
+    };
+    let base_url = std::env::var("ATLAS_PUBLIC_BASE_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:3000".to_string());
+    Some(format!(
+        "{}/stremio/{}/resolve/{}/{}",
+        base_url.trim_end_matches('/'),
+        token,
+        provider_slug,
+        hash
+    ))
+}
+
+pub async fn resolve_stream_for_tenant(
+    atlas_id: AtlasID,
+    prefs: UserPreferences,
+    history_scope: &str,
+    install_token: &str,
+) -> Vec<StremioStream> {
+    resolve_detailed_streams_with_preferences(atlas_id, prefs, history_scope, Some(install_token))
+        .await
+        .into_iter()
+        .take(5)
+        .map(stremio_stream_from_detail)
+        .collect()
+}
+
 pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     resolve_detailed_streams(atlas_id)
         .await
         .into_iter()
         .take(5)
-        .map(|stream| {
-            let explanation = stream
-                .reasons
-                .iter()
-                .take(3)
-                .cloned()
-                .collect::<Vec<_>>()
-                .join(", ");
-            StremioStream {
-                title: format!(
-                    "🌟 Atlas | {} {} | Confidence {}%\n{}\n{}",
-                    stream.provider_name,
-                    stream.resolution,
-                    stream.confidence,
-                    stream.title,
-                    explanation
-                ),
-                url: stream.url,
-            }
-        })
+        .map(stremio_stream_from_detail)
         .collect()
+}
+
+fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
+    let explanation = stream
+        .reasons
+        .iter()
+        .take(3)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    StremioStream {
+        title: format!(
+            "Atlas | {} {} | Confidence {}%\n{}\n{}",
+            stream.provider_name, stream.resolution, stream.confidence, stream.title, explanation
+        ),
+        url: stream.url,
+    }
 }

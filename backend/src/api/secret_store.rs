@@ -45,8 +45,7 @@ pub fn write_secret(account: &str, secret: &str) -> std::io::Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(std::io::Error::other(
             "failed to write secret to macOS Keychain",
         ))
     }

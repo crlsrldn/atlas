@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod cache;
 pub mod history;
 pub mod identity;
 pub mod metadata;

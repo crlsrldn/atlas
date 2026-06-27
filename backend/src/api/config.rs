@@ -132,8 +132,10 @@ pub async fn init_preferences() {
     if let Some(mut cloud_prefs) = crate::api::cloud::get_preferences_from_cloud().await {
         migrate_secrets_to_keychain(&cloud_prefs);
         hydrate_secrets(&mut cloud_prefs);
-        let mut prefs = PREFERENCES.lock().unwrap();
-        *prefs = cloud_prefs.clone();
+        {
+            let mut prefs = PREFERENCES.lock().unwrap();
+            *prefs = cloud_prefs.clone();
+        }
         tracing::info!("Loaded preferences from Appwrite Cloud.");
         let redacted_prefs = cloud_prefs.without_secrets();
         let _ = crate::api::cloud::save_preferences_to_cloud(&redacted_prefs).await;
@@ -144,8 +146,10 @@ pub async fn init_preferences() {
             if let Ok(mut local_prefs) = serde_json::from_str::<UserPreferences>(&data) {
                 migrate_secrets_to_keychain(&local_prefs);
                 hydrate_secrets(&mut local_prefs);
-                let mut prefs = PREFERENCES.lock().unwrap();
-                *prefs = local_prefs.clone();
+                {
+                    let mut prefs = PREFERENCES.lock().unwrap();
+                    *prefs = local_prefs.clone();
+                }
                 tracing::info!(
                     "Loaded preferences from local disk. Migrating non-secret settings to Cloud..."
                 );

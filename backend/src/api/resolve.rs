@@ -1,5 +1,8 @@
 use crate::api::config::current_preferences;
-use crate::engines::history::{fallback_candidates, media_key_from_hash, record_playback};
+use crate::engines::history::{
+    fallback_candidates, fallback_candidates_scope, media_key_from_hash, media_key_from_hash_scope,
+    record_playback, record_playback_scope,
+};
 use axum::{extract::Path, response::Redirect, routing::get, Router};
 use reqwest;
 use serde::Deserialize;
@@ -35,8 +38,14 @@ pub fn router() -> Router {
 
 async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
     let prefs = current_preferences();
-    let api_key = prefs.torbox_api_key;
+    resolve_torbox_with_key(hash, prefs.torbox_api_key, None).await
+}
 
+pub async fn resolve_torbox_with_key(
+    hash: String,
+    api_key: String,
+    history_scope: Option<&str>,
+) -> Redirect {
     if api_key.is_empty() {
         return Redirect::temporary("https://torbox.app");
     }
@@ -65,7 +74,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
                     };
                     let dl_url = format!("https://api.torbox.app/v1/api/torrents/requestdl?token={}&torrent_id={}&file_id={}&redirect=true", api_key, torrent_id, file_id);
 
-                    record_playback("TorBox", &hash, true);
+                    record_provider_playback(history_scope, "TorBox", &hash, true);
                     crate::engines::telemetry::log_event(
                         "playback_started",
                         serde_json::json!({
@@ -80,7 +89,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
         }
     }
 
-    record_playback("TorBox", &hash, false);
+    record_provider_playback(history_scope, "TorBox", &hash, false);
     crate::engines::telemetry::log_event(
         "playback_started",
         serde_json::json!({
@@ -89,7 +98,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
         }),
     );
 
-    fallback_redirect_for_hash(&hash, "https://torbox.app")
+    fallback_redirect_for_hash(history_scope, &hash, "https://torbox.app")
 }
 
 async fn find_largest_torbox_file_id(
@@ -221,8 +230,14 @@ struct RDUnrestrictResponse {
 
 async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
     let prefs = current_preferences();
-    let api_key = prefs.real_debrid_api_key;
+    resolve_realdebrid_with_key(hash, prefs.real_debrid_api_key, None).await
+}
 
+pub async fn resolve_realdebrid_with_key(
+    hash: String,
+    api_key: String,
+    history_scope: Option<&str>,
+) -> Redirect {
     if api_key.is_empty() {
         return Redirect::temporary("https://real-debrid.com");
     }
@@ -243,7 +258,7 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
             let id = json.id;
 
             if let Some(download) = resolve_real_debrid_download(&client, &api_key, &id).await {
-                record_playback("Real Debrid", &hash, true);
+                record_provider_playback(history_scope, "Real Debrid", &hash, true);
                 crate::engines::telemetry::log_event(
                     "playback_started",
                     serde_json::json!({
@@ -256,7 +271,7 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
         }
     }
 
-    record_playback("Real Debrid", &hash, false);
+    record_provider_playback(history_scope, "Real Debrid", &hash, false);
     crate::engines::telemetry::log_event(
         "playback_started",
         serde_json::json!({
@@ -265,13 +280,27 @@ async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
         }),
     );
 
-    fallback_redirect_for_hash(&hash, "https://real-debrid.com")
+    fallback_redirect_for_hash(history_scope, &hash, "https://real-debrid.com")
 }
 
-fn fallback_redirect_for_hash(hash: &str, provider_home: &'static str) -> Redirect {
-    if let Some(media_key) = media_key_from_hash(hash) {
+fn fallback_redirect_for_hash(
+    history_scope: Option<&str>,
+    hash: &str,
+    provider_home: &'static str,
+) -> Redirect {
+    let media_key = match history_scope {
+        Some(scope) => media_key_from_hash_scope(scope, hash),
+        None => media_key_from_hash(hash),
+    };
+
+    if let Some(media_key) = media_key {
         let failed_hash_fragment = hash.to_lowercase();
-        if let Some(candidate) = fallback_candidates(&media_key, "")
+        let candidates = match history_scope {
+            Some(scope) => fallback_candidates_scope(scope, &media_key, ""),
+            None => fallback_candidates(&media_key, ""),
+        };
+
+        if let Some(candidate) = candidates
             .into_iter()
             .find(|candidate| !candidate.hash.eq_ignore_ascii_case(&failed_hash_fragment))
         {
@@ -280,6 +309,18 @@ fn fallback_redirect_for_hash(hash: &str, provider_home: &'static str) -> Redire
     }
 
     Redirect::temporary(provider_home)
+}
+
+fn record_provider_playback(
+    history_scope: Option<&str>,
+    provider: &str,
+    hash: &str,
+    success: bool,
+) {
+    match history_scope {
+        Some(scope) => record_playback_scope(scope, provider, hash, success),
+        None => record_playback(provider, hash, success),
+    }
 }
 
 async fn resolve_real_debrid_download(
