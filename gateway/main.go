@@ -101,15 +101,23 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 	}
 	id := strings.TrimSuffix(idParam, ".json")
 
-	reqBody, _ := json.Marshal(map[string]interface{}{
-		"stremio_id":    id,
-		"install_token": token,
-		"prefs": map[string]interface{}{
+	client := NewAppwriteClient()
+	prefs, err := client.GetUserPreferences(token)
+	if err != nil {
+		log.Printf("Warning: Failed to fetch preferences for token %s: %v", token, err)
+		// Fallback if user not found or error
+		prefs = map[string]interface{}{
 			"torbox_api_key":      "",
 			"real_debrid_api_key": "",
 			"max_resolution":      "4K",
 			"exclude_av1":         false,
-		},
+		}
+	}
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"stremio_id":    id,
+		"install_token": token,
+		"prefs":         prefs,
 	})
 
 	resp, err := http.Post(coreUrl+"/internal/resolve", "application/json", bytes.NewBuffer(reqBody))
