@@ -1,6 +1,6 @@
 FROM denoland/deno:alpine
 WORKDIR /app
 COPY . .
-RUN deno cache main.ts
+RUN deno task build
 EXPOSE 8000
-CMD ["task", "start"]
+CMD ["task", "preview"]
