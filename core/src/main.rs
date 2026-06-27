@@ -1,10 +1,7 @@
 pub mod api;
 pub mod engines;
 
-use axum::{
-    http::Method,
-    Router,
-};
+use axum::{http::Method, Router};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 

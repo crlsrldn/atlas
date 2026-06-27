@@ -34,19 +34,13 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
 
     let token = req.install_token.as_deref().unwrap_or("demo");
 
-    let streams = crate::engines::playback::resolve_stream_for_tenant(
-        atlas_id,
-        req.prefs,
-        "global",
-        token,
-    )
-    .await;
+    let streams =
+        crate::engines::playback::resolve_stream_for_tenant(atlas_id, req.prefs, "global", token)
+            .await;
 
     Json(json!({ "streams": streams }))
 }
 
-async fn resolve_hash(
-    Path((provider, hash)): Path<(String, String)>,
-) -> axum::response::Redirect {
+async fn resolve_hash(Path((provider, hash)): Path<(String, String)>) -> axum::response::Redirect {
     crate::api::resolve::handle_resolve_redirect(&provider, &hash).await
 }

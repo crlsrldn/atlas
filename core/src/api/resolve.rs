@@ -40,7 +40,9 @@ pub async fn handle_resolve_redirect(provider: &str, hash: &str) -> Redirect {
     let prefs = current_preferences();
     match provider {
         "torbox" => resolve_torbox_with_key(hash.to_string(), prefs.torbox_api_key, None).await,
-        "realdebrid" => resolve_realdebrid_with_key(hash.to_string(), prefs.real_debrid_api_key, None).await,
+        "realdebrid" => {
+            resolve_realdebrid_with_key(hash.to_string(), prefs.real_debrid_api_key, None).await
+        }
         _ => Redirect::temporary("https://github.com/cindral/atlas"),
     }
 }

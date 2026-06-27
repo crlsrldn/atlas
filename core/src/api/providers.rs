@@ -1,4 +1,4 @@
-use axum::{http::HeaderMap, routing::get, Json, Router};
+use axum::{routing::get, Json, Router};
 use serde::Serialize;
 
 use crate::api::config::current_preferences;
@@ -17,8 +17,7 @@ pub struct ProviderStatus {
 }
 
 pub fn router() -> Router {
-    Router::new()
-        .route("/providers/status", get(provider_status))
+    Router::new().route("/providers/status", get(provider_status))
 }
 
 async fn provider_status() -> Json<Vec<ProviderStatus>> {
