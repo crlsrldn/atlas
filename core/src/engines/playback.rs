@@ -12,7 +12,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StremioStream {
-    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     pub url: String,
 }
 
@@ -256,11 +259,36 @@ fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
         .cloned()
         .collect::<Vec<_>>()
         .join(", ");
+
+    let mut specs = Vec::new();
+    specs.push(stream.resolution.clone());
+    specs.push(stream.video_codec.clone());
+    if let Some(audio) = stream.audio_codec {
+        specs.push(audio);
+    }
+    if let Some(channels) = stream.audio_channels {
+        specs.push(channels);
+    }
+    if stream.has_hdr {
+        specs.push("HDR".to_string());
+    }
+    if stream.has_dolby_vision {
+        specs.push("DV".to_string());
+    }
+    if let Some(mbps) = stream.bitrate_mbps {
+        specs.push(format!("{:.1} Mbps", mbps));
+    }
+
+    let description = format!(
+        "{}\n{}\n{}",
+        stream.title,
+        specs.join(" | "),
+        explanation
+    );
+
     StremioStream {
-        title: format!(
-            "Atlas | {} {} | Confidence {}%\n{}\n{}",
-            stream.provider_name, stream.resolution, stream.confidence, stream.title, explanation
-        ),
+        name: Some(format!("Atlas\n{}", stream.provider_name)),
+        description: Some(description),
         url: stream.url,
     }
 }
