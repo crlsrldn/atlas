@@ -5,5 +5,5 @@ primary_region = "iad"
   dockerfile = "Dockerfile"
 
 [env]
-  ATLAS_BIND_ADDR = "0.0.0.0:3000"
+  ATLAS_BIND_ADDR = "[::]:3000"
   ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-gateway-dev.fly.dev"
