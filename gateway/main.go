@@ -104,7 +104,7 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	idParam := parts[2]
 	if !strings.HasSuffix(idParam, ".json") {
 		http.NotFound(w, r)

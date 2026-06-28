@@ -60,7 +60,13 @@ async fn resolve_hash(
 
     match provider.as_str() {
         "torbox" => {
-            crate::api::resolve::resolve_torbox_with_key(hash, smart_prefs.torbox_api_key, None, req.user_agent.as_deref()).await
+            crate::api::resolve::resolve_torbox_with_key(
+                hash,
+                smart_prefs.torbox_api_key,
+                None,
+                req.user_agent.as_deref(),
+            )
+            .await
         }
         "realdebrid" => {
             crate::api::resolve::resolve_realdebrid_with_key(

@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod ai_decision;
 pub mod cache;
 pub mod history;
 pub mod identity;
@@ -9,4 +10,3 @@ pub mod ranking;
 pub mod sources;
 pub mod telemetry;
 pub mod verification;
-pub mod ai_decision;
