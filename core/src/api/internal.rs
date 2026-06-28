@@ -15,10 +15,15 @@ pub struct ResolveRequest {
     pub prefs: UserPreferences,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ResolveHashRequest {
+    pub prefs: UserPreferences,
+}
+
 pub fn router() -> Router {
     Router::new()
         .route("/internal/resolve", post(resolve))
-        .route("/internal/resolve_hash/:provider/:hash", get(resolve_hash))
+        .route("/internal/resolve_hash/:provider/:hash", post(resolve_hash))
 }
 
 async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
@@ -41,6 +46,22 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
     Json(json!({ "streams": streams }))
 }
 
-async fn resolve_hash(Path((provider, hash)): Path<(String, String)>) -> axum::response::Redirect {
-    crate::api::resolve::handle_resolve_redirect(&provider, &hash).await
+async fn resolve_hash(
+    Path((provider, hash)): Path<(String, String)>,
+    Json(req): Json<ResolveHashRequest>,
+) -> axum::response::Redirect {
+    match provider.as_str() {
+        "torbox" => {
+            crate::api::resolve::resolve_torbox_with_key(hash, req.prefs.torbox_api_key, None).await
+        }
+        "realdebrid" => {
+            crate::api::resolve::resolve_realdebrid_with_key(
+                hash,
+                req.prefs.real_debrid_api_key,
+                None,
+            )
+            .await
+        }
+        _ => axum::response::Redirect::temporary("https://github.com/cindral/atlas"),
+    }
 }

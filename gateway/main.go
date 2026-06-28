@@ -156,13 +156,37 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 
 	url := fmt.Sprintf("%s/internal/resolve_hash/%s/%s", coreUrl, provider, hash)
 
+	supabase := NewSupabaseClient()
+	prefs, err := supabase.GetUserPreferences(token)
+	if err != nil {
+		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
+		// Fallback to empty prefs or handle error appropriately.
+		prefs = map[string]interface{}{
+			"torbox_api_key":      "",
+			"real_debrid_api_key": "",
+			"max_resolution":      "4K",
+			"exclude_av1":         false,
+		}
+	}
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"prefs": prefs,
+	})
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 
-	resp, err := client.Get(url)
+	resp, err := client.Do(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
