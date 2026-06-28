@@ -279,12 +279,7 @@ fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
         specs.push(format!("{:.1} Mbps", mbps));
     }
 
-    let description = format!(
-        "{}\n{}\n{}",
-        stream.title,
-        specs.join(" | "),
-        explanation
-    );
+    let description = format!("{}\n{}\n{}", stream.title, specs.join(" | "), explanation);
 
     StremioStream {
         name: Some(format!("Atlas\n{}", stream.provider_name)),
