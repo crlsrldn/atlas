@@ -133,9 +133,10 @@ export const handler: Handlers<AdminData> = {
 
 // ─── Login View ────────────────────────────────────────────────────────────────
 function LoginView(
-  { supabaseUrl, supabaseAnonKey }: {
+  { supabaseUrl, supabaseAnonKey, error }: {
     supabaseUrl: string;
     supabaseAnonKey: string;
+    error?: string;
   },
 ) {
   return (
@@ -152,6 +153,12 @@ function LoginView(
             Sign in to view live Atlas Core metrics.
           </p>
         </div>
+
+        {error && (
+          <div class="alert alert-error mb-6">
+            <div class="flex-1">{error}</div>
+          </div>
+        )}
 
         {/* Glass card */}
         <div class="glass-card-strong p-8 rounded-2xl">
@@ -554,7 +561,19 @@ export default function AdminPage({ data }: PageProps<AdminData>) {
       <LoginView
         supabaseUrl={data.supabaseUrl}
         supabaseAnonKey={data.supabaseAnonKey}
+        error={data.error}
       />
+    );
+  }
+
+  if (data.error && !data.needsLogin) {
+    return (
+      <div class="min-h-[80vh] flex flex-col items-center justify-center px-4">
+        <div class="glass-card p-8 rounded-2xl max-w-md w-full text-center space-y-4 border-red-500/30">
+          <h2 class="text-xl font-bold text-white">Access Error</h2>
+          <p class="text-zinc-400">{data.error}</p>
+        </div>
+      </div>
     );
   }
 
