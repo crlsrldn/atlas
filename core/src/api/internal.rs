@@ -2,7 +2,7 @@ use crate::api::config::UserPreferences;
 use crate::engines::identity::AtlasID;
 use axum::{
     extract::Path,
-    routing::{get, post},
+    routing::post,
     Json, Router,
 };
 use serde::Deserialize;
