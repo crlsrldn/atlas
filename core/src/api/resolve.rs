@@ -36,8 +36,6 @@ pub fn router() -> Router {
         .route("/resolve/realdebrid/:hash", get(resolve_realdebrid))
 }
 
-
-
 async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
     let prefs = current_preferences();
     resolve_torbox_with_key(hash, prefs.torbox_api_key, None).await
