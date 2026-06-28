@@ -95,7 +95,7 @@ export const handler: Handlers<AdminData> = {
       const { count: streamsResolved, error: streamsError } = await supabase
         .from("telemetry")
         .select("*", { count: "exact", head: true })
-        .eq("event_type", "stream_resolved");
+        .eq("event_type", "playback_started");
 
       if (streamsError) throw streamsError;
 
