@@ -1,4 +1,4 @@
-import { useSignal } from "@preact/signals";
+import { useState } from "preact/hooks";
 import { getSupabaseClient } from "../utils/supabase.ts";
 
 interface AuthFormProps {
@@ -10,26 +10,29 @@ interface AuthFormProps {
 export default function AuthForm(
   { type, supabaseUrl, supabaseAnonKey }: AuthFormProps,
 ) {
-  const email = useSignal("");
-  const password = useSignal("");
-  const loading = useSignal(false);
-  const error = useSignal("");
-  const success = useSignal("");
-  const showPassword = useSignal(false);
-
-  const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    loading.value = true;
-    error.value = "";
-    success.value = "";
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
+      const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
+      
       if (type === "signup") {
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.value,
-          password: password.value,
+          email: email,
+          password: password,
+          options: {
+            emailRedirectTo: `${globalThis.location.origin}/dashboard`,
+          }
         });
         if (signUpError) throw signUpError;
 
@@ -39,11 +42,11 @@ export default function AuthForm(
           return;
         }
 
-        success.value = "Check your email for the confirmation link.";
+        setSuccess("Check your email for the confirmation link.");
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.value,
-          password: password.value,
+          email: email,
+          password: password,
         });
         if (signInError) throw signInError;
 
@@ -51,10 +54,9 @@ export default function AuthForm(
         globalThis.location.href = "/dashboard";
       }
     } catch (err: unknown) {
-      error.value = (err as Error).message ||
-        "An error occurred during authentication.";
+      setError((err as Error).message || "An error occurred during authentication.");
     } finally {
-      loading.value = false;
+      setLoading(false);
     }
   };
 
@@ -87,7 +89,7 @@ export default function AuthForm(
       </div>
 
       <form onSubmit={handleSubmit} class="space-y-5">
-        {error.value && (
+        {error && (
           <div class="alert alert-error">
             <svg
               class="w-4 h-4 mt-0.5 flex-shrink-0"
@@ -102,11 +104,11 @@ export default function AuthForm(
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <div class="flex-1">{error.value}</div>
+            <div class="flex-1">{error}</div>
           </div>
         )}
 
-        {success.value && (
+        {success && (
           <div class="alert alert-success">
             <svg
               class="w-4 h-4 mt-0.5 flex-shrink-0"
@@ -121,7 +123,7 @@ export default function AuthForm(
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <div class="flex-1">{success.value}</div>
+            <div class="flex-1">{success}</div>
           </div>
         )}
 
@@ -133,10 +135,10 @@ export default function AuthForm(
             type="email"
             class="input-field"
             placeholder="you@example.com"
-            value={email.value}
-            onInput={(e) => email.value = (e.target as HTMLInputElement).value}
+            value={email}
+            onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
             required
-            disabled={loading.value}
+            disabled={loading}
           />
         </div>
 
@@ -146,22 +148,22 @@ export default function AuthForm(
           </label>
           <div class="relative">
             <input
-              type={showPassword.value ? "text" : "password"}
+              type={showPassword ? "text" : "password"}
               class="input-field pr-10"
               placeholder="••••••••"
-              value={password.value}
+              value={password}
               onInput={(e) =>
-                password.value = (e.target as HTMLInputElement).value}
+                setPassword((e.target as HTMLInputElement).value)}
               required
-              disabled={loading.value}
+              disabled={loading}
             />
             <button
               type="button"
               class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-              onClick={() => showPassword.value = !showPassword.value}
+              onClick={() => setShowPassword(!showPassword)}
               tabIndex={-1}
             >
-              {showPassword.value
+              {showPassword
                 ? (
                   <svg
                     class="w-4 h-4"
@@ -204,9 +206,9 @@ export default function AuthForm(
         <button
           type="submit"
           class="btn-primary w-full py-2.5 mt-2 shadow-glow-sm"
-          disabled={loading.value}
+          disabled={loading}
         >
-          {loading.value
+          {loading
             ? (
               <span class="flex items-center justify-center gap-2">
                 <svg
