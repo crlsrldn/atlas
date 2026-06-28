@@ -9,11 +9,13 @@ pub struct ResolveRequest {
     pub stremio_id: String,
     pub install_token: Option<String>,
     pub prefs: UserPreferences,
+    pub user_agent: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ResolveHashRequest {
     pub prefs: UserPreferences,
+    pub user_agent: Option<String>,
 }
 
 pub fn router() -> Router {
@@ -35,8 +37,13 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
 
     let token = req.install_token.as_deref().unwrap_or("demo");
 
+    let smart_prefs = match req.user_agent.as_deref() {
+        Some(ua) => crate::engines::ai_decision::infer_capabilities(ua, req.prefs),
+        None => req.prefs,
+    };
+
     let streams =
-        crate::engines::playback::resolve_stream_for_tenant(atlas_id, req.prefs, "global", token)
+        crate::engines::playback::resolve_stream_for_tenant(atlas_id, smart_prefs, "global", token)
             .await;
 
     Json(json!({ "streams": streams }))
@@ -46,15 +53,21 @@ async fn resolve_hash(
     Path((provider, hash)): Path<(String, String)>,
     Json(req): Json<ResolveHashRequest>,
 ) -> axum::response::Response {
+    let smart_prefs = match req.user_agent.as_deref() {
+        Some(ua) => crate::engines::ai_decision::infer_capabilities(ua, req.prefs),
+        None => req.prefs,
+    };
+
     match provider.as_str() {
         "torbox" => {
-            crate::api::resolve::resolve_torbox_with_key(hash, req.prefs.torbox_api_key, None).await
+            crate::api::resolve::resolve_torbox_with_key(hash, smart_prefs.torbox_api_key, None, req.user_agent.as_deref()).await
         }
         "realdebrid" => {
             crate::api::resolve::resolve_realdebrid_with_key(
                 hash,
-                req.prefs.real_debrid_api_key,
+                smart_prefs.real_debrid_api_key,
                 None,
+                req.user_agent.as_deref(),
             )
             .await
         }

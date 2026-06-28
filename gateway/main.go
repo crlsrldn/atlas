@@ -126,10 +126,13 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 		}
 	}
 
+	userAgent := r.Header.Get("User-Agent")
+
 	reqBody, _ := json.Marshal(map[string]interface{}{
 		"stremio_id":    id,
 		"install_token": token,
 		"prefs":         prefs,
+		"user_agent":    userAgent,
 	})
 
 	resp, err := http.Post(coreUrl+"/internal/resolve", "application/json", bytes.NewBuffer(reqBody))
@@ -169,8 +172,11 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 		}
 	}
 
+	userAgent := r.Header.Get("User-Agent")
+
 	reqBody, _ := json.Marshal(map[string]interface{}{
-		"prefs": prefs,
+		"prefs":      prefs,
+		"user_agent": userAgent,
 	})
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))

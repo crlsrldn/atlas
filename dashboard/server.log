@@ -1,0 +1,12 @@
+[0m[33mWarning[0m `"nodeModulesDir": true` is deprecated in Deno 2.0. Use `"nodeModulesDir": "auto"` instead.
+    at file:///Users/carbonite/.gemini/antigravity/worktrees/atlas/refactor-dashboard-ui-layout/dashboard/deno.json
+[0m[32mTask[0m [0m[36mstart[0m deno run -A --watch=static/,routes/ dev.ts
+[0m[38;5;12mWatcher[0m Process started.
+[0m[33mWarning[0m `"nodeModulesDir": true` is deprecated in Deno 2.0. Use `"nodeModulesDir": "auto"` instead.
+    at file:///Users/carbonite/.gemini/antigravity/worktrees/atlas/refactor-dashboard-ui-layout/dashboard/deno.json
+The manifest has been generated for 9 routes and 4 islands.
+(node:14939) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+
+[48;5;121m[38;5;0m 🍋 Fresh ready [39m[49m
+    [1mLocal:[22m [36mhttp://localhost:8001/[39m
+

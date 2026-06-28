@@ -21,6 +21,8 @@ pub struct UserPreferences {
     pub prefer_hdr: bool,
     #[serde(default)]
     pub exclude_av1: bool,
+    #[serde(default)]
+    pub exclude_hevc: bool,
     #[serde(default = "default_profile")]
     pub profile: String,
     #[serde(default)]
@@ -46,6 +48,7 @@ pub struct PublicUserPreferences {
     pub max_resolution: String,
     pub prefer_hdr: bool,
     pub exclude_av1: bool,
+    pub exclude_hevc: bool,
     pub profile: String,
     pub mobile_data_saver: bool,
     pub home_theater_mode: bool,
@@ -66,6 +69,7 @@ impl From<UserPreferences> for PublicUserPreferences {
             max_resolution: prefs.max_resolution,
             prefer_hdr: prefs.prefer_hdr,
             exclude_av1: prefs.exclude_av1,
+            exclude_hevc: prefs.exclude_hevc,
             profile: prefs.profile,
             mobile_data_saver: prefs.mobile_data_saver,
             home_theater_mode: prefs.home_theater_mode,
@@ -85,6 +89,7 @@ impl Default for UserPreferences {
             max_resolution: "4K".to_string(),
             prefer_hdr: true,
             exclude_av1: false,
+            exclude_hevc: false,
             profile: default_profile(),
             mobile_data_saver: false,
             home_theater_mode: false,

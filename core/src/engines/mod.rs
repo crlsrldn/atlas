@@ -9,3 +9,4 @@ pub mod ranking;
 pub mod sources;
 pub mod telemetry;
 pub mod verification;
+pub mod ai_decision;

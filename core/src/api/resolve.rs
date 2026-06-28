@@ -39,13 +39,14 @@ pub fn router() -> Router {
 
 async fn resolve_torbox(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
-    resolve_torbox_with_key(hash, prefs.torbox_api_key, None).await
+    resolve_torbox_with_key(hash, prefs.torbox_api_key, None, None).await
 }
 
 pub async fn resolve_torbox_with_key(
     hash: String,
     api_key: String,
     history_scope: Option<&str>,
+    user_agent: Option<&str>,
 ) -> axum::response::Response {
     if api_key.is_empty() {
         return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
@@ -80,7 +81,8 @@ pub async fn resolve_torbox_with_key(
                         "playback_started",
                         serde_json::json!({
                             "provider": "torbox",
-                            "success": true
+                            "success": true,
+                            "user_agent": user_agent
                         }),
                     );
 
@@ -95,7 +97,8 @@ pub async fn resolve_torbox_with_key(
         "playback_started",
         serde_json::json!({
             "provider": "torbox",
-            "success": false
+            "success": false,
+            "user_agent": user_agent
         }),
     );
 
@@ -231,13 +234,14 @@ struct RDUnrestrictResponse {
 
 async fn resolve_realdebrid(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
-    resolve_realdebrid_with_key(hash, prefs.real_debrid_api_key, None).await
+    resolve_realdebrid_with_key(hash, prefs.real_debrid_api_key, None, None).await
 }
 
 pub async fn resolve_realdebrid_with_key(
     hash: String,
     api_key: String,
     history_scope: Option<&str>,
+    user_agent: Option<&str>,
 ) -> axum::response::Response {
     if api_key.is_empty() {
         return (StatusCode::FOUND, [("Location", "https://real-debrid.com")]).into_response();
@@ -264,7 +268,8 @@ pub async fn resolve_realdebrid_with_key(
                     "playback_started",
                     serde_json::json!({
                         "provider": "real_debrid",
-                        "success": true
+                        "success": true,
+                        "user_agent": user_agent
                     }),
                 );
                 return (StatusCode::FOUND, [("Location", download)]).into_response();
@@ -277,7 +282,8 @@ pub async fn resolve_realdebrid_with_key(
         "playback_started",
         serde_json::json!({
             "provider": "real_debrid",
-            "success": false
+            "success": false,
+            "user_agent": user_agent
         }),
     );
 
