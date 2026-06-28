@@ -15,11 +15,11 @@ pub fn infer_capabilities(user_agent: &str, mut prefs: UserPreferences) -> UserP
     }
 
     // Rule 2: Mobile devices should default to lower resolution to save bandwidth
-    if ua.contains("mobile") || ua.contains("android") || ua.contains("iphone") {
-        if prefs.max_resolution == "4K" {
-            tracing::info!("AI Decision: Mobile device detected, lowering max_resolution to 1080p");
-            prefs.max_resolution = "1080p".to_string();
-        }
+    if (ua.contains("mobile") || ua.contains("android") || ua.contains("iphone"))
+        && prefs.max_resolution == "4K"
+    {
+        tracing::info!("AI Decision: Mobile device detected, lowering max_resolution to 1080p");
+        prefs.max_resolution = "1080p".to_string();
     }
 
     // Rule 3: Web Browsers (Chrome/Firefox/Safari) generally cannot play HEVC natively
