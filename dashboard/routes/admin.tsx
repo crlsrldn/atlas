@@ -4,9 +4,19 @@ import { createClient } from "@supabase/supabase-js";
 import { getAdminSupabaseClient } from "../utils/admin_supabase.ts";
 import AdminLogin from "../islands/AdminLogin.tsx";
 
+interface ProviderHealth {
+  name: string;
+  status: string;
+  color: string;
+  latencyMs: number | null;
+}
+
 interface AdminData {
   totalUsers: number;
   streamsResolved: number;
+  successRate: string;
+  avgLatency: string;
+  providers: ProviderHealth[];
   error?: string;
   needsLogin?: boolean;
   supabaseUrl?: string;
@@ -22,6 +32,9 @@ export const handler: Handlers<AdminData> = {
       return ctx.render({
         totalUsers: 0,
         streamsResolved: 0,
+        successRate: "—",
+        avgLatency: "—",
+        providers: [],
         error: "Supabase configuration missing in environment.",
       });
     }
@@ -33,6 +46,9 @@ export const handler: Handlers<AdminData> = {
       return ctx.render({
         totalUsers: 0,
         streamsResolved: 0,
+        successRate: "—",
+        avgLatency: "—",
+        providers: [],
         needsLogin: true,
         supabaseUrl,
         supabaseAnonKey,
@@ -51,6 +67,9 @@ export const handler: Handlers<AdminData> = {
       return ctx.render({
         totalUsers: 0,
         streamsResolved: 0,
+        successRate: "—",
+        avgLatency: "—",
+        providers: [],
         needsLogin: true,
         supabaseUrl,
         supabaseAnonKey,
@@ -62,6 +81,9 @@ export const handler: Handlers<AdminData> = {
       return ctx.render({
         totalUsers: 0,
         streamsResolved: 0,
+        successRate: "—",
+        avgLatency: "—",
+        providers: [],
         error:
           "Supabase service role key not configured. Cannot load live stats.",
       });
@@ -78,6 +100,9 @@ export const handler: Handlers<AdminData> = {
       return ctx.render({
         totalUsers: 0,
         streamsResolved: 0,
+        successRate: "—",
+        avgLatency: "—",
+        providers: [],
         needsLogin: true,
         supabaseUrl,
         supabaseAnonKey,
@@ -99,15 +124,96 @@ export const handler: Handlers<AdminData> = {
 
       if (streamsError) throw streamsError;
 
+      // Fetch last 1000 telemetry events to compute advanced stats
+      const { data: telemetryEvents, error: telemetryError } = await supabase
+        .from("telemetry")
+        .select("event_type, event_data, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+
+      if (telemetryError) throw telemetryError;
+
+      let playbackTotal = 0;
+      let playbackSuccess = 0;
+      let latencyTotal = 0;
+      let latencyCount = 0;
+
+      // Map to store latest provider health
+      const providerLatestHealth = new Map<
+        string,
+        { healthy: boolean; latency_ms: number | null }
+      >();
+
+      if (telemetryEvents) {
+        // Since it's sorted descending, we iterate backwards or just rely on finding the first occurrence
+        for (const event of telemetryEvents) {
+          if (event.event_type === "playback_started") {
+            playbackTotal++;
+            if (event.event_data && event.event_data.success) {
+              playbackSuccess++;
+            }
+          } else if (event.event_type === "provider_health") {
+            const pName = event.event_data?.provider;
+            const isHealthy = event.event_data?.healthy;
+            const latencyMs = event.event_data?.latency_ms;
+
+            if (pName && !providerLatestHealth.has(pName)) {
+              providerLatestHealth.set(pName, {
+                healthy: isHealthy,
+                latency_ms: latencyMs || null,
+              });
+            }
+
+            if (typeof latencyMs === "number" && latencyMs > 0) {
+              latencyTotal += latencyMs;
+              latencyCount++;
+            }
+          }
+        }
+      }
+
+      const successRate = playbackTotal > 0
+        ? `${((playbackSuccess / playbackTotal) * 100).toFixed(1)}%`
+        : "—";
+
+      const avgLatency = latencyCount > 0
+        ? `${(latencyTotal / latencyCount).toFixed(0)}ms`
+        : "—";
+
+      // Transform map into ProviderHealth array
+      const providers: ProviderHealth[] = ["TorBox", "Real Debrid"].map(
+        (name) => {
+          const id = name.toLowerCase().replace(" ", "");
+          const health = providerLatestHealth.get(id);
+
+          if (!health) {
+            return { name, status: "Unknown", color: "amber", latencyMs: null };
+          }
+
+          return {
+            name,
+            status: health.healthy ? "Operational" : "Degraded",
+            color: health.healthy ? "emerald" : "amber",
+            latencyMs: health.latency_ms,
+          };
+        },
+      );
+
       return ctx.render({
         totalUsers: totalUsers || 0,
         streamsResolved: streamsResolved || 0,
+        successRate,
+        avgLatency,
+        providers,
       });
     } catch (err) {
       console.error("Failed to load admin stats:", err);
       return ctx.render({
         totalUsers: 0,
         streamsResolved: 0,
+        successRate: "—",
+        avgLatency: "—",
+        providers: [],
         error: "Failed to fetch live stats from the database.",
       });
     }
@@ -223,7 +329,7 @@ function DashboardView({ data }: { data: AdminData }) {
     },
     {
       label: "Success Rate",
-      value: data.streamsResolved > 0 ? "99.2%" : "—",
+      value: data.successRate,
       change: "+0.3%",
       positive: true,
       color: "emerald",
@@ -246,7 +352,7 @@ function DashboardView({ data }: { data: AdminData }) {
     },
     {
       label: "Avg. Resolution",
-      value: "<2s",
+      value: data.avgLatency,
       change: "−0.1s",
       positive: true,
       color: "amber",
@@ -428,16 +534,17 @@ function DashboardView({ data }: { data: AdminData }) {
                 color: "emerald",
               },
               {
-                name: "Metadata Engine",
-                status: "Operational",
-                color: "emerald",
-              },
-              {
                 name: "Supabase DB",
                 status: data.error ? "Degraded" : "Operational",
                 color: data.error ? "amber" : "emerald",
               },
-              { name: "Meilisearch", status: "Operational", color: "emerald" },
+              ...data.providers.map((p) => ({
+                name: p.name,
+                status: p.latencyMs
+                  ? `${p.status} (${p.latencyMs}ms)`
+                  : p.status,
+                color: p.color,
+              })),
             ].map((s) => (
               <div
                 key={s.name}
