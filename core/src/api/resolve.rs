@@ -3,7 +3,8 @@ use crate::engines::history::{
     fallback_candidates, fallback_candidates_scope, media_key_from_hash, media_key_from_hash_scope,
     record_playback, record_playback_scope,
 };
-use axum::{extract::Path, response::Redirect, routing::get, Router};
+use axum::http::StatusCode;
+use axum::{extract::Path, response::IntoResponse, routing::get, Router};
 use reqwest;
 use serde::Deserialize;
 use serde_json::Value;
@@ -36,7 +37,7 @@ pub fn router() -> Router {
         .route("/resolve/realdebrid/:hash", get(resolve_realdebrid))
 }
 
-async fn resolve_torbox(Path(hash): Path<String>) -> Redirect {
+async fn resolve_torbox(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
     resolve_torbox_with_key(hash, prefs.torbox_api_key, None).await
 }
@@ -45,9 +46,9 @@ pub async fn resolve_torbox_with_key(
     hash: String,
     api_key: String,
     history_scope: Option<&str>,
-) -> Redirect {
+) -> axum::response::Response {
     if api_key.is_empty() {
-        return Redirect::temporary("https://torbox.app");
+        return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
     }
 
     let client = reqwest::Client::new();
@@ -83,7 +84,7 @@ pub async fn resolve_torbox_with_key(
                         }),
                     );
 
-                    return Redirect::temporary(&dl_url);
+                    return (StatusCode::FOUND, [("Location", dl_url)]).into_response();
                 }
             }
         }
@@ -228,7 +229,7 @@ struct RDUnrestrictResponse {
     download: String,
 }
 
-async fn resolve_realdebrid(Path(hash): Path<String>) -> Redirect {
+async fn resolve_realdebrid(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
     resolve_realdebrid_with_key(hash, prefs.real_debrid_api_key, None).await
 }
@@ -237,9 +238,9 @@ pub async fn resolve_realdebrid_with_key(
     hash: String,
     api_key: String,
     history_scope: Option<&str>,
-) -> Redirect {
+) -> axum::response::Response {
     if api_key.is_empty() {
-        return Redirect::temporary("https://real-debrid.com");
+        return (StatusCode::FOUND, [("Location", "https://real-debrid.com")]).into_response();
     }
 
     let client = reqwest::Client::new();
@@ -266,7 +267,7 @@ pub async fn resolve_realdebrid_with_key(
                         "success": true
                     }),
                 );
-                return Redirect::temporary(&download);
+                return (StatusCode::FOUND, [("Location", download)]).into_response();
             }
         }
     }
@@ -287,7 +288,7 @@ fn fallback_redirect_for_hash(
     history_scope: Option<&str>,
     hash: &str,
     provider_home: &'static str,
-) -> Redirect {
+) -> axum::response::Response {
     let media_key = match history_scope {
         Some(scope) => media_key_from_hash_scope(scope, hash),
         None => media_key_from_hash(hash),
@@ -304,11 +305,11 @@ fn fallback_redirect_for_hash(
             .into_iter()
             .find(|candidate| !candidate.hash.eq_ignore_ascii_case(&failed_hash_fragment))
         {
-            return Redirect::temporary(&candidate.url);
+            return (StatusCode::FOUND, [("Location", candidate.url.clone())]).into_response();
         }
     }
 
-    Redirect::temporary(provider_home)
+    (StatusCode::FOUND, [("Location", provider_home)]).into_response()
 }
 
 fn record_provider_playback(
@@ -366,17 +367,20 @@ async fn resolve_real_debrid_download(
         return None;
     }
 
-    let info = client
-        .get(info_url)
-        .bearer_auth(api_key)
-        .send()
-        .await
-        .ok()?
-        .json::<RDInfoResponse>()
-        .await
-        .ok()?;
-
-    let link = info.links.first()?;
+    // Retry loop to wait for Real-Debrid backend to transition torrent to downloaded state
+    let mut link = None;
+    for _ in 0..10 {
+        if let Ok(res) = client.get(&info_url).bearer_auth(api_key).send().await {
+            if let Ok(info) = res.json::<RDInfoResponse>().await {
+                if let Some(l) = info.links.first() {
+                    link = Some(l.clone());
+                    break;
+                }
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+    let link = link?;
 
     client
         .post("https://api.real-debrid.com/rest/1.0/unrestrict/link")

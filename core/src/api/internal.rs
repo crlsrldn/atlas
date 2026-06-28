@@ -1,10 +1,6 @@
 use crate::api::config::UserPreferences;
 use crate::engines::identity::AtlasID;
-use axum::{
-    extract::Path,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::Path, response::IntoResponse, routing::post, Json, Router};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -49,7 +45,7 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
 async fn resolve_hash(
     Path((provider, hash)): Path<(String, String)>,
     Json(req): Json<ResolveHashRequest>,
-) -> axum::response::Redirect {
+) -> axum::response::Response {
     match provider.as_str() {
         "torbox" => {
             crate::api::resolve::resolve_torbox_with_key(hash, req.prefs.torbox_api_key, None).await
@@ -62,6 +58,10 @@ async fn resolve_hash(
             )
             .await
         }
-        _ => axum::response::Redirect::temporary("https://github.com/cindral/atlas"),
+        _ => (
+            axum::http::StatusCode::FOUND,
+            [("Location", "https://github.com/cindral/atlas")],
+        )
+            .into_response(),
     }
 }

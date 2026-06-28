@@ -220,7 +220,7 @@ fn hosted_or_local_url(
     let base_url = std::env::var("ATLAS_PUBLIC_BASE_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:3000".to_string());
     Some(format!(
-        "{}/stremio/{}/resolve/{}/{}/video.mp4",
+        "{}/stremio/{}/resolve/{}/{}/play.mp4",
         base_url.trim_end_matches('/'),
         token,
         provider_slug,
