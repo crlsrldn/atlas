@@ -67,6 +67,24 @@ export const handler: Handlers<AdminData> = {
       });
     }
 
+    // Verify user is an admin
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== "admin") {
+      return ctx.render({
+        totalUsers: 0,
+        streamsResolved: 0,
+        needsLogin: true,
+        supabaseUrl,
+        supabaseAnonKey,
+        error: "Access denied. Administrator privileges required.",
+      });
+    }
+
     try {
       const { count: totalUsers, error: usersError } = await supabase
         .from("preferences")
