@@ -78,10 +78,13 @@ func handleManifest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	manifest := map[string]interface{}{
-		"id":         "com.cindrallabs.atlas",
-		"resources":  []string{"stream"},
-		"types":      []string{"movie", "series"},
-		"idPrefixes": []string{"tt"},
+		"id":          "com.cindrallabs.atlas",
+		"name":        "Atlas",
+		"version":     "1.0.0",
+		"description": "Premium AI-powered multi-source streaming",
+		"resources":   []string{"stream"},
+		"types":       []string{"movie", "series"},
+		"idPrefixes":  []string{"tt"},
 	}
 
 	json.NewEncoder(w).Encode(manifest)
