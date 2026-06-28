@@ -139,7 +139,7 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 
 func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	parts := strings.Split(rest, "/")
-	if len(parts) != 3 {
+	if len(parts) < 3 {
 		http.NotFound(w, r)
 		return
 	}
