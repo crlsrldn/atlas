@@ -5,7 +5,6 @@ export default function App({ Component, url }: PageProps) {
 
   const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/dashboard", label: "My Setup" },
     { href: "/login", label: "Sign In" },
   ];
 

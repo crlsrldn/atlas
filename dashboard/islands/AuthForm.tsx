@@ -27,11 +27,18 @@ export default function AuthForm(
 
     try {
       if (type === "signup") {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.value,
           password: password.value,
         });
         if (signUpError) throw signUpError;
+
+        if (data.session) {
+          // Auto-login if email confirmations are disabled
+          globalThis.location.href = "/dashboard";
+          return;
+        }
+
         success.value = "Check your email for the confirmation link.";
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -197,7 +204,7 @@ export default function AuthForm(
         <button
           type="submit"
           class="btn-primary w-full py-2.5 mt-2 shadow-glow-sm"
-          disabled={loading.value || !email.value || !password.value}
+          disabled={loading.value}
         >
           {loading.value
             ? (
