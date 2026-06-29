@@ -6,15 +6,15 @@ export const handler: Handlers = {
       const body = await req.json();
       const { torbox_api_key, real_debrid_api_key } = body;
 
-      const results: any = {
+      const results: Record<string, unknown> = {
         torbox: null,
-        real_debrid: null
+        real_debrid: null,
       };
 
       if (torbox_api_key) {
         try {
           const res = await fetch("https://api.torbox.app/v1/api/user/me", {
-            headers: { "Authorization": `Bearer ${torbox_api_key}` }
+            headers: { "Authorization": `Bearer ${torbox_api_key}` },
           });
           if (res.ok) {
             const data = await res.json();
@@ -30,7 +30,7 @@ export const handler: Handlers = {
           } else {
             results.torbox = { valid: false };
           }
-        } catch (e) {
+        } catch (_e) {
           results.torbox = { valid: false, error: "Network error" };
         }
       }
@@ -38,7 +38,7 @@ export const handler: Handlers = {
       if (real_debrid_api_key) {
         try {
           const res = await fetch("https://api.real-debrid.com/rest/1.0/user", {
-            headers: { "Authorization": `Bearer ${real_debrid_api_key}` }
+            headers: { "Authorization": `Bearer ${real_debrid_api_key}` },
           });
           if (res.ok) {
             const data = await res.json();
@@ -50,19 +50,19 @@ export const handler: Handlers = {
           } else {
             results.real_debrid = { valid: false };
           }
-        } catch (e) {
+        } catch (_e) {
           results.real_debrid = { valid: false, error: "Network error" };
         }
       }
 
       return new Response(JSON.stringify(results), {
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
-    } catch (e) {
+    } catch (_e) {
       return new Response(JSON.stringify({ error: "Invalid request body" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
     }
-  }
+  },
 };

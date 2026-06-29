@@ -39,7 +39,11 @@ export default function App({ Component, url }: PageProps) {
         </div>
 
         {/* ── Navigation ── */}
-        <Navbar pathname={pathname} supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey} />
+        <Navbar
+          pathname={pathname}
+          supabaseUrl={supabaseUrl}
+          supabaseAnonKey={supabaseAnonKey}
+        />
 
         {/* ── Main content ── */}
         <main class="flex-grow flex flex-col relative z-10 w-full">

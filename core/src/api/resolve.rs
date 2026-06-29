@@ -163,7 +163,7 @@ fn select_best_video_file(
     }
 
     if let (Some(s), Some(e)) = (season, episode) {
-        let mut matched = candidates
+        let matched = candidates
             .iter()
             .filter(|(_, _, name)| episode_marker_matches(name, s, e))
             .collect::<Vec<_>>();
@@ -194,7 +194,7 @@ fn select_best_video_file_from_json(
     }
 
     if let (Some(s), Some(e)) = (season, episode) {
-        let mut matched = candidates
+        let matched = candidates
             .iter()
             .filter(|(_, _, name)| episode_marker_matches(name, s, e))
             .collect::<Vec<_>>();
@@ -283,8 +283,6 @@ struct RDFile {
     path: String,
     #[serde(default)]
     bytes: u64,
-    #[serde(default)]
-    selected: u8,
 }
 
 #[derive(Deserialize)]
@@ -532,19 +530,16 @@ mod tests {
                 id: 1,
                 path: "/poster.jpg".to_string(),
                 bytes: 20_000,
-                selected: 0,
             },
             RDFile {
                 id: 2,
                 path: "/sample.mkv".to_string(),
                 bytes: 100,
-                selected: 0,
             },
             RDFile {
                 id: 3,
                 path: "/movie.mkv".to_string(),
                 bytes: 10_000,
-                selected: 0,
             },
         ];
 

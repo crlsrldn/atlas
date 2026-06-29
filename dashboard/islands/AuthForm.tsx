@@ -25,14 +25,14 @@ export default function AuthForm(
 
     try {
       const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
-      
+
       if (type === "signup") {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email,
           password: password,
           options: {
             emailRedirectTo: `${globalThis.location.origin}/dashboard`,
-          }
+          },
         });
         if (signUpError) throw signUpError;
 
@@ -54,7 +54,9 @@ export default function AuthForm(
         globalThis.location.href = "/dashboard";
       }
     } catch (err: unknown) {
-      setError((err as Error).message || "An error occurred during authentication.");
+      setError(
+        (err as Error).message || "An error occurred during authentication.",
+      );
     } finally {
       setLoading(false);
     }
@@ -152,8 +154,7 @@ export default function AuthForm(
               class="input-field pr-10"
               placeholder="••••••••"
               value={password}
-              onInput={(e) =>
-                setPassword((e.target as HTMLInputElement).value)}
+              onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
               required
               disabled={loading}
             />

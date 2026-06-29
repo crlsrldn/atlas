@@ -7,7 +7,9 @@ interface NavbarProps {
   supabaseAnonKey: string;
 }
 
-export default function Navbar({ pathname, supabaseUrl, supabaseAnonKey }: NavbarProps) {
+export default function Navbar(
+  { pathname, supabaseUrl, supabaseAnonKey }: NavbarProps,
+) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -38,13 +40,13 @@ export default function Navbar({ pathname, supabaseUrl, supabaseAnonKey }: Navba
 
   const navLinks = isAuthenticated
     ? [
-        { href: "/", label: "Home" },
-        { href: "/dashboard", label: "Dashboard" },
-      ]
+      { href: "/", label: "Home" },
+      { href: "/dashboard", label: "Dashboard" },
+    ]
     : [
-        { href: "/", label: "Home" },
-        { href: "/login", label: "Sign In" },
-      ];
+      { href: "/", label: "Home" },
+      { href: "/login", label: "Sign In" },
+    ];
 
   return (
     <header class="sticky top-0 z-50 w-full">
@@ -65,20 +67,26 @@ export default function Navbar({ pathname, supabaseUrl, supabaseAnonKey }: Navba
         {/* Nav links */}
         <div class="hidden sm:flex items-center gap-1">
           {navLinks.map(({ href, label }) => {
-            const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
+            const isActive = pathname === href ||
+              (href !== "/" && pathname.startsWith(href));
             return (
               <a
                 key={href}
                 href={href}
-                class={`nav-link ${isActive ? "nav-link-active text-indigo-300 bg-indigo-500/10" : ""}`}
+                class={`nav-link ${
+                  isActive
+                    ? "nav-link-active text-indigo-300 bg-indigo-500/10"
+                    : ""
+                }`}
               >
                 {label}
               </a>
             );
           })}
-          
+
           {isAuthenticated && (
             <button
+              type="button"
               onClick={handleSignOut}
               class="nav-link text-zinc-400 hover:text-white hover:bg-white/5 transition-colors ml-2"
             >
@@ -95,7 +103,11 @@ export default function Navbar({ pathname, supabaseUrl, supabaseAnonKey }: Navba
             </a>
           ))}
           {isAuthenticated && (
-            <button onClick={handleSignOut} class="nav-link text-xs">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              class="nav-link text-xs"
+            >
               Sign Out
             </button>
           )}
