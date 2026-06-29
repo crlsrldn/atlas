@@ -158,7 +158,7 @@ pub async fn resolve_detailed_streams_with_preferences(
             Some(PlaybackCandidate {
                 provider: entry.source.provider_name.clone(),
                 hash: entry.source.hash.clone()?,
-                url: hosted_or_local_url(&entry.source, install_token)?,
+                url: hosted_or_local_url(&atlas_id, &entry.source, install_token)?,
                 score: entry.score,
             })
         })
@@ -178,7 +178,7 @@ pub async fn resolve_detailed_streams_with_preferences(
         .into_iter()
         .filter(|r| r.score > 0)
         .filter_map(|entry| {
-            let url = hosted_or_local_url(&entry.source, install_token)?;
+            let url = hosted_or_local_url(&atlas_id, &entry.source, install_token)?;
             Some(DetailedStream {
                 title: entry.source.title.clone(),
                 provider_name: entry.source.provider_name.clone(),
@@ -204,6 +204,7 @@ pub async fn resolve_detailed_streams_with_preferences(
 }
 
 fn hosted_or_local_url(
+    atlas_id: &AtlasID,
     source: &crate::engines::sources::SourceResult,
     install_token: Option<&str>,
 ) -> Option<String> {
@@ -219,13 +220,20 @@ fn hosted_or_local_url(
     };
     let base_url = std::env::var("ATLAS_PUBLIC_BASE_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:3000".to_string());
-    Some(format!(
+        
+    let mut final_url = format!(
         "{}/stremio/{}/resolve/{}/{}/play.mp4",
         base_url.trim_end_matches('/'),
         token,
         provider_slug,
         hash
-    ))
+    );
+
+    if let Some((season, episode)) = atlas_id.season_episode() {
+        final_url.push_str(&format!("?season={}&episode={}", season, episode));
+    }
+
+    Some(final_url)
 }
 
 pub async fn resolve_stream_for_tenant(

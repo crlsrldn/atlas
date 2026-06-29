@@ -16,6 +16,8 @@ pub struct ResolveRequest {
 pub struct ResolveHashRequest {
     pub prefs: UserPreferences,
     pub user_agent: Option<String>,
+    pub season: Option<u32>,
+    pub episode: Option<u32>,
 }
 
 pub fn router() -> Router {
@@ -65,6 +67,8 @@ async fn resolve_hash(
                 smart_prefs.torbox_api_key,
                 None,
                 req.user_agent.as_deref(),
+                req.season,
+                req.episode,
             )
             .await
         }
@@ -74,6 +78,8 @@ async fn resolve_hash(
                 smart_prefs.real_debrid_api_key,
                 None,
                 req.user_agent.as_deref(),
+                req.season,
+                req.episode,
             )
             .await
         }

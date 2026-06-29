@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -174,10 +175,24 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 
 	userAgent := r.Header.Get("User-Agent")
 
-	reqBody, _ := json.Marshal(map[string]interface{}{
+	payload := map[string]interface{}{
 		"prefs":      prefs,
 		"user_agent": userAgent,
-	})
+	}
+
+	// Forward season and episode if present
+	if season := r.URL.Query().Get("season"); season != "" {
+		if s, err := strconv.Atoi(season); err == nil {
+			payload["season"] = s
+		}
+	}
+	if episode := r.URL.Query().Get("episode"); episode != "" {
+		if e, err := strconv.Atoi(episode); err == nil {
+			payload["episode"] = e
+		}
+	}
+
+	reqBody, _ := json.Marshal(payload)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
 	if err != nil {

@@ -39,7 +39,7 @@ pub fn router() -> Router {
 
 async fn resolve_torbox(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
-    resolve_torbox_with_key(hash, prefs.torbox_api_key, None, None).await
+    resolve_torbox_with_key(hash, prefs.torbox_api_key, None, None, None, None).await
 }
 
 pub async fn resolve_torbox_with_key(
@@ -47,6 +47,8 @@ pub async fn resolve_torbox_with_key(
     api_key: String,
     history_scope: Option<&str>,
     user_agent: Option<&str>,
+    season: Option<u32>,
+    episode: Option<u32>,
 ) -> axum::response::Response {
     if api_key.is_empty() {
         return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
@@ -68,11 +70,13 @@ pub async fn resolve_torbox_with_key(
             if json.success {
                 if let Some(data) = json.data {
                     let torrent_id = data.torrent_id;
-                    let file_id = match select_largest_video_file(&data.files) {
+                    let file_id = match select_best_video_file(&data.files, season, episode) {
                         Some(file_id) => file_id,
-                        None => find_largest_torbox_file_id(&client, &api_key, torrent_id)
-                            .await
-                            .unwrap_or(1),
+                        None => {
+                            find_best_torbox_file_id(&client, &api_key, torrent_id, season, episode)
+                                .await
+                                .unwrap_or(1)
+                        }
                     };
                     let dl_url = format!("https://api.torbox.app/v1/api/torrents/requestdl?token={}&torrent_id={}&file_id={}&redirect=true", api_key, torrent_id, file_id);
 
@@ -105,10 +109,12 @@ pub async fn resolve_torbox_with_key(
     fallback_redirect_for_hash(history_scope, &hash, "https://torbox.app")
 }
 
-async fn find_largest_torbox_file_id(
+async fn find_best_torbox_file_id(
     client: &reqwest::Client,
     api_key: &str,
     torrent_id: u64,
+    season: Option<u32>,
+    episode: Option<u32>,
 ) -> Option<u64> {
     let candidates = [
         format!(
@@ -128,7 +134,7 @@ async fn find_largest_torbox_file_id(
         let Ok(json) = response.json::<Value>().await else {
             continue;
         };
-        if let Some(file_id) = select_largest_video_file_from_json(&json) {
+        if let Some(file_id) = select_best_video_file_from_json(&json, season, episode) {
             return Some(file_id);
         }
     }
@@ -136,29 +142,84 @@ async fn find_largest_torbox_file_id(
     None
 }
 
-fn select_largest_video_file(files: &[TorboxFile]) -> Option<u64> {
-    files
+fn select_best_video_file(
+    files: &[TorboxFile],
+    season: Option<u32>,
+    episode: Option<u32>,
+) -> Option<u64> {
+    let candidates = files
         .iter()
         .filter(|file| is_video_name(file.name.as_deref().unwrap_or_default()))
         .filter_map(|file| {
             let id = file.file_id.or(file.id)?;
             let size = file.size_bytes.or(file.size).unwrap_or(0);
-            Some((id, size))
+            let name = file.name.clone().unwrap_or_default();
+            Some((id, size, name))
         })
-        .max_by_key(|(_, size)| *size)
-        .map(|(id, _)| id)
-}
+        .collect::<Vec<_>>();
 
-fn select_largest_video_file_from_json(value: &Value) -> Option<u64> {
-    let mut candidates = Vec::new();
-    collect_torbox_file_candidates(value, &mut candidates);
+    if candidates.is_empty() {
+        return None;
+    }
+
+    if let (Some(s), Some(e)) = (season, episode) {
+        let mut matched = candidates
+            .iter()
+            .filter(|(_, _, name)| episode_marker_matches(name, s, e))
+            .collect::<Vec<_>>();
+        if !matched.is_empty() {
+            return matched
+                .into_iter()
+                .max_by_key(|(_, size, _)| *size)
+                .map(|(id, _, _)| *id);
+        }
+    }
+
     candidates
         .into_iter()
-        .max_by_key(|(_, size)| *size)
-        .map(|(id, _)| id)
+        .max_by_key(|(_, size, _)| *size)
+        .map(|(id, _, _)| id)
 }
 
-fn collect_torbox_file_candidates(value: &Value, candidates: &mut Vec<(u64, u64)>) {
+fn select_best_video_file_from_json(
+    value: &Value,
+    season: Option<u32>,
+    episode: Option<u32>,
+) -> Option<u64> {
+    let mut candidates = Vec::new();
+    collect_torbox_file_candidates(value, &mut candidates);
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    if let (Some(s), Some(e)) = (season, episode) {
+        let mut matched = candidates
+            .iter()
+            .filter(|(_, _, name)| episode_marker_matches(name, s, e))
+            .collect::<Vec<_>>();
+        if !matched.is_empty() {
+            return matched
+                .into_iter()
+                .max_by_key(|(_, size, _)| *size)
+                .map(|(id, _, _)| *id);
+        }
+    }
+
+    candidates
+        .into_iter()
+        .max_by_key(|(_, size, _)| *size)
+        .map(|(id, _, _)| id)
+}
+
+fn episode_marker_matches(evidence: &str, season: u32, episode: u32) -> bool {
+    let compact = evidence.replace([' ', '.', '-', '_'], "").to_lowercase();
+    compact.contains(&format!("s{:02}e{:02}", season, episode))
+        || compact.contains(&format!("{}x{:02}", season, episode))
+        || compact.contains(&format!("season{}episode{}", season, episode))
+}
+
+fn collect_torbox_file_candidates(value: &Value, candidates: &mut Vec<(u64, u64, String)>) {
     match value {
         Value::Array(items) => {
             for item in items {
@@ -170,22 +231,21 @@ fn collect_torbox_file_candidates(value: &Value, candidates: &mut Vec<(u64, u64)
                 .get("name")
                 .or_else(|| map.get("filename"))
                 .or_else(|| map.get("path"))
-                .and_then(Value::as_str)
+                .and_then(|v| v.as_str())
                 .unwrap_or_default();
 
-            let id = map
-                .get("file_id")
-                .or_else(|| map.get("id"))
-                .and_then(Value::as_u64);
-
-            if let Some(id) = id {
-                if is_video_name(name) {
+            if is_video_name(name) {
+                if let Some(id) = map
+                    .get("file_id")
+                    .or_else(|| map.get("id"))
+                    .and_then(|v| v.as_u64())
+                {
                     let size = map
                         .get("size_bytes")
                         .or_else(|| map.get("size"))
-                        .and_then(Value::as_u64)
+                        .and_then(|v| v.as_u64())
                         .unwrap_or(0);
-                    candidates.push((id, size));
+                    candidates.push((id, size, name.to_string()));
                 }
             }
 
@@ -234,7 +294,7 @@ struct RDUnrestrictResponse {
 
 async fn resolve_realdebrid(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
-    resolve_realdebrid_with_key(hash, prefs.real_debrid_api_key, None, None).await
+    resolve_realdebrid_with_key(hash, prefs.real_debrid_api_key, None, None, None, None).await
 }
 
 pub async fn resolve_realdebrid_with_key(
@@ -242,6 +302,8 @@ pub async fn resolve_realdebrid_with_key(
     api_key: String,
     history_scope: Option<&str>,
     user_agent: Option<&str>,
+    season: Option<u32>,
+    episode: Option<u32>,
 ) -> axum::response::Response {
     if api_key.is_empty() {
         return (StatusCode::FOUND, [("Location", "https://real-debrid.com")]).into_response();
@@ -262,7 +324,9 @@ pub async fn resolve_realdebrid_with_key(
         if let Ok(json) = res.json::<RDAddMagnetResponse>().await {
             let id = json.id;
 
-            if let Some(download) = resolve_real_debrid_download(&client, &api_key, &id).await {
+            if let Some(download) =
+                resolve_real_debrid_download(&client, &api_key, &id, season, episode).await
+            {
                 record_provider_playback(history_scope, "Real Debrid", &hash, true);
                 crate::engines::telemetry::log_event(
                     "playback_started",
@@ -334,6 +398,8 @@ async fn resolve_real_debrid_download(
     client: &reqwest::Client,
     api_key: &str,
     torrent_id: &str,
+    season: Option<u32>,
+    episode: Option<u32>,
 ) -> Option<String> {
     let info_url = format!(
         "https://api.real-debrid.com/rest/1.0/torrents/info/{}",
@@ -350,12 +416,14 @@ async fn resolve_real_debrid_download(
         .await
         .ok()?;
 
-    let file_id = select_largest_real_debrid_video_file(&info.files).or_else(|| {
-        info.files
-            .iter()
-            .find(|file| file.selected == 1)
-            .map(|file| file.id)
-    })?;
+    let file_id =
+        select_best_real_debrid_video_file(&info.files, season, episode).or_else(|| {
+            tracing::warn!(
+                "No video files found in Real Debrid torrent info: {:?}",
+                info.files.iter().map(|f| &f.path).collect::<Vec<_>>()
+            );
+            None
+        })?;
 
     let select_res = client
         .post(format!(
@@ -401,10 +469,36 @@ async fn resolve_real_debrid_download(
         .map(|response| response.download)
 }
 
-fn select_largest_real_debrid_video_file(files: &[RDFile]) -> Option<u64> {
-    files
+fn select_best_real_debrid_video_file(
+    files: &[RDFile],
+    season: Option<u32>,
+    episode: Option<u32>,
+) -> Option<u64> {
+    let candidates = files
         .iter()
         .filter(|file| is_video_name(&file.path))
+        .collect::<Vec<_>>();
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    if let (Some(s), Some(e)) = (season, episode) {
+        let matched = candidates
+            .iter()
+            .filter(|file| episode_marker_matches(&file.path, s, e))
+            .copied()
+            .collect::<Vec<_>>();
+        if !matched.is_empty() {
+            return matched
+                .into_iter()
+                .max_by_key(|file| file.bytes)
+                .map(|file| file.id);
+        }
+    }
+
+    candidates
+        .into_iter()
         .max_by_key(|file| file.bytes)
         .map(|file| file.id)
 }
@@ -412,7 +506,7 @@ fn select_largest_real_debrid_video_file(files: &[RDFile]) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::{
-        select_largest_real_debrid_video_file, select_largest_video_file_from_json, RDFile,
+        select_best_real_debrid_video_file, select_best_video_file_from_json, RDFile,
     };
     use serde_json::json;
 
@@ -428,7 +522,7 @@ mod tests {
             }
         });
 
-        assert_eq!(select_largest_video_file_from_json(&payload), Some(2));
+        assert_eq!(select_best_video_file_from_json(&payload, None, None), Some(2));
     }
 
     #[test]
@@ -454,6 +548,6 @@ mod tests {
             },
         ];
 
-        assert_eq!(select_largest_real_debrid_video_file(&files), Some(3));
+        assert_eq!(select_best_real_debrid_video_file(&files, None, None), Some(3));
     }
 }
