@@ -503,9 +503,7 @@ fn select_best_real_debrid_video_file(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        select_best_real_debrid_video_file, select_best_video_file_from_json, RDFile,
-    };
+    use super::{select_best_real_debrid_video_file, select_best_video_file_from_json, RDFile};
     use serde_json::json;
 
     #[test]
@@ -520,7 +518,10 @@ mod tests {
             }
         });
 
-        assert_eq!(select_best_video_file_from_json(&payload, None, None), Some(2));
+        assert_eq!(
+            select_best_video_file_from_json(&payload, None, None),
+            Some(2)
+        );
     }
 
     #[test]
@@ -543,6 +544,9 @@ mod tests {
             },
         ];
 
-        assert_eq!(select_best_real_debrid_video_file(&files, None, None), Some(3));
+        assert_eq!(
+            select_best_real_debrid_video_file(&files, None, None),
+            Some(3)
+        );
     }
 }
