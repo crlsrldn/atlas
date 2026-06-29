@@ -60,7 +60,8 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
         Some("DTS") => score += 100,
         Some("Dolby Digital") => score += 70,
         Some("AAC") => score += 30,
-        _ => {}
+        Some(_) => {}                             // known other
+        None => score = score.saturating_sub(50), // penalty for missing audio codec
     }
 
     match source.audio_channels.as_deref() {
@@ -80,11 +81,26 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
         } else {
             score /= 2;
         }
+    } else if let Some(size_bytes) = source.size_bytes {
+        // Fallback to raw size if bitrate is unknown (e.g. unknown runtime)
+        let gb = size_bytes as f64 / 1_073_741_824.0;
+        if gb >= 15.0 {
+            score += 150;
+        } else if gb >= 5.0 {
+            score += 90;
+        } else if gb >= 1.5 {
+            score += 40;
+        }
     }
 
-    // Compatibility
+    // Compatibility and Codecs
     if prefs.exclude_av1 && source.codec == "AV1" {
         return 0; // completely exclude
+    }
+
+    match source.codec.as_str() {
+        "HEVC" | "H265" => score += 60, // Boost modern efficient codecs
+        _ => {}
     }
 
     score += u64::from(source.provider_priority) * 4;
@@ -234,5 +250,79 @@ mod tests {
         let ranked = rank_sources(vec![basic, rich], &prefs());
 
         assert_eq!(ranked[0].source.provider_name, "Rich");
+    }
+}
+#[cfg(test)]
+mod tests2 {
+    use super::*;
+
+    fn mock_source() -> SourceResult {
+        SourceResult {
+            provider_name: "Mock".to_string(),
+            provider_priority: 50,
+            provider_latency_ms: Some(200),
+            title: "Movie".to_string(),
+            raw_title: "Movie".to_string(),
+            hash: Some("abc".to_string()),
+            size_bytes: Some(1_000_000_000), // 1GB
+            bitrate_mbps: None,
+            resolution: "1080p".to_string(),
+            codec: "H264".to_string(),
+            audio_codec: Some("AAC".to_string()),
+            audio_channels: Some("2.0".to_string()),
+            has_hdr: false,
+            has_dolby_vision: false,
+            has_subtitles: false,
+            is_cached: true,
+            url: None,
+            release_group: None,
+            verification_score: 100,
+            verification_reasons: vec![],
+            playback_successes: 0,
+            playback_failures: 0,
+        }
+    }
+
+    fn mock_prefs() -> UserPreferences {
+        UserPreferences {
+            torbox_api_key: "".to_string(),
+            real_debrid_api_key: "".to_string(),
+            gemini_api_key: "".to_string(),
+            max_resolution: "4K".to_string(),
+            prefer_hdr: true,
+            exclude_av1: false,
+            exclude_hevc: false,
+            profile: "default".to_string(),
+            mobile_data_saver: false,
+            home_theater_mode: false,
+            family_mode: false,
+            preferred_language: "en".to_string(),
+            subtitle_mode: "auto".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_hevc_boost() {
+        let prefs = mock_prefs();
+        let mut h264 = mock_source();
+        h264.codec = "H264".to_string();
+
+        let mut hevc = mock_source();
+        hevc.codec = "HEVC".to_string();
+
+        assert!(calculate_score(&hevc, &prefs) > calculate_score(&h264, &prefs));
+    }
+
+    #[test]
+    fn test_size_fallback_boost() {
+        let prefs = mock_prefs();
+
+        let mut small = mock_source();
+        small.size_bytes = Some(1_000_000_000); // 1GB (no size boost)
+
+        let mut large = mock_source();
+        large.size_bytes = Some(20_000_000_000); // 20GB (should get 150 boost)
+
+        assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
     }
 }

@@ -5,6 +5,7 @@ use crate::engines::history::{
 };
 use axum::http::StatusCode;
 use axum::{extract::Path, response::IntoResponse, routing::get, Router};
+use regex::Regex;
 use reqwest;
 use serde::Deserialize;
 use serde_json::Value;
@@ -213,10 +214,55 @@ fn select_best_video_file_from_json(
 }
 
 fn episode_marker_matches(evidence: &str, season: u32, episode: u32) -> bool {
-    let compact = evidence.replace([' ', '.', '-', '_'], "").to_lowercase();
-    compact.contains(&format!("s{:02}e{:02}", season, episode))
-        || compact.contains(&format!("{}x{:02}", season, episode))
-        || compact.contains(&format!("season{}episode{}", season, episode))
+    let evidence_lower = evidence.to_lowercase();
+
+    // 1. Direct standard matches
+    let direct_pattern = format!(
+        r"(?ix)(
+            s0*{season}\s*[ex]\s*0*{episode}\b |
+            \b0*{season}\s*x\s*0*{episode}\b |
+            season\s*0*{season}\s*episode\s*0*{episode}\b
+        )"
+    );
+    if let Ok(re) = Regex::new(&direct_pattern) {
+        if re.is_match(&evidence_lower) {
+            return true;
+        }
+    }
+
+    // 2. Anime fallback for Season 1
+    if season == 1 {
+        let anime_pattern = format!(
+            r"(?ix)(
+                \b(?:e|ep|episode)\s*0*{episode}\b |
+                \s+-\s+0*{episode}\b
+            )"
+        );
+        if let Ok(anime_re) = Regex::new(&anime_pattern) {
+            if anime_re.is_match(&evidence_lower) {
+                return true;
+            }
+        }
+    }
+
+    // 3. Multi-episode range matches (e.g. S01E01-E03)
+    let range_pattern =
+        format!(r"(?ix)s0*{season}\s*e\s*(?P<start>\d{{1,3}})\s*-\s*(?:e\s*)?(?P<end>\d{{1,3}})\b");
+    if let Ok(re) = Regex::new(&range_pattern) {
+        for cap in re.captures_iter(&evidence_lower) {
+            if let (Some(start), Some(end)) = (cap.name("start"), cap.name("end")) {
+                if let (Ok(start_num), Ok(end_num)) =
+                    (start.as_str().parse::<u32>(), end.as_str().parse::<u32>())
+                {
+                    if start_num <= end_num && episode >= start_num && episode <= end_num {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    false
 }
 
 fn collect_torbox_file_candidates(value: &Value, candidates: &mut Vec<(u64, u64, String)>) {
@@ -548,5 +594,31 @@ mod tests {
             select_best_real_debrid_video_file(&files, None, None),
             Some(3)
         );
+    }
+    #[test]
+    fn test_episode_marker_matches() {
+        use super::episode_marker_matches;
+
+        assert!(episode_marker_matches("Show S01E02 1080p", 1, 2));
+        assert!(episode_marker_matches("Show 1x02 1080p", 1, 2));
+        assert!(episode_marker_matches(
+            "Show Season 1 Episode 2 1080p",
+            1,
+            2
+        ));
+        assert!(episode_marker_matches("Show S01E01-E02", 1, 2));
+        assert!(episode_marker_matches("Show S01E01-E03", 1, 2));
+        assert!(episode_marker_matches("Show S01E02-E03", 1, 2));
+
+        // Anime
+        assert!(episode_marker_matches("Anime E13 1080p", 1, 13));
+        assert!(episode_marker_matches("Anime - 13 1080p", 1, 13));
+        assert!(episode_marker_matches("Anime ep13 1080p", 1, 13));
+        assert!(episode_marker_matches("Anime EP 13 1080p", 1, 13));
+
+        // Fails
+        assert!(!episode_marker_matches("Show S01E02 1080p", 1, 3));
+        assert!(!episode_marker_matches("Show S01E020 1080p", 1, 2)); // word boundary
+        assert!(!episode_marker_matches("Anime E13 1080p", 2, 13)); // Anime logic only triggers for season 1
     }
 }
