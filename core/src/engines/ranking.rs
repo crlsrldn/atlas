@@ -93,7 +93,6 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
         }
     }
 
-
     match source.codec.as_str() {
         "HEVC" | "H265" => score += 60, // Boost modern efficient codecs
         _ => {}
@@ -354,10 +353,10 @@ mod tests2 {
     #[test]
     fn test_sort_preference() {
         let mut prefs = mock_prefs();
-        
+
         let mut small = mock_source();
         small.size_bytes = Some(1_000_000_000); // 1GB
-        
+
         let mut large = mock_source();
         large.size_bytes = Some(20_000_000_000); // 20GB
 
