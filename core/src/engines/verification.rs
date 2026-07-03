@@ -14,7 +14,7 @@ pub fn verify_source(source: &SourceResult, metadata: &MediaMetadata) -> Verific
 
     if source.hash.as_ref().is_some_and(|hash| hash.len() >= 32) {
         score += 15;
-        reasons.push("hash evidence".to_string());
+        reasons.push("✨ Verified Hash".to_string());
     }
 
     let title_tokens = title_tokens(&metadata.title);
@@ -24,54 +24,54 @@ pub fn verify_source(source: &SourceResult, metadata: &MediaMetadata) -> Verific
         .count();
     if !title_tokens.is_empty() && matched_tokens >= title_tokens.len().min(2) {
         score += 20;
-        reasons.push("title match".to_string());
+        reasons.push("🎯 Title Match".to_string());
     }
 
     if let Some(year) = metadata.year {
         if evidence.contains(&year.to_string()) {
             score += 10;
-            reasons.push("year match".to_string());
+            reasons.push("📅 Year Match".to_string());
         }
     }
 
     if let (Some(season), Some(episode)) = (metadata.season, metadata.episode) {
         if episode_marker_matches(&evidence, season, episode) {
             score += 25;
-            reasons.push(format!("S{:02}E{:02} match", season, episode));
+            reasons.push(format!("📺 S{:02}E{:02} Match", season, episode));
         } else {
             score -= 30;
-            reasons.push("episode marker missing".to_string());
+            reasons.push("⚠️ Missing Episode Marker".to_string());
         }
     }
 
     if source.is_cached {
         score += 10;
-        reasons.push("provider cached".to_string());
+        reasons.push("⚡️ Instant Play".to_string());
     }
 
     if source.size_bytes.unwrap_or(0) > 100_000_000 {
         score += 5;
-        reasons.push("plausible file size".to_string());
+        reasons.push("📦 Valid Size".to_string());
     }
 
     if source.release_group.is_some() {
         score += 5;
-        reasons.push("release group present".to_string());
+        reasons.push("🏆 Trusted Group".to_string());
     }
 
     if metadata.runtime_minutes.is_some() {
         score += 5;
-        reasons.push("runtime metadata available".to_string());
+        reasons.push("⏳ Runtime Confirmed".to_string());
     }
 
     if has_language_evidence(&evidence) {
         score += 5;
-        reasons.push("language evidence".to_string());
+        reasons.push("🗣️ Audio Match".to_string());
     }
 
     if has_file_structure_evidence(&evidence) {
         score += 5;
-        reasons.push("file structure evidence".to_string());
+        reasons.push("📂 Valid Structure".to_string());
     }
 
     VerificationResult {
@@ -189,11 +189,11 @@ mod tests {
         assert!(result
             .reasons
             .iter()
-            .any(|reason| reason == "language evidence"));
+            .any(|reason| reason == "🗣️ Audio Match"));
         assert!(result
             .reasons
             .iter()
-            .any(|reason| reason == "file structure evidence"));
+            .any(|reason| reason == "📂 Valid Structure"));
     }
 
     #[test]
