@@ -10,6 +10,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/net/webdav"
 )
 
 var coreUrl string
@@ -23,6 +25,7 @@ func main() {
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/health", handleRoot)
 	http.HandleFunc("/stremio/", handleStremio)
+	http.HandleFunc("/webdav/", handleWebDAV)
 
 	log.Println("Starting API gateway on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -122,6 +125,8 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 		prefs = map[string]interface{}{
 			"torbox_api_key":      "",
 			"real_debrid_api_key": "",
+			"trakt_client_id":     "",
+			"trakt_username":      "",
 			"max_resolution":      "4K",
 			"exclude_av1":         false,
 		}
@@ -168,6 +173,8 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 		prefs = map[string]interface{}{
 			"torbox_api_key":      "",
 			"real_debrid_api_key": "",
+			"trakt_client_id":     "",
+			"trakt_username":      "",
 			"max_resolution":      "4K",
 			"exclude_av1":         false,
 		}
@@ -222,4 +229,49 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
+}
+
+func handleWebDAV(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/webdav/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	token := parts[0]
+	// The prefix the WebDAV handler needs to strip
+	prefix := "/webdav/" + token
+
+	supabase := NewSupabaseClient()
+	prefs, err := supabase.GetUserPreferences(token)
+	if err != nil {
+		log.Printf("Failed to fetch user preferences for WebDAV token %s: %v", token, err)
+		prefs = map[string]interface{}{}
+	}
+
+	traktClientID := ""
+	if id, ok := prefs["trakt_client_id"].(string); ok {
+		traktClientID = id
+	}
+
+	fs := &AtlasFS{
+		Token:    token,
+		Prefs:    prefs,
+		Trakt:    NewTraktClient(traktClientID),
+		Cinemeta: NewCinemetaClient(),
+	}
+
+	handler := &webdav.Handler{
+		Prefix:     prefix,
+		FileSystem: fs,
+		LockSystem: webdav.NewMemLS(),
+		Logger: func(r *http.Request, err error) {
+			if err != nil {
+				log.Printf("WebDAV [%s]: %s, ERROR: %s\n", r.Method, r.URL, err)
+			}
+		},
+	}
+
+	handler.ServeHTTP(w, r)
 }

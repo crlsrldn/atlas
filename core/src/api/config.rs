@@ -15,6 +15,10 @@ pub struct UserPreferences {
     pub real_debrid_api_key: String,
     #[serde(default)]
     pub gemini_api_key: String,
+    #[serde(default)]
+    pub trakt_client_id: String,
+    #[serde(default)]
+    pub trakt_username: String,
     #[serde(default = "default_max_resolution")]
     pub max_resolution: String,
     #[serde(default = "default_prefer_hdr")]
@@ -42,9 +46,13 @@ pub struct PublicUserPreferences {
     pub torbox_api_key: String,
     pub real_debrid_api_key: String,
     pub gemini_api_key: String,
+    pub trakt_client_id: String,
+    pub trakt_username: String,
     pub has_torbox_api_key: bool,
     pub has_real_debrid_api_key: bool,
     pub has_gemini_api_key: bool,
+    pub has_trakt_client_id: bool,
+    pub has_trakt_username: bool,
     pub max_resolution: String,
     pub prefer_hdr: bool,
     pub exclude_av1: bool,
@@ -63,9 +71,13 @@ impl From<UserPreferences> for PublicUserPreferences {
             torbox_api_key: String::new(),
             real_debrid_api_key: String::new(),
             gemini_api_key: String::new(),
+            trakt_client_id: String::new(),
+            trakt_username: prefs.trakt_username.clone(), // public is fine
             has_torbox_api_key: !prefs.torbox_api_key.is_empty(),
             has_real_debrid_api_key: !prefs.real_debrid_api_key.is_empty(),
             has_gemini_api_key: !prefs.gemini_api_key.is_empty(),
+            has_trakt_client_id: !prefs.trakt_client_id.is_empty(),
+            has_trakt_username: !prefs.trakt_username.is_empty(),
             max_resolution: prefs.max_resolution,
             prefer_hdr: prefs.prefer_hdr,
             exclude_av1: prefs.exclude_av1,
