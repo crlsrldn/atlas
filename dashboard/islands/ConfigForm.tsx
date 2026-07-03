@@ -889,6 +889,85 @@ export default function ConfigForm(
           </div>
         </div>
       </div>
+
+      {/* ── Infuse Integration Section ── */}
+      <div class="relative overflow-hidden rounded-2xl mt-6">
+        <div class="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent" />
+        <div class="absolute inset-0 border border-amber-500/20 rounded-2xl" />
+        <div class="absolute -bottom-10 -left-10 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div class="relative p-6 sm:p-8">
+          {/* Header */}
+          <div class="flex items-start gap-3 mb-6">
+            <div class="icon-box bg-amber-500/20 flex-shrink-0">
+              <svg
+                class="w-5 h-5 text-amber-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width={1.75}
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-semibold text-white">
+                Add to Infuse (Apple TV, iOS, Mac)
+              </h2>
+              <p class="text-sm text-zinc-400 mt-0.5">
+                {userId
+                  ? "Your WebDAV endpoint is ready. Add it to Infuse as a network share."
+                  : "Save your preferences first to generate your private WebDAV endpoint."}
+              </p>
+            </div>
+          </div>
+
+          {userId && (
+            <div class="space-y-4">
+              <div class="bg-black/30 border border-white/5 rounded-xl p-4">
+                <div class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                  Your WebDAV URL
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <code class="text-sm text-amber-300 font-mono truncate select-all">
+                    {gatewayUrl}/webdav/{userId}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${gatewayUrl}/webdav/${userId}`);
+                    }}
+                    class="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md text-zinc-300 transition-colors shrink-0 flex items-center gap-1.5"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { n: "1", text: "Open Infuse > Add Files > Add Share" },
+                  { n: "2", text: "Select 'WebDAV' protocol" },
+                  { n: "3", text: "Paste your URL (no username/password needed)" },
+                ].map((s) => (
+                  <div key={s.n} class="flex items-center gap-3">
+                    <div class="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-400 flex-shrink-0">
+                      {s.n}
+                    </div>
+                    <p class="text-sm text-zinc-400">{s.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
