@@ -96,6 +96,10 @@ jobs:
         with:
           go-version: '1.22'
           cache-dependency-path: gateway/go.mod
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
       - name: Start services
         run: |
           # Build Core
@@ -145,18 +149,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy Core
-        run: cd core && flyctl deploy --app "cindral-atlas-core-dev" --remote-only
+      - name: Deploy Services
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Deploy Gateway
-        run: cd gateway && flyctl deploy --app "cindral-atlas-gateway-dev" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Deploy Dashboard
-        run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-dev" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          cd core && flyctl deploy --app "cindral-atlas-core-dev" --local-only &
+          PID1=$!
+          cd ../gateway && flyctl deploy --app "cindral-atlas-gateway-dev" --local-only &
+          PID2=$!
+          cd ../dashboard && flyctl deploy --app "cindral-atlas-dashboard-dev" --local-only &
+          PID3=$!
+          wait $PID1 || exit 1
+          wait $PID2 || exit 1
+          wait $PID3 || exit 1
 
   deploy-staging:
     name: Deploy staging
@@ -171,18 +176,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy Core
-        run: cd core && flyctl deploy --app "cindral-atlas-core-staging" --remote-only
+      - name: Deploy Services
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Deploy Gateway
-        run: cd gateway && flyctl deploy --app "cindral-atlas-gateway-staging" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Deploy Dashboard
-        run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-staging" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          cd core && flyctl deploy --app "cindral-atlas-core-staging" --local-only &
+          PID1=$!
+          cd ../gateway && flyctl deploy --app "cindral-atlas-gateway-staging" --local-only &
+          PID2=$!
+          cd ../dashboard && flyctl deploy --app "cindral-atlas-dashboard-staging" --local-only &
+          PID3=$!
+          wait $PID1 || exit 1
+          wait $PID2 || exit 1
+          wait $PID3 || exit 1
 
   deploy-production:
     name: Deploy production
@@ -197,15 +203,16 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy Core
-        run: cd core && flyctl deploy --app "cindral-atlas-core" --remote-only
+      - name: Deploy Services
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Deploy Gateway
-        run: cd gateway && flyctl deploy --app "cindral-atlas-gateway" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Deploy Dashboard
-        run: cd dashboard && flyctl deploy --app "cindral-atlas-dashboard" --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          cd core && flyctl deploy --app "cindral-atlas-core" --local-only &
+          PID1=$!
+          cd ../gateway && flyctl deploy --app "cindral-atlas-gateway" --local-only &
+          PID2=$!
+          cd ../dashboard && flyctl deploy --app "cindral-atlas-dashboard" --local-only &
+          PID3=$!
+          wait $PID1 || exit 1
+          wait $PID2 || exit 1
+          wait $PID3 || exit 1
