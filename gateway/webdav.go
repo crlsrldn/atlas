@@ -92,12 +92,23 @@ type VirtualFile struct {
 	size int64
 }
 
+var fixedTime = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func (f *VirtualFile) Name() string       { return f.name }
 func (f *VirtualFile) Size() int64        { return f.size }
 func (f *VirtualFile) Mode() os.FileMode  { return 0644 }
-func (f *VirtualFile) ModTime() time.Time { return time.Now() }
+func (f *VirtualFile) ModTime() time.Time { return fixedTime }
 func (f *VirtualFile) IsDir() bool        { return false }
 func (f *VirtualFile) Sys() interface{}   { return nil }
+func (f *VirtualFile) ContentType(ctx context.Context) (string, error) {
+	if strings.HasSuffix(f.name, ".mp4") {
+		return "video/mp4", nil
+	}
+	return "application/octet-stream", nil
+}
+func (f *VirtualFile) ETag(ctx context.Context) (string, error) {
+	return fmt.Sprintf(`"%s"`, f.name), nil
+}
 
 type VirtualDir struct {
 	name string
@@ -106,7 +117,7 @@ type VirtualDir struct {
 func (d *VirtualDir) Name() string       { return d.name }
 func (d *VirtualDir) Size() int64        { return 0 }
 func (d *VirtualDir) Mode() os.FileMode  { return os.ModeDir | 0755 }
-func (d *VirtualDir) ModTime() time.Time { return time.Now() }
+func (d *VirtualDir) ModTime() time.Time { return fixedTime }
 func (d *VirtualDir) IsDir() bool        { return true }
 func (d *VirtualDir) Sys() interface{}   { return nil }
 
@@ -118,6 +129,7 @@ type VirtualNode struct {
 	path  string
 	// For actual playback reading
 	reader io.ReadCloser
+	ctx    context.Context // store context for lazy loading
 }
 
 func (fs *AtlasFS) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
@@ -132,51 +144,60 @@ func (fs *AtlasFS) OpenFile(ctx context.Context, name string, flag int, perm os.
 		size:  stat.Size(),
 		fs:    fs,
 		path:  name,
-	}
-
-	// Only open a stream if they are actually trying to read a file
-	if !node.isDir {
-		imdbMatch := imdbRegex.FindStringSubmatch(node.path)
-		if len(imdbMatch) < 2 {
-			return nil, os.ErrNotExist
-		}
-		imdbId := imdbMatch[1]
-
-		stremioId := imdbId
-
-		season, episode := 0, 0
-		epMatch := episodeRegex.FindStringSubmatch(node.name)
-		if len(epMatch) == 3 {
-			season, _ = strconv.Atoi(epMatch[1])
-			episode, _ = strconv.Atoi(epMatch[2])
-			stremioId = fmt.Sprintf("%s:%d:%d", imdbId, season, episode)
-		}
-
-		log.Printf("WebDAV resolving: %s", stremioId)
-
-		reqBody, _ := json.Marshal(map[string]interface{}{
-			"stremio_id":    stremioId,
-			"install_token": fs.Token,
-			"prefs":         fs.Prefs,
-			"user_agent":    "Atlas Infuse WebDAV",
-		})
-
-		resp, err := http.Post(coreUrl+"/internal/resolve", "application/json", strings.NewReader(string(reqBody)))
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
-			resp.Body.Close()
-			return nil, os.ErrNotExist
-		}
-
-		// Because it's an HTTP stream (likely from TorBox or Real Debrid),
-		// we just return the body as the reader.
-		node.reader = resp.Body
+		ctx:   ctx,
 	}
 
 	return node, nil
+}
+
+func (n *VirtualNode) lazyInit() error {
+	if n.reader != nil {
+		return nil // already initialized
+	}
+	if n.isDir {
+		return os.ErrInvalid
+	}
+
+	imdbMatch := imdbRegex.FindStringSubmatch(n.path)
+	if len(imdbMatch) < 2 {
+		// This is a fake error file or something without an IMDB ID.
+		// Return a dummy reader so it doesn't crash.
+		n.reader = io.NopCloser(strings.NewReader("Dummy Content"))
+		return nil
+	}
+	imdbId := imdbMatch[1]
+
+	stremioId := imdbId
+
+	season, episode := 0, 0
+	epMatch := episodeRegex.FindStringSubmatch(n.name)
+	if len(epMatch) == 3 {
+		season, _ = strconv.Atoi(epMatch[1])
+		episode, _ = strconv.Atoi(epMatch[2])
+		stremioId = fmt.Sprintf("%s:%d:%d", imdbId, season, episode)
+	}
+
+	log.Printf("WebDAV resolving stream for playback: %s", stremioId)
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"stremio_id":    stremioId,
+		"install_token": n.fs.Token,
+		"prefs":         n.fs.Prefs,
+		"user_agent":    "Atlas Infuse WebDAV",
+	})
+
+	resp, err := http.Post(coreUrl+"/internal/resolve", "application/json", strings.NewReader(string(reqBody)))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
+		resp.Body.Close()
+		return os.ErrNotExist
+	}
+
+	n.reader = resp.Body
+	return nil
 }
 
 func (n *VirtualNode) Close() error {
@@ -187,10 +208,10 @@ func (n *VirtualNode) Close() error {
 }
 
 func (n *VirtualNode) Read(p []byte) (int, error) {
-	if n.reader != nil {
-		return n.reader.Read(p)
+	if err := n.lazyInit(); err != nil {
+		return 0, err
 	}
-	return 0, io.EOF
+	return n.reader.Read(p)
 }
 
 func (n *VirtualNode) Seek(offset int64, whence int) (int64, error) {
@@ -239,11 +260,24 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 
 		if kind == "Movies" {
 			var movies []TraktMovie
+			var err error
 			if listType == "Trending" {
-				movies, _ = n.fs.Trakt.GetTrendingMovies()
-			} else if listType == "Watchlist" && traktUsername != "" {
-				movies, _ = n.fs.Trakt.GetWatchlistMovies(traktUsername)
+				movies, err = n.fs.Trakt.GetTrendingMovies()
+			} else if listType == "Watchlist" {
+				if traktUsername != "" {
+					movies, err = n.fs.Trakt.GetWatchlistMovies(traktUsername)
+				} else {
+					err = fmt.Errorf("Trakt username not configured")
+				}
 			}
+
+			if err != nil {
+				log.Printf("Error fetching Trakt movies for %s: %v", listType, err)
+				infos = append(infos, &VirtualFile{name: fmt.Sprintf("Error - %v.mp4", err), size: 1024})
+			} else if len(movies) == 0 {
+				infos = append(infos, &VirtualFile{name: "No movies found.mp4", size: 1024})
+			}
+
 			for _, m := range movies {
 				if m.IDs.Imdb != "" {
 					name := fmt.Sprintf("%s [%s].mp4", sanitize(m.Title), m.IDs.Imdb)
@@ -252,11 +286,24 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 			}
 		} else {
 			var shows []TraktShow
+			var err error
 			if listType == "Trending" {
-				shows, _ = n.fs.Trakt.GetTrendingShows()
-			} else if listType == "Watchlist" && traktUsername != "" {
-				shows, _ = n.fs.Trakt.GetWatchlistShows(traktUsername)
+				shows, err = n.fs.Trakt.GetTrendingShows()
+			} else if listType == "Watchlist" {
+				if traktUsername != "" {
+					shows, err = n.fs.Trakt.GetWatchlistShows(traktUsername)
+				} else {
+					err = fmt.Errorf("Trakt username not configured")
+				}
 			}
+
+			if err != nil {
+				log.Printf("Error fetching Trakt shows for %s: %v", listType, err)
+				infos = append(infos, &VirtualFile{name: fmt.Sprintf("Error - %v.mp4", err), size: 1024})
+			} else if len(shows) == 0 {
+				infos = append(infos, &VirtualFile{name: "No shows found.mp4", size: 1024})
+			}
+
 			for _, s := range shows {
 				if s.IDs.Imdb != "" {
 					name := fmt.Sprintf("%s [%s]", sanitize(s.Title), s.IDs.Imdb)
