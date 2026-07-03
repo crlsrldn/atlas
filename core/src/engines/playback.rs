@@ -37,6 +37,7 @@ pub struct DetailedStream {
     pub provider_latency_ms: Option<u64>,
     pub playback_successes: u32,
     pub playback_failures: u32,
+    pub is_cached: bool,
 }
 
 pub fn media_key(atlas_id: &AtlasID) -> String {
@@ -190,6 +191,7 @@ pub async fn resolve_detailed_streams_with_preferences(
                 provider_latency_ms: entry.source.provider_latency_ms,
                 playback_successes: entry.source.playback_successes,
                 playback_failures: entry.source.playback_failures,
+                is_cached: entry.source.is_cached,
             })
         })
         .collect()
@@ -280,8 +282,15 @@ fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
 
     let description = format!("{}\n{}\n{}", stream.title, specs.join(" | "), explanation);
 
+    let prefix = if stream.is_cached {
+        "⚡️ "
+    } else {
+        "⬇️ [Uncached] "
+    };
+    let name = format!("Atlas\n{}{}", prefix, stream.provider_name);
+
     StremioStream {
-        name: Some(format!("Atlas\n{}", stream.provider_name)),
+        name: Some(name),
         description: Some(description),
         url: stream.url,
     }

@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/net/webdav"
 )
 
 var coreUrl string
@@ -25,7 +24,7 @@ func main() {
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/health", handleRoot)
 	http.HandleFunc("/stremio/", handleStremio)
-	http.HandleFunc("/webdav/", handleWebDAV)
+
 
 	log.Println("Starting API gateway on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -240,107 +239,4 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	io.Copy(w, resp.Body)
 }
 
-func handleWebDAV(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/webdav/")
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) < 1 {
-		http.NotFound(w, r)
-		return
-	}
 
-	token := parts[0]
-	// The prefix the WebDAV handler needs to strip
-	prefix := "/webdav/" + token
-
-	supabase := NewSupabaseClient()
-	prefs, err := supabase.GetUserPreferences(token)
-	if err != nil {
-		log.Printf("Failed to fetch user preferences for WebDAV token %s: %v", token, err)
-		prefs = map[string]interface{}{}
-	}
-
-	traktClientID := ""
-	if id, ok := prefs["trakt_client_id"].(string); ok {
-		traktClientID = id
-	}
-
-	fs := &AtlasFS{
-		Token:    token,
-		Prefs:    prefs,
-		Trakt:    NewTraktClient(traktClientID),
-		Cinemeta: NewCinemetaClient(),
-	}
-
-	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && strings.HasSuffix(r.URL.Path, ".mp4") {
-		imdbMatch := imdbRegex.FindStringSubmatch(r.URL.Path)
-		if len(imdbMatch) >= 2 {
-			imdbId := imdbMatch[1]
-			stremioId := imdbId
-
-			fileName := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
-			epMatch := episodeRegex.FindStringSubmatch(fileName)
-			if len(epMatch) == 3 {
-				season, _ := strconv.Atoi(epMatch[1])
-				episode, _ := strconv.Atoi(epMatch[2])
-				stremioId = fmt.Sprintf("%s:%d:%d", imdbId, season, episode)
-			}
-
-			reqBody, _ := json.Marshal(map[string]interface{}{
-				"stremio_id":    stremioId,
-				"install_token": token,
-				"prefs":         prefs,
-				"user_agent":    "Atlas Infuse WebDAV",
-			})
-
-			client := &http.Client{
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-					return http.ErrUseLastResponse
-				},
-			}
-
-			req, _ := http.NewRequest(http.MethodPost, coreUrl+"/internal/resolve", bytes.NewBuffer(reqBody))
-			req.Header.Set("Content-Type", "application/json")
-
-			resp, err := client.Do(req)
-			if err != nil {
-				log.Printf("WebDAV %s resolve error: %v", r.Method, err)
-				http.Error(w, "Failed to resolve stream", http.StatusInternalServerError)
-				return
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode == http.StatusOK {
-				var result struct {
-					Streams []struct {
-						URL string `json:"url"`
-					} `json:"streams"`
-				}
-				if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
-					if len(result.Streams) > 0 && result.Streams[0].URL != "" {
-						streamUrl := result.Streams[0].URL
-						log.Printf("WebDAV %s redirecting playback to: %s", r.Method, streamUrl)
-						http.Redirect(w, r, streamUrl, http.StatusFound)
-						return
-					}
-				}
-			}
-
-			log.Printf("WebDAV %s resolve failed or no streams found with status: %d", r.Method, resp.StatusCode)
-			http.Error(w, "Stream not found", http.StatusNotFound)
-			return
-		}
-	}
-
-	handler := &webdav.Handler{
-		Prefix:     prefix,
-		FileSystem: fs,
-		LockSystem: webdav.NewMemLS(),
-		Logger: func(r *http.Request, err error) {
-			if err != nil {
-				log.Printf("WebDAV [%s]: %s, ERROR: %v\n", r.Method, r.URL.Path, err)
-			}
-		},
-	}
-
-	handler.ServeHTTP(w, r)
-}
