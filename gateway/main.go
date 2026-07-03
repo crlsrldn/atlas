@@ -34,6 +34,17 @@ func main() {
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, LOCK, DELETE, PROPPATCH, COPY, MOVE, UNLOCK, PROPFIND, GET, HEAD")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Depth")
+		w.Header().Set("Dav", "1, 2")
+		w.Header().Set("Ms-Author-Via", "DAV")
+		w.Header().Set("Allow", "OPTIONS, LOCK, DELETE, PROPPATCH, COPY, MOVE, UNLOCK, PROPFIND, GET, HEAD")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.URL.Path != "/" && r.URL.Path != "/health" {
 		http.NotFound(w, r)
 		return
