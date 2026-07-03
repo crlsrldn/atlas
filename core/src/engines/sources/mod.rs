@@ -1,4 +1,4 @@
-pub mod real_debrid;
+
 pub mod torbox;
 
 use crate::engines::identity::AtlasID;

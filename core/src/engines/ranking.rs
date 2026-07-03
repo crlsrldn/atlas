@@ -286,7 +286,7 @@ mod tests2 {
     fn mock_prefs() -> UserPreferences {
         UserPreferences {
             torbox_api_key: "".to_string(),
-            real_debrid_api_key: "".to_string(),
+
             gemini_api_key: "".to_string(),
             trakt_client_id: "".to_string(),
             trakt_username: "".to_string(),
