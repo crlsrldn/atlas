@@ -38,6 +38,7 @@ pub struct DetailedStream {
     pub playback_successes: u32,
     pub playback_failures: u32,
     pub is_cached: bool,
+    pub release_group: Option<String>,
 }
 
 pub fn media_key(atlas_id: &AtlasID) -> String {
@@ -127,7 +128,8 @@ pub async fn resolve_detailed_streams_with_preferences(
     > = std::collections::HashMap::new();
     for res in all_results {
         if let Some(hash) = &res.hash {
-            if let Some(existing) = unique_results.get_mut(hash) {
+            let hash_key = hash.to_lowercase();
+            if let Some(existing) = unique_results.get_mut(&hash_key) {
                 if !existing.provider_name.contains(&res.provider_name) {
                     existing.provider_name =
                         format!("{} + {}", existing.provider_name, res.provider_name);
@@ -138,13 +140,27 @@ pub async fn resolve_detailed_streams_with_preferences(
                     existing.provider_latency_ms = res.provider_latency_ms;
                 }
             } else {
-                unique_results.insert(hash.clone(), res);
+                unique_results.insert(hash_key, res);
             }
         }
     }
 
     // 4. Rank the results based on user preferences and PRD rules
-    let ranked = rank_sources(unique_results.into_values().collect(), &prefs);
+    let mut ranked = rank_sources(unique_results.into_values().collect(), &prefs);
+
+    // 5. Visually deduplicate identical looking streams to avoid UI clutter
+    let mut seen_visuals = std::collections::HashSet::new();
+    ranked.retain(|entry| {
+        let visual_key = format!(
+            "{}-{}-{}-{}-{}",
+            entry.source.resolution,
+            entry.source.codec,
+            entry.source.audio_codec.as_deref().unwrap_or("none"),
+            entry.source.release_group.as_deref().unwrap_or("none"),
+            entry.source.is_cached
+        );
+        seen_visuals.insert(visual_key)
+    });
     let candidates: Vec<PlaybackCandidate> = ranked
         .iter()
         .filter_map(|entry| {
@@ -192,6 +208,7 @@ pub async fn resolve_detailed_streams_with_preferences(
                 playback_successes: entry.source.playback_successes,
                 playback_failures: entry.source.playback_failures,
                 is_cached: entry.source.is_cached,
+                release_group: entry.source.release_group.clone(),
             })
         })
         .collect()
@@ -278,6 +295,9 @@ fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
     }
     if let Some(mbps) = stream.bitrate_mbps {
         specs.push(format!("{:.1} Mbps", mbps));
+    }
+    if let Some(rg) = stream.release_group {
+        specs.push(rg);
     }
 
     let description = format!("{}\n{}\n{}", stream.title, specs.join(" | "), explanation);
