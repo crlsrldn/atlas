@@ -12,8 +12,6 @@ pub struct UserPreferences {
     #[serde(default)]
     pub torbox_api_key: String,
     #[serde(default)]
-    pub real_debrid_api_key: String,
-    #[serde(default)]
     pub gemini_api_key: String,
     #[serde(default)]
     pub trakt_client_id: String,
@@ -44,12 +42,10 @@ pub struct UserPreferences {
 #[derive(Debug, Clone, Serialize)]
 pub struct PublicUserPreferences {
     pub torbox_api_key: String,
-    pub real_debrid_api_key: String,
     pub gemini_api_key: String,
     pub trakt_client_id: String,
     pub trakt_username: String,
     pub has_torbox_api_key: bool,
-    pub has_real_debrid_api_key: bool,
     pub has_gemini_api_key: bool,
     pub has_trakt_client_id: bool,
     pub has_trakt_username: bool,
@@ -69,12 +65,10 @@ impl From<UserPreferences> for PublicUserPreferences {
     fn from(prefs: UserPreferences) -> Self {
         Self {
             torbox_api_key: String::new(),
-            real_debrid_api_key: String::new(),
             gemini_api_key: String::new(),
             trakt_client_id: String::new(),
             trakt_username: prefs.trakt_username.clone(), // public is fine
             has_torbox_api_key: !prefs.torbox_api_key.is_empty(),
-            has_real_debrid_api_key: !prefs.real_debrid_api_key.is_empty(),
             has_gemini_api_key: !prefs.gemini_api_key.is_empty(),
             has_trakt_client_id: !prefs.trakt_client_id.is_empty(),
             has_trakt_username: !prefs.trakt_username.is_empty(),
@@ -96,7 +90,6 @@ impl Default for UserPreferences {
     fn default() -> Self {
         Self {
             torbox_api_key: String::new(),
-            real_debrid_api_key: String::new(),
             gemini_api_key: String::new(),
             trakt_client_id: String::new(),
             trakt_username: String::new(),
@@ -138,7 +131,6 @@ impl UserPreferences {
     pub fn without_secrets(&self) -> Self {
         let mut prefs = self.clone();
         prefs.torbox_api_key.clear();
-        prefs.real_debrid_api_key.clear();
         prefs.gemini_api_key.clear();
         prefs
     }
@@ -208,9 +200,6 @@ async fn update_preferences(
         if payload.torbox_api_key.is_empty() {
             payload.torbox_api_key = prefs.torbox_api_key.clone();
         }
-        if payload.real_debrid_api_key.is_empty() {
-            payload.real_debrid_api_key = prefs.real_debrid_api_key.clone();
-        }
         if payload.gemini_api_key.is_empty() {
             payload.gemini_api_key = prefs.gemini_api_key.clone();
         }
@@ -235,10 +224,6 @@ fn hydrate_secrets(prefs: &mut UserPreferences) {
         prefs.torbox_api_key =
             crate::api::secret_store::read_secret("torbox_api_key").unwrap_or_default();
     }
-    if prefs.real_debrid_api_key.is_empty() {
-        prefs.real_debrid_api_key =
-            crate::api::secret_store::read_secret("real_debrid_api_key").unwrap_or_default();
-    }
     if prefs.gemini_api_key.is_empty() {
         prefs.gemini_api_key =
             crate::api::secret_store::read_secret("gemini_api_key").unwrap_or_default();
@@ -247,13 +232,13 @@ fn hydrate_secrets(prefs: &mut UserPreferences) {
 
 fn migrate_secrets_to_keychain(prefs: &UserPreferences) {
     persist_secret("torbox_api_key", &prefs.torbox_api_key);
-    persist_secret("real_debrid_api_key", &prefs.real_debrid_api_key);
+    persist_secret("torbox_api_key", &prefs.torbox_api_key);
     persist_secret("gemini_api_key", &prefs.gemini_api_key);
 }
 
 fn persist_secrets(prefs: &UserPreferences) {
     persist_secret("torbox_api_key", &prefs.torbox_api_key);
-    persist_secret("real_debrid_api_key", &prefs.real_debrid_api_key);
+    persist_secret("torbox_api_key", &prefs.torbox_api_key);
     persist_secret("gemini_api_key", &prefs.gemini_api_key);
 }
 

@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::api::config::current_preferences;
 use crate::engines::sources::{
-    real_debrid::RealDebridProvider, torbox::TorBoxProvider, ProviderHealth, ProviderHealthStatus,
+    torbox::TorBoxProvider, ProviderHealth, ProviderHealthStatus,
     SourceProvider,
 };
 
@@ -31,19 +31,14 @@ async fn provider_status_for_preferences(
     let torbox = TorBoxProvider {
         api_key: prefs.torbox_api_key,
     };
-    let real_debrid = RealDebridProvider {
-        api_key: prefs.real_debrid_api_key,
-    };
 
-    let (torbox_status, real_debrid_status, gemini_status) = tokio::join!(
+    let (torbox_status, gemini_status) = tokio::join!(
         torbox.health(),
-        real_debrid.health(),
         test_gemini(prefs.gemini_api_key),
     );
 
     vec![
         torbox_status.into(),
-        real_debrid_status.into(),
         gemini_status,
     ]
 }

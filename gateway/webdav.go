@@ -60,6 +60,9 @@ func (fs *AtlasFS) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 
 	// /Movies/Trending/Dune Part Two [tt123].mp4
 	if parts[0] == "Movies" && len(parts) == 3 {
+		if strings.HasSuffix(parts[2], ".nfo") {
+			return &VirtualFile{name: parts[2], size: 256}, nil
+		}
 		return &VirtualFile{name: parts[2], size: 10 * 1024 * 1024 * 1024}, nil // fake 10GB size
 	}
 
@@ -75,7 +78,15 @@ func (fs *AtlasFS) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 
 	// /Series/Trending/Fallout [tt123]/Season 1/S01E01.mp4
 	if parts[0] == "Series" && len(parts) == 5 {
+		if strings.HasSuffix(parts[4], ".nfo") {
+			return &VirtualFile{name: parts[4], size: 256}, nil
+		}
 		return &VirtualFile{name: parts[4], size: 2 * 1024 * 1024 * 1024}, nil // fake 2GB size
+	}
+
+	// /Series/Trending/Fallout [tt123]/tvshow.nfo
+	if parts[0] == "Series" && len(parts) == 4 && parts[3] == "tvshow.nfo" {
+		return &VirtualFile{name: parts[3], size: 256}, nil
 	}
 
 	return nil, os.ErrNotExist
@@ -166,6 +177,19 @@ func (n *VirtualNode) lazyInit() error {
 		return nil
 	}
 	imdbId := imdbMatch[1]
+
+	if strings.HasSuffix(n.name, ".nfo") {
+		var content string
+		if strings.HasPrefix(n.path, "/Movies") {
+			content = fmt.Sprintf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<movie>\n  <uniqueid type=\"imdb\" default=\"true\">%s</uniqueid>\n</movie>", imdbId)
+		} else if n.name == "tvshow.nfo" {
+			content = fmt.Sprintf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<tvshow>\n  <uniqueid type=\"imdb\" default=\"true\">%s</uniqueid>\n</tvshow>", imdbId)
+		} else {
+			content = fmt.Sprintf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<episodedetails>\n  <uniqueid type=\"imdb\" default=\"true\">%s</uniqueid>\n</episodedetails>", imdbId)
+		}
+		n.reader = io.NopCloser(strings.NewReader(content))
+		return nil
+	}
 
 	stremioId := imdbId
 
@@ -285,6 +309,8 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 						name = fmt.Sprintf("%s {imdb-%s}.mp4", sanitize(m.Title), m.IDs.Imdb)
 					}
 					infos = append(infos, &VirtualFile{name: name, size: 10 * 1024 * 1024 * 1024}) // fake 10GB
+					nfoName := strings.TrimSuffix(name, ".mp4") + ".nfo"
+					infos = append(infos, &VirtualFile{name: nfoName, size: 256})
 				}
 			}
 		} else {
@@ -341,6 +367,7 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 				for _, s := range seasonList {
 					infos = append(infos, &VirtualDir{name: fmt.Sprintf("Season %d", s)})
 				}
+				infos = append(infos, &VirtualFile{name: "tvshow.nfo", size: 256})
 			}
 		}
 		return infos, nil
@@ -362,6 +389,8 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 						title := sanitize(v.Title)
 						name := fmt.Sprintf("S%02dE%02d - %s.mp4", v.Season, v.Episode, title)
 						infos = append(infos, &VirtualFile{name: name, size: 2 * 1024 * 1024 * 1024})
+						nfoName := fmt.Sprintf("S%02dE%02d - %s.nfo", v.Season, v.Episode, title)
+						infos = append(infos, &VirtualFile{name: nfoName, size: 256})
 					}
 				}
 			}

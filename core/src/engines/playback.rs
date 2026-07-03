@@ -4,7 +4,7 @@ use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
 use crate::engines::sources::{
-    real_debrid::RealDebridProvider, torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider,
+    torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider,
 };
 use crate::engines::verification::verify_source;
 use futures::future::join_all;
@@ -71,16 +71,10 @@ pub async fn resolve_detailed_streams_with_preferences(
     let torbox = TorBoxProvider {
         api_key: prefs.torbox_api_key.clone(),
     };
-    let real_debrid = RealDebridProvider {
-        api_key: prefs.real_debrid_api_key.clone(),
-    };
 
     let mut providers: Vec<&dyn SourceProvider> = Vec::new();
     if !prefs.torbox_api_key.is_empty() {
         providers.push(&torbox);
-    }
-    if !prefs.real_debrid_api_key.is_empty() {
-        providers.push(&real_debrid);
     }
 
     let mut search_futures = Vec::new();
@@ -214,7 +208,6 @@ fn hosted_or_local_url(
     };
     let hash = source.hash.as_ref()?;
     let provider_slug = match source.provider_name.as_str() {
-        provider if provider.contains("Real Debrid") => "realdebrid",
         provider if provider.contains("TorBox") => "torbox",
         _ => return Some(url),
     };

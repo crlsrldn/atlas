@@ -72,17 +72,7 @@ async fn resolve_hash(
             )
             .await
         }
-        "realdebrid" => {
-            crate::api::resolve::resolve_realdebrid_with_key(
-                hash,
-                smart_prefs.real_debrid_api_key,
-                None,
-                req.user_agent.as_deref(),
-                req.season,
-                req.episode,
-            )
-            .await
-        }
+
         _ => (
             axum::http::StatusCode::FOUND,
             [("Location", "https://github.com/cindral/atlas")],
