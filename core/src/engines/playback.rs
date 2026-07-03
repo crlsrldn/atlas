@@ -3,9 +3,7 @@ use crate::engines::history::{remember_candidates, stats_for, PlaybackCandidate}
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
-use crate::engines::sources::{
-    torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider,
-};
+use crate::engines::sources::{torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider};
 use crate::engines::verification::verify_source;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};

@@ -134,11 +134,11 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 		// Fallback to empty prefs or handle error appropriately.
 		// For MVP, we will send empty strings if fetch fails so the Rust core won't crash
 		prefs = map[string]interface{}{
-			"torbox_api_key":      "",
-			"trakt_client_id":     "",
-			"trakt_username":      "",
-			"max_resolution":      "4K",
-			"exclude_av1":         false,
+			"torbox_api_key":  "",
+			"trakt_client_id": "",
+			"trakt_username":  "",
+			"max_resolution":  "4K",
+			"exclude_av1":     false,
 		}
 	}
 
@@ -181,11 +181,11 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
 		// Fallback to empty prefs or handle error appropriately.
 		prefs = map[string]interface{}{
-			"torbox_api_key":      "",
-			"trakt_client_id":     "",
-			"trakt_username":      "",
-			"max_resolution":      "4K",
-			"exclude_av1":         false,
+			"torbox_api_key":  "",
+			"trakt_client_id": "",
+			"trakt_username":  "",
+			"max_resolution":  "4K",
+			"exclude_av1":     false,
 		}
 	}
 

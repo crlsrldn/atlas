@@ -3,8 +3,7 @@ use serde::Serialize;
 
 use crate::api::config::current_preferences;
 use crate::engines::sources::{
-    torbox::TorBoxProvider, ProviderHealth, ProviderHealthStatus,
-    SourceProvider,
+    torbox::TorBoxProvider, ProviderHealth, ProviderHealthStatus, SourceProvider,
 };
 
 #[derive(Serialize)]
@@ -32,15 +31,10 @@ async fn provider_status_for_preferences(
         api_key: prefs.torbox_api_key,
     };
 
-    let (torbox_status, gemini_status) = tokio::join!(
-        torbox.health(),
-        test_gemini(prefs.gemini_api_key),
-    );
+    let (torbox_status, gemini_status) =
+        tokio::join!(torbox.health(), test_gemini(prefs.gemini_api_key),);
 
-    vec![
-        torbox_status.into(),
-        gemini_status,
-    ]
+    vec![torbox_status.into(), gemini_status]
 }
 
 async fn test_gemini(api_key: String) -> ProviderStatus {
