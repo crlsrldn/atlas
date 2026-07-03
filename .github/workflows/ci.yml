@@ -155,9 +155,9 @@ jobs:
         run: |
           cd core && flyctl deploy --app "cindral-atlas-core-dev" --local-only &
           PID1=$!
-          cd ../gateway && flyctl deploy --app "cindral-atlas-gateway-dev" --local-only &
+          cd gateway && flyctl deploy --app "cindral-atlas-gateway-dev" --local-only &
           PID2=$!
-          cd ../dashboard && flyctl deploy --app "cindral-atlas-dashboard-dev" --local-only &
+          cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-dev" --local-only &
           PID3=$!
           wait $PID1 || exit 1
           wait $PID2 || exit 1
@@ -182,9 +182,9 @@ jobs:
         run: |
           cd core && flyctl deploy --app "cindral-atlas-core-staging" --local-only &
           PID1=$!
-          cd ../gateway && flyctl deploy --app "cindral-atlas-gateway-staging" --local-only &
+          cd gateway && flyctl deploy --app "cindral-atlas-gateway-staging" --local-only &
           PID2=$!
-          cd ../dashboard && flyctl deploy --app "cindral-atlas-dashboard-staging" --local-only &
+          cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-staging" --local-only &
           PID3=$!
           wait $PID1 || exit 1
           wait $PID2 || exit 1
@@ -209,9 +209,9 @@ jobs:
         run: |
           cd core && flyctl deploy --app "cindral-atlas-core" --local-only &
           PID1=$!
-          cd ../gateway && flyctl deploy --app "cindral-atlas-gateway" --local-only &
+          cd gateway && flyctl deploy --app "cindral-atlas-gateway" --local-only &
           PID2=$!
-          cd ../dashboard && flyctl deploy --app "cindral-atlas-dashboard" --local-only &
+          cd dashboard && flyctl deploy --app "cindral-atlas-dashboard" --local-only &
           PID3=$!
           wait $PID1 || exit 1
           wait $PID2 || exit 1
