@@ -37,6 +37,8 @@ pub struct UserPreferences {
     pub preferred_language: String,
     #[serde(default = "default_subtitle_mode")]
     pub subtitle_mode: String,
+    #[serde(default = "default_sort_preference")]
+    pub sort_preference: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -59,6 +61,7 @@ pub struct PublicUserPreferences {
     pub family_mode: bool,
     pub preferred_language: String,
     pub subtitle_mode: String,
+    pub sort_preference: String,
 }
 
 impl From<UserPreferences> for PublicUserPreferences {
@@ -82,6 +85,7 @@ impl From<UserPreferences> for PublicUserPreferences {
             family_mode: prefs.family_mode,
             preferred_language: prefs.preferred_language,
             subtitle_mode: prefs.subtitle_mode,
+            sort_preference: prefs.sort_preference,
         }
     }
 }
@@ -103,6 +107,7 @@ impl Default for UserPreferences {
             family_mode: false,
             preferred_language: default_language(),
             subtitle_mode: default_subtitle_mode(),
+            sort_preference: default_sort_preference(),
         }
     }
 }
@@ -125,6 +130,10 @@ fn default_language() -> String {
 
 fn default_subtitle_mode() -> String {
     "auto".to_string()
+}
+
+fn default_sort_preference() -> String {
+    "balanced".to_string()
 }
 
 impl UserPreferences {

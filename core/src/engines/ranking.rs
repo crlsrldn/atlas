@@ -25,9 +25,9 @@ pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences) -> Vec<
 fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     let mut score: u64 = 1000;
 
-    // Availability (Cached only heavily prioritized based on PRD)
-    if !source.is_cached {
-        score /= 10;
+    // Compatibility and Codecs
+    if prefs.exclude_av1 && source.codec == "AV1" {
+        return 0; // completely exclude
     }
 
     // Quality Matching
@@ -93,10 +93,6 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
         }
     }
 
-    // Compatibility and Codecs
-    if prefs.exclude_av1 && source.codec == "AV1" {
-        return 0; // completely exclude
-    }
 
     match source.codec.as_str() {
         "HEVC" | "H265" => score += 60, // Boost modern efficient codecs
@@ -124,6 +120,32 @@ fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
     if source.playback_failures > 0 {
         let penalty = u64::from(source.playback_failures).saturating_mul(240);
         score = score.saturating_sub(penalty);
+    }
+
+    // Apply Sorting Preferences
+    match prefs.sort_preference.as_str() {
+        "quality" => {
+            if let Some(size) = source.size_bytes {
+                let gb = size as f64 / 1_073_741_824.0;
+                score += (gb * 100.0) as u64; // Huge boost to larger files
+            } else if let Some(mbps) = source.bitrate_mbps {
+                score += (mbps as f64 * 10.0) as u64;
+            }
+        }
+        "speed" => {
+            score += 10000; // Elevate all streams to prevent penalty from dropping below 0 easily
+            if let Some(size) = source.size_bytes {
+                let gb = size as f64 / 1_073_741_824.0;
+                let penalty = (gb * 100.0) as u64;
+                score = score.saturating_sub(penalty); // Heavily penalize large files
+            }
+        }
+        _ => {} // "balanced"
+    }
+
+    // Availability (Cached only heavily prioritized based on PRD)
+    if !source.is_cached {
+        score /= 10;
     }
 
     score
@@ -300,6 +322,7 @@ mod tests2 {
             family_mode: false,
             preferred_language: "en".to_string(),
             subtitle_mode: "auto".to_string(),
+            sort_preference: "balanced".to_string(),
         }
     }
 
@@ -325,6 +348,28 @@ mod tests2 {
         let mut large = mock_source();
         large.size_bytes = Some(20_000_000_000); // 20GB (should get 150 boost)
 
+        assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
+    }
+
+    #[test]
+    fn test_sort_preference() {
+        let mut prefs = mock_prefs();
+        
+        let mut small = mock_source();
+        small.size_bytes = Some(1_000_000_000); // 1GB
+        
+        let mut large = mock_source();
+        large.size_bytes = Some(20_000_000_000); // 20GB
+
+        // Default (balanced) ranks large higher due to size boost
+        assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
+
+        // Speed prefers smaller files
+        prefs.sort_preference = "speed".to_string();
+        assert!(calculate_score(&small, &prefs) > calculate_score(&large, &prefs));
+
+        // Quality prefers larger files (more aggressively)
+        prefs.sort_preference = "quality".to_string();
         assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
     }
 }

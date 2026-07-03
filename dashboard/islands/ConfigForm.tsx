@@ -14,6 +14,7 @@ interface Preferences {
   trakt_username?: string;
   max_resolution?: string;
   exclude_av1?: boolean;
+  sort_preference?: string;
 }
 
 export default function ConfigForm(
@@ -29,6 +30,7 @@ export default function ConfigForm(
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [maxResolution, setMaxResolution] = useState("4K");
+  const [sortPreference, setSortPreference] = useState("balanced");
   const [excludeAv1, setExcludeAv1] = useState(false);
   const [showTorboxKey, setShowTorboxKey] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export default function ConfigForm(
         setTorboxKey(prefs.torbox_api_key || "");
 
         if (prefs.max_resolution) setMaxResolution(prefs.max_resolution);
+        if (prefs.sort_preference) setSortPreference(prefs.sort_preference);
         if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
       }
     } catch (e) {
@@ -127,6 +130,7 @@ export default function ConfigForm(
       torbox_api_key: torboxKey,
 
       max_resolution: maxResolution,
+      sort_preference: sortPreference,
       exclude_av1: excludeAv1,
     };
 
@@ -454,6 +458,32 @@ export default function ConfigForm(
             </div>
             <p class="text-xs text-zinc-500 dark:text-zinc-600">
               Atlas won't serve sources above this quality.
+            </p>
+          </div>
+
+          {/* Sort Preference */}
+          <div class="space-y-2">
+            <label
+              class="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              for="sort-preference"
+            >
+              Stream Sorting
+            </label>
+            <div class="relative">
+              <select
+                id="sort-preference"
+                value={sortPreference}
+                onChange={(e) =>
+                  setSortPreference((e.target as HTMLSelectElement).value)}
+                class="select-field"
+              >
+                <option value="balanced">Balanced (Recommended)</option>
+                <option value="quality">Quality First (Largest Files)</option>
+                <option value="speed">Speed First (Smallest Files)</option>
+              </select>
+            </div>
+            <p class="text-xs text-zinc-500 dark:text-zinc-600">
+              How streams are ordered in Stremio.
             </p>
           </div>
 

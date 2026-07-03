@@ -138,6 +138,7 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 			"trakt_username":  "",
 			"max_resolution":  "4K",
 			"exclude_av1":     false,
+			"sort_preference": "balanced",
 		}
 	}
 
