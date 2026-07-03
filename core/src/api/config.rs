@@ -95,11 +95,13 @@ impl From<UserPreferences> for PublicUserPreferences {
 impl Default for UserPreferences {
     fn default() -> Self {
         Self {
-            torbox_api_key: "".to_string(),
-            real_debrid_api_key: "".to_string(),
-            gemini_api_key: "".to_string(),
-            max_resolution: "4K".to_string(),
-            prefer_hdr: true,
+            torbox_api_key: String::new(),
+            real_debrid_api_key: String::new(),
+            gemini_api_key: String::new(),
+            trakt_client_id: String::new(),
+            trakt_username: String::new(),
+            max_resolution: default_max_resolution(),
+            prefer_hdr: default_prefer_hdr(),
             exclude_av1: false,
             exclude_hevc: false,
             profile: default_profile(),

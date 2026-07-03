@@ -288,6 +288,8 @@ mod tests2 {
             torbox_api_key: "".to_string(),
             real_debrid_api_key: "".to_string(),
             gemini_api_key: "".to_string(),
+            trakt_client_id: "".to_string(),
+            trakt_username: "".to_string(),
             max_resolution: "4K".to_string(),
             prefer_hdr: true,
             exclude_av1: false,
