@@ -58,6 +58,16 @@ type TraktWatchlistShowResponse struct {
 	Show TraktShow `json:"show"`
 }
 
+type TraktBoxOfficeMovieResponse struct {
+	Revenue int        `json:"revenue"`
+	Movie   TraktMovie `json:"movie"`
+}
+
+type TraktAnticipatedShowResponse struct {
+	ListCount int       `json:"list_count"`
+	Show      TraktShow `json:"show"`
+}
+
 func (c *TraktClient) doRequest(url string, target interface{}) error {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -127,6 +137,46 @@ func (c *TraktClient) GetWatchlistShows(username string) ([]TraktShow, error) {
 	var resp []TraktWatchlistShowResponse
 	url := fmt.Sprintf("https://api.trakt.tv/users/%s/watchlist/shows", username)
 	err := c.doRequest(url, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var shows []TraktShow
+	for _, r := range resp {
+		shows = append(shows, r.Show)
+	}
+	return shows, nil
+}
+
+func (c *TraktClient) GetPopularMovies() ([]TraktMovie, error) {
+	var movies []TraktMovie
+	err := c.doRequest("https://api.trakt.tv/movies/popular?limit=20", &movies)
+	return movies, err
+}
+
+func (c *TraktClient) GetBoxOfficeMovies() ([]TraktMovie, error) {
+	var resp []TraktBoxOfficeMovieResponse
+	err := c.doRequest("https://api.trakt.tv/movies/boxoffice", &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var movies []TraktMovie
+	for _, r := range resp {
+		movies = append(movies, r.Movie)
+	}
+	return movies, nil
+}
+
+func (c *TraktClient) GetPopularShows() ([]TraktShow, error) {
+	var shows []TraktShow
+	err := c.doRequest("https://api.trakt.tv/shows/popular?limit=20", &shows)
+	return shows, err
+}
+
+func (c *TraktClient) GetAnticipatedShows() ([]TraktShow, error) {
+	var resp []TraktAnticipatedShowResponse
+	err := c.doRequest("https://api.trakt.tv/shows/anticipated?limit=20", &resp)
 	if err != nil {
 		return nil, err
 	}

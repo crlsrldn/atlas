@@ -309,14 +309,23 @@ func handleWebDAV(w http.ResponseWriter, r *http.Request) {
 			}
 			defer resp.Body.Close()
 
-			if resp.StatusCode == http.StatusFound {
-				location := resp.Header.Get("Location")
-				log.Printf("WebDAV %s redirecting playback to: %s", r.Method, location)
-				http.Redirect(w, r, location, http.StatusFound)
-				return
+			if resp.StatusCode == http.StatusOK {
+				var result struct {
+					Streams []struct {
+						URL string `json:"url"`
+					} `json:"streams"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+					if len(result.Streams) > 0 && result.Streams[0].URL != "" {
+						streamUrl := result.Streams[0].URL
+						log.Printf("WebDAV %s redirecting playback to: %s", r.Method, streamUrl)
+						http.Redirect(w, r, streamUrl, http.StatusFound)
+						return
+					}
+				}
 			}
 
-			log.Printf("WebDAV %s resolve failed with status: %d", r.Method, resp.StatusCode)
+			log.Printf("WebDAV %s resolve failed or no streams found with status: %d", r.Method, resp.StatusCode)
 			http.Error(w, "Stream not found", http.StatusNotFound)
 			return
 		}

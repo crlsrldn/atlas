@@ -52,7 +52,10 @@ func (fs *AtlasFS) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 	}
 
 	if len(parts) == 2 {
-		if parts[1] == "Trending" || parts[1] == "Watchlist" {
+		if parts[0] == "Movies" && (parts[1] == "Trending" || parts[1] == "Popular" || parts[1] == "Box Office" || parts[1] == "Watchlist") {
+			return &VirtualDir{name: parts[1]}, nil
+		}
+		if parts[0] == "Series" && (parts[1] == "Trending" || parts[1] == "Popular" || parts[1] == "Anticipated" || parts[1] == "Watchlist") {
 			return &VirtualDir{name: parts[1]}, nil
 		}
 		return nil, os.ErrNotExist
@@ -268,7 +271,11 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 	}
 
 	if len(parts) == 1 {
-		infos = append(infos, &VirtualDir{name: "Trending"}, &VirtualDir{name: "Watchlist"})
+		if parts[0] == "Movies" {
+			infos = append(infos, &VirtualDir{name: "Trending"}, &VirtualDir{name: "Popular"}, &VirtualDir{name: "Box Office"}, &VirtualDir{name: "Watchlist"})
+		} else if parts[0] == "Series" {
+			infos = append(infos, &VirtualDir{name: "Trending"}, &VirtualDir{name: "Popular"}, &VirtualDir{name: "Anticipated"}, &VirtualDir{name: "Watchlist"})
+		}
 		return infos, nil
 	}
 
@@ -287,6 +294,10 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 			var err error
 			if listType == "Trending" {
 				movies, err = n.fs.Trakt.GetTrendingMovies()
+			} else if listType == "Popular" {
+				movies, err = n.fs.Trakt.GetPopularMovies()
+			} else if listType == "Box Office" {
+				movies, err = n.fs.Trakt.GetBoxOfficeMovies()
 			} else if listType == "Watchlist" {
 				if traktUsername != "" {
 					movies, err = n.fs.Trakt.GetWatchlistMovies(traktUsername)
@@ -318,6 +329,10 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 			var err error
 			if listType == "Trending" {
 				shows, err = n.fs.Trakt.GetTrendingShows()
+			} else if listType == "Popular" {
+				shows, err = n.fs.Trakt.GetPopularShows()
+			} else if listType == "Anticipated" {
+				shows, err = n.fs.Trakt.GetAnticipatedShows()
 			} else if listType == "Watchlist" {
 				if traktUsername != "" {
 					shows, err = n.fs.Trakt.GetWatchlistShows(traktUsername)
