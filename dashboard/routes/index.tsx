@@ -113,14 +113,14 @@ export default function Home() {
 
           {/* Headline */}
           <div class="space-y-4">
-            <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-[-0.03em] leading-[0.95] text-white">
+            <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-[-0.03em] leading-[0.95] text-zinc-900 dark:text-white">
               The intelligence
               <br />
               layer for <span class="gradient-text">media</span>.
             </h1>
-            <p class="text-lg sm:text-xl md:text-2xl text-zinc-400 font-light max-w-2xl mx-auto leading-relaxed text-balance">
+            <p class="text-lg sm:text-xl md:text-2xl text-zinc-600 dark:text-zinc-400 font-light max-w-2xl mx-auto leading-relaxed text-balance">
               Automatically resolve, rank, and stream from the best source.{" "}
-              <span class="text-zinc-300 font-medium">
+              <span class="text-zinc-700 dark:text-zinc-300 font-medium">
                 No friction. Zero exposure.
               </span>
             </p>
@@ -190,13 +190,13 @@ export default function Home() {
                   i > 1 ? "pt-6 md:pt-0" : ""
                 } flex flex-col gap-1`}
               >
-                <p class="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                <p class="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white tracking-tight">
                   {stat.value}
                 </p>
-                <p class="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
                   {stat.label}
                 </p>
-                <p class="text-xs text-zinc-600">{stat.sublabel}</p>
+                <p class="text-xs text-zinc-500 dark:text-zinc-600">{stat.sublabel}</p>
               </div>
             ))}
           </div>
@@ -230,10 +230,10 @@ export default function Home() {
                 Why Atlas
               </div>
             </div>
-            <h2 class="text-4xl md:text-5xl font-bold text-white tracking-tight">
+            <h2 class="text-4xl md:text-5xl font-bold text-zinc-900 dark:text-white tracking-tight">
               Built different.
             </h2>
-            <p class="text-lg text-zinc-400 max-w-2xl mx-auto">
+            <p class="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
               Every decision in Atlas is made with one goal: get you to the best
               version of what you want to watch, instantly.
             </p>
@@ -273,10 +273,10 @@ export default function Home() {
                     <span class={c.icon}>{feature.icon}</span>
                   </div>
                   <div class="space-y-2">
-                    <h3 class="text-lg font-semibold text-white">
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
                       {feature.title}
                     </h3>
-                    <p class="text-zinc-400 text-sm leading-relaxed">
+                    <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
                       {feature.description}
                     </p>
                   </div>
@@ -298,7 +298,7 @@ export default function Home() {
             <div class="flex justify-center">
               <div class="section-label">How it works</div>
             </div>
-            <h2 class="text-4xl md:text-5xl font-bold text-white tracking-tight">
+            <h2 class="text-4xl md:text-5xl font-bold text-zinc-900 dark:text-white tracking-tight">
               Three steps to perfection.
             </h2>
           </div>
@@ -345,8 +345,8 @@ export default function Home() {
                   </div>
                 </div>
                 <div class="space-y-2">
-                  <h3 class="font-semibold text-white text-lg">{item.title}</h3>
-                  <p class="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
+                  <h3 class="font-semibold text-zinc-900 dark:text-white text-lg">{item.title}</h3>
+                  <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
                     {item.desc}
                   </p>
                 </div>
@@ -367,10 +367,10 @@ export default function Home() {
             <div class="flex justify-center">
               <div class="section-label">Integrations</div>
             </div>
-            <h2 class="text-4xl md:text-5xl font-bold text-white tracking-tight">
+            <h2 class="text-4xl md:text-5xl font-bold text-zinc-900 dark:text-white tracking-tight">
               Works with your stack.
             </h2>
-            <p class="text-zinc-400 max-w-xl mx-auto">
+            <p class="text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
               Atlas connects with industry-leading Debrid services and NAS
               providers. More integrations ship every sprint.
             </p>
@@ -384,8 +384,8 @@ export default function Home() {
                   key={p.name}
                   class={`flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all ${
                     isLive
-                      ? "glass-card border-white/10 hover:border-emerald-500/30"
-                      : "border-white/[0.04] bg-white/[0.02] opacity-50 cursor-not-allowed"
+                      ? "glass-card border-black/10 dark:border-white/10 hover:border-emerald-500/30"
+                      : "border-black/5 bg-black/5 dark:border-white/[0.04] dark:bg-white/[0.02] opacity-50 cursor-not-allowed"
                   }`}
                 >
                   <span
@@ -395,7 +395,7 @@ export default function Home() {
                   />
                   <span
                     class={`font-medium text-sm ${
-                      isLive ? "text-white" : "text-zinc-500"
+                      isLive ? "text-zinc-900 dark:text-white" : "text-zinc-500"
                     }`}
                   >
                     {p.name}
@@ -428,10 +428,10 @@ export default function Home() {
 
             <div class="relative z-10 p-10 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
               <div class="space-y-4 flex-1">
-                <h2 class="text-3xl sm:text-4xl font-bold text-white">
+                <h2 class="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white">
                   Ready to upgrade your streaming?
                 </h2>
-                <p class="text-zinc-300 text-lg max-w-lg">
+                <p class="text-zinc-700 dark:text-zinc-300 text-lg max-w-lg">
                   Set up takes under 2 minutes. Your keys are encrypted. Your
                   watch history is private.
                 </p>

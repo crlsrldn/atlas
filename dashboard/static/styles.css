@@ -8,14 +8,107 @@
 
 @layer base {
   :root {
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-surface-2: #f1f5f9;
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-text: #0f172a;
+    --color-brand: #4f46e5;
+    --color-brand-accent: #7c3aed;
+    --radius-card: 1.25rem;
+    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.05);
+
+    /* UI Components */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    --glass-bg-hover: rgba(255, 255, 255, 0.9);
+    --glass-border-hover: rgba(0, 0, 0, 0.15);
+    --glass-shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    
+    --glass-strong-bg: rgba(255, 255, 255, 0.85);
+    --glass-strong-border: rgba(0, 0, 0, 0.1);
+    --glass-strong-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+    --btn-ghost-bg: rgba(0, 0, 0, 0.04);
+    --btn-ghost-border: rgba(0, 0, 0, 0.08);
+    --btn-ghost-hover-bg: rgba(0, 0, 0, 0.08);
+    --btn-ghost-hover-border: rgba(0, 0, 0, 0.15);
+    --btn-ghost-color: #475569;
+    --btn-ghost-hover-color: #0f172a;
+
+    --input-bg: #ffffff;
+    --input-border: rgba(0, 0, 0, 0.15);
+    --input-color: #0f172a;
+    --input-placeholder: #64748b;
+    --input-hover-border: rgba(0, 0, 0, 0.25);
+    
+    --toggle-track-bg: rgba(0, 0, 0, 0.15);
+    --toggle-thumb-bg: #ffffff;
+    
+    --stat-card-bg: rgba(255, 255, 255, 0.8);
+    --stat-card-border: rgba(0, 0, 0, 0.08);
+    --stat-card-hover-border: rgba(99, 102, 241, 0.3);
+    
+    --divider-bg: linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.08) 70%, transparent);
+    --shimmer-bg: linear-gradient(90deg, rgba(0,0,0,0.02) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.02) 75%);
+    
+    --nav-link-color: #475569;
+    --nav-link-hover-color: #0f172a;
+    --nav-link-hover-bg: rgba(0, 0, 0, 0.05);
+    --nav-link-active-color: #4f46e5;
+  }
+
+  .dark {
     --color-bg: #09090b;
     --color-surface: #111113;
     --color-surface-2: #18181b;
     --color-border: rgba(255, 255, 255, 0.08);
+    --color-text: #fafafa;
     --color-brand: #6366f1;
     --color-brand-accent: #8b5cf6;
     --radius-card: 1.25rem;
     --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5);
+
+    /* UI Components */
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --glass-bg-hover: rgba(255, 255, 255, 0.05);
+    --glass-border-hover: rgba(255, 255, 255, 0.12);
+    --glass-shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    
+    --glass-strong-bg: rgba(9, 9, 11, 0.7);
+    --glass-strong-border: rgba(255, 255, 255, 0.1);
+    --glass-strong-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+    --btn-ghost-bg: rgba(255, 255, 255, 0.04);
+    --btn-ghost-border: rgba(255, 255, 255, 0.08);
+    --btn-ghost-hover-bg: rgba(255, 255, 255, 0.08);
+    --btn-ghost-hover-border: rgba(255, 255, 255, 0.15);
+    --btn-ghost-color: #a1a1aa;
+    --btn-ghost-hover-color: #fff;
+
+    --input-bg: rgba(0, 0, 0, 0.4);
+    --input-border: rgba(255, 255, 255, 0.1);
+    --input-color: #fff;
+    --input-placeholder: #52525b;
+    --input-hover-border: rgba(255, 255, 255, 0.16);
+    
+    --toggle-track-bg: rgba(255, 255, 255, 0.1);
+    --toggle-thumb-bg: #fff;
+    
+    --stat-card-bg: rgba(9, 9, 11, 0.6);
+    --stat-card-border: rgba(255, 255, 255, 0.08);
+    --stat-card-hover-border: rgba(99, 102, 241, 0.2);
+    
+    --divider-bg: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent);
+    --shimmer-bg: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%);
+    
+    --nav-link-color: #71717a;
+    --nav-link-hover-color: #fff;
+    --nav-link-hover-bg: rgba(255, 255, 255, 0.06);
+    --nav-link-active-color: #a5b4fc;
   }
 
   *,
@@ -36,9 +129,10 @@
   body {
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
     background-color: var(--color-bg);
-    color: #fafafa;
+    color: var(--color-text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   img,
@@ -66,31 +160,29 @@
      GLASS CARDS
      ============================================================ */
   .glass-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s
-      ease;
+    box-shadow: var(--glass-shadow);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .glass-card:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255,
-      0.08);
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--glass-shadow-hover);
   }
 
   .glass-card-strong {
-    background: rgba(9, 9, 11, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--glass-strong-bg);
+    border: 1px solid var(--glass-strong-border);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border-radius: var(--radius-card);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255,
-      0.07);
+    box-shadow: var(--glass-strong-shadow);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   /* ============================================================
@@ -105,7 +197,7 @@
     font-weight: 600;
     font-size: 0.9375rem;
     color: #fff;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-accent) 100%);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 0.875rem;
     cursor: pointer;
@@ -154,18 +246,18 @@
     padding: 0.625rem 1.25rem;
     font-weight: 500;
     font-size: 0.875rem;
-    color: #a1a1aa;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--btn-ghost-color);
+    background: var(--btn-ghost-bg);
+    border: 1px solid var(--btn-ghost-border);
     border-radius: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--btn-ghost-hover-bg);
+    color: var(--btn-ghost-hover-color);
+    border-color: var(--btn-ghost-hover-border);
   }
 
   /* ============================================================
@@ -174,20 +266,20 @@
   .input-field {
     width: 100%;
     padding: 0.75rem 1rem;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 0.75rem;
-    color: #fff;
+    color: var(--input-color);
     font-size: 0.875rem;
     font-family: inherit;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     outline: none;
     appearance: none;
     -webkit-appearance: none;
   }
 
   .input-field::placeholder {
-    color: #52525b;
+    color: var(--input-placeholder);
   }
 
   .input-field:focus {
@@ -197,19 +289,19 @@
   }
 
   .input-field:hover:not(:focus) {
-    border-color: rgba(255, 255, 255, 0.16);
+    border-color: var(--input-hover-border);
   }
 
   .select-field {
     width: 100%;
     padding: 0.75rem 2.5rem 0.75rem 1rem;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 0.75rem;
-    color: #fff;
+    color: var(--input-color);
     font-size: 0.875rem;
     font-family: inherit;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     outline: none;
     appearance: none;
     -webkit-appearance: none;
@@ -226,8 +318,8 @@
   }
 
   .select-field option {
-    background: #18181b;
-    color: #fff;
+    background: var(--color-surface-2);
+    color: var(--input-color);
   }
 
   /* ============================================================
@@ -244,14 +336,14 @@
     position: relative;
     width: 2.75rem;
     height: 1.5rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--toggle-track-bg);
     border-radius: 9999px;
     transition: background 0.25s ease;
     flex-shrink: 0;
   }
 
   .toggle-track.active {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, var(--color-brand), var(--color-brand-accent));
     box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
   }
 
@@ -261,7 +353,7 @@
     left: 3px;
     width: 1.125rem;
     height: 1.125rem;
-    background: #fff;
+    background: var(--toggle-thumb-bg);
     border-radius: 50%;
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -286,27 +378,43 @@
   }
 
   .badge-indigo {
-    color: #a5b4fc;
+    color: var(--color-brand);
     background: rgba(99, 102, 241, 0.1);
     border-color: rgba(99, 102, 241, 0.25);
   }
+  
+  .dark .badge-indigo {
+    color: #a5b4fc;
+  }
 
   .badge-emerald {
-    color: #6ee7b7;
+    color: #059669;
     background: rgba(16, 185, 129, 0.1);
     border-color: rgba(16, 185, 129, 0.25);
   }
 
+  .dark .badge-emerald {
+    color: #6ee7b7;
+  }
+
   .badge-amber {
-    color: #fcd34d;
+    color: #d97706;
     background: rgba(245, 158, 11, 0.1);
     border-color: rgba(245, 158, 11, 0.25);
   }
 
+  .dark .badge-amber {
+    color: #fcd34d;
+  }
+
   .badge-red {
-    color: #fca5a5;
+    color: #dc2626;
     background: rgba(239, 68, 68, 0.1);
     border-color: rgba(239, 68, 68, 0.25);
+  }
+
+  .dark .badge-red {
+    color: #fca5a5;
   }
 
   /* ============================================================
@@ -314,28 +422,30 @@
      ============================================================ */
   .stat-card {
     padding: 1.75rem 2rem;
-    background: rgba(9, 9, 11, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--stat-card-bg);
+    border: 1px solid var(--stat-card-border);
     border-radius: 1.25rem;
     backdrop-filter: blur(20px);
     position: relative;
     overflow: hidden;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
 
   .stat-card::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, transparent 60%, rgba(99, 102, 241,
-      0.04) 100%);
+    background: linear-gradient(135deg, transparent 60%, rgba(99, 102, 241, 0.04) 100%);
     pointer-events: none;
   }
 
   .stat-card:hover {
-    border-color: rgba(99, 102, 241, 0.2);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241,
-      0.1);
+    border-color: var(--stat-card-hover-border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(99, 102, 241, 0.1);
+  }
+  
+  .dark .stat-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.1);
   }
 
   /* ============================================================
@@ -352,21 +462,33 @@
   }
 
   .alert-error {
-    color: #fca5a5;
+    color: #dc2626;
     background: rgba(239, 68, 68, 0.08);
     border-color: rgba(239, 68, 68, 0.2);
   }
+  
+  .dark .alert-error {
+    color: #fca5a5;
+  }
 
   .alert-warning {
-    color: #fcd34d;
+    color: #d97706;
     background: rgba(245, 158, 11, 0.08);
     border-color: rgba(245, 158, 11, 0.2);
   }
+  
+  .dark .alert-warning {
+    color: #fcd34d;
+  }
 
   .alert-success {
-    color: #6ee7b7;
+    color: #059669;
     background: rgba(16, 185, 129, 0.08);
     border-color: rgba(16, 185, 129, 0.2);
+  }
+  
+  .dark .alert-success {
+    color: #6ee7b7;
   }
 
   /* ============================================================
@@ -381,10 +503,14 @@
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #818cf8;
+    color: var(--color-brand);
     background: rgba(99, 102, 241, 0.08);
     border: 1px solid rgba(99, 102, 241, 0.2);
     border-radius: 9999px;
+  }
+
+  .dark .section-label {
+    color: #818cf8;
   }
 
   /* ============================================================
@@ -392,8 +518,7 @@
      ============================================================ */
   .divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%,
-      rgba(255,255,255,0.08) 70%, transparent);
+    background: var(--divider-bg);
   }
 
   /* ============================================================
@@ -423,6 +548,10 @@
     -webkit-background-clip: text;
     color: transparent;
     -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-accent) 100%);
+  }
+
+  .dark .gradient-text {
     background-image: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
   }
 
@@ -431,16 +560,18 @@
     -webkit-background-clip: text;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899
-      100%);
+    background-image: linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%);
+  }
+
+  .dark .gradient-text-bright {
+    background-image: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
   }
 
   /* ============================================================
      SHIMMER LOADING STATE
      ============================================================ */
   .shimmer {
-    background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%,
-      rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%);
+    background: var(--shimmer-bg);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
   }
@@ -451,7 +582,7 @@
   .nav-link {
     font-size: 0.875rem;
     font-weight: 500;
-    color: #71717a;
+    color: var(--nav-link-color);
     text-decoration: none;
     padding: 0.375rem 0.5rem;
     border-radius: 0.5rem;
@@ -459,12 +590,12 @@
   }
 
   .nav-link:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--nav-link-hover-color);
+    background: var(--nav-link-hover-bg);
   }
 
   .nav-link-active {
-    color: #a5b4fc;
+    color: var(--nav-link-active-color);
   }
 
   /* ============================================================
@@ -474,12 +605,12 @@
     width: 0.5rem;
     height: 0.5rem;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--toggle-track-bg);
     transition: all 0.3s ease;
   }
 
   .step-dot.active {
-    background: #6366f1;
+    background: var(--color-brand);
     box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
   }
 }
@@ -504,6 +635,10 @@
   /* Selection */
   ::selection {
     background-color: rgba(99, 102, 241, 0.3);
+    color: #fff;
+  }
+  
+  .dark ::selection {
     color: #fff;
   }
 

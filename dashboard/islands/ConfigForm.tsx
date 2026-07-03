@@ -33,9 +33,7 @@ export default function ConfigForm(
   const [showTorboxKey, setShowTorboxKey] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [testingKeys, setTestingKeys] = useState(false);
-  const [testResults, setTestResults] = useState<
-    Record<string, unknown> | null
-  >(null);
+  const [testResults, setTestResults] = useState<{ error?: string, torbox?: { valid: boolean, premium: boolean, expires_at: string } } | null>(null);
 
   const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
 
@@ -87,7 +85,7 @@ export default function ConfigForm(
         if (prefs.max_resolution) setMaxResolution(prefs.max_resolution);
         if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
       }
-    } catch (_e) {
+    } catch (e) {
       console.log("No existing preferences found or error loading them", e);
     }
   };
@@ -231,8 +229,8 @@ export default function ConfigForm(
             </svg>
           </div>
           <div>
-            <h2 class="text-lg font-semibold text-white">Provider Keys</h2>
-            <p class="text-xs text-zinc-500 mt-0.5">
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Provider Keys</h2>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Stored encrypted. Never exposed to clients.
             </p>
           </div>
@@ -243,7 +241,7 @@ export default function ConfigForm(
           <div class="space-y-2">
             <div class="flex items-center justify-between">
               <label
-                class="block text-sm font-medium text-zinc-300"
+                class="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
                 for="torbox-key"
               >
                 TorBox API Key
@@ -253,7 +251,7 @@ export default function ConfigForm(
                   class={`w-1.5 h-1.5 rounded-full ${
                     torboxKey
                       ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
-                      : "bg-zinc-700"
+                      : "bg-zinc-300 dark:bg-zinc-700"
                   }`}
                 />
                 <span class="text-[11px] text-zinc-500 font-medium">
@@ -274,7 +272,7 @@ export default function ConfigForm(
               <button
                 type="button"
                 onClick={() => setShowTorboxKey(!showTorboxKey)}
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded-lg"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors p-1 rounded-lg"
                 aria-label={showTorboxKey ? "Hide key" : "Show key"}
               >
                 {showTorboxKey
@@ -315,26 +313,25 @@ export default function ConfigForm(
                   )}
               </button>
             </div>
-            <p class="text-xs text-zinc-600">
+            <p class="text-xs text-zinc-500 dark:text-zinc-600">
               Get your key at{" "}
               <a
                 href="https://torbox.app/settings"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors"
+                class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 underline underline-offset-2 transition-colors"
               >
                 torbox.app/settings
               </a>
             </p>
           </div>
-
-
+        </div>
 
         {/* Test Results */}
         {testResults && !testResults.error && (
           <div class="mt-6 space-y-3 animate-fade-in">
             {testResults.torbox && (
-              <div class="p-4 rounded-xl bg-zinc-800/30 border border-white/5 flex items-center justify-between">
+              <div class="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800/30 border border-black/5 dark:border-white/5 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <div
                     class={`w-2 h-2 rounded-full ${
@@ -346,8 +343,8 @@ export default function ConfigForm(
                     }`}
                   />
                   <div>
-                    <p class="text-sm font-semibold text-white">TorBox</p>
-                    <p class="text-xs text-zinc-400">
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-white">TorBox</p>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
                       {testResults.torbox.valid
                         ? (testResults.torbox.premium
                           ? "Premium Active"
@@ -357,7 +354,7 @@ export default function ConfigForm(
                   </div>
                 </div>
                 {testResults.torbox.valid && testResults.torbox.expires_at && (
-                  <span class="text-xs text-zinc-400 font-medium bg-white/5 px-2.5 py-1 rounded-lg">
+                  <span class="text-xs text-zinc-600 dark:text-zinc-400 font-medium bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-lg">
                     Valid until: {new Date(testResults.torbox.expires_at)
                       .toLocaleDateString()}
                   </span>
@@ -424,10 +421,10 @@ export default function ConfigForm(
             </svg>
           </div>
           <div>
-            <h2 class="text-lg font-semibold text-white">
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
               Playback Preferences
             </h2>
-            <p class="text-xs text-zinc-500 mt-0.5">
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Tune quality and compatibility for your device.
             </p>
           </div>
@@ -437,7 +434,7 @@ export default function ConfigForm(
           {/* Max resolution */}
           <div class="space-y-2">
             <label
-              class="block text-sm font-medium text-zinc-300"
+              class="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
               for="max-resolution"
             >
               Maximum Resolution
@@ -455,14 +452,14 @@ export default function ConfigForm(
                 <option value="720p">720p HD</option>
               </select>
             </div>
-            <p class="text-xs text-zinc-600">
+            <p class="text-xs text-zinc-500 dark:text-zinc-600">
               Atlas won't serve sources above this quality.
             </p>
           </div>
 
           {/* AV1 toggle */}
           <div class="space-y-2">
-            <p class="block text-sm font-medium text-zinc-300">
+            <p class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Device Compatibility
             </p>
             <button
@@ -476,10 +473,10 @@ export default function ConfigForm(
                 <div class="toggle-thumb" />
               </div>
               <div class="text-left">
-                <span class="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors block">
+                <span class="text-sm font-medium text-zinc-700 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white transition-colors block">
                   Exclude AV1 Codec
                 </span>
-                <span class="text-xs text-zinc-600 block mt-0.5">
+                <span class="text-xs text-zinc-500 dark:text-zinc-600 block mt-0.5">
                   Recommended for older TVs & Apple devices
                 </span>
               </div>
@@ -488,7 +485,7 @@ export default function ConfigForm(
         </div>
 
         {/* Save row */}
-        <div class="pt-8 mt-2 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="pt-8 mt-2 border-t border-black/5 dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           {/* Success / error feedback */}
           <div class="min-h-[1.5rem]">
             {saveSuccess && (
@@ -607,10 +604,10 @@ export default function ConfigForm(
               </svg>
             </div>
             <div>
-              <h2 class="text-lg font-semibold text-white">
+              <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
                 Install to Stremio
               </h2>
-              <p class="text-sm text-zinc-400 mt-0.5">
+              <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
                 {userId
                   ? "Your unique Atlas endpoint is configured. Click below to add it to Stremio instantly."
                   : "Save your preferences first to generate your personal endpoint."}
@@ -629,7 +626,7 @@ export default function ConfigForm(
                 <div class="w-7 h-7 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
                   {s.n}
                 </div>
-                <p class="text-sm text-zinc-400">{s.text}</p>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">{s.text}</p>
               </div>
             ))}
           </div>
@@ -649,7 +646,7 @@ export default function ConfigForm(
               class={`inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 ${
                 userId
                   ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-glow-md hover:shadow-glow-lg hover:-translate-y-0.5"
-                  : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-white/5"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed border-black/5 dark:border-white/5 border"
               }`}
             >
               <svg
@@ -689,7 +686,7 @@ export default function ConfigForm(
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                  class="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                 >
                   Sign Out
                 </button>

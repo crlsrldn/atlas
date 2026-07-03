@@ -65,7 +65,7 @@ export default function AdminLogin(
               />
             </svg>
           </div>
-          <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#09090b] border border-white/10 flex items-center justify-center">
+          <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-[#09090b] border border-black/10 dark:border-white/10 flex items-center justify-center">
             <span class="w-2.5 h-2.5 rounded-full bg-amber-400" />
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function AdminLogin(
         {/* Email */}
         <div class="space-y-1.5">
           <label
-            class="block text-sm font-medium text-zinc-300"
+            class="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             for="admin-email"
           >
             Email Address
@@ -95,7 +95,7 @@ export default function AdminLogin(
         {/* Password */}
         <div class="space-y-1.5">
           <label
-            class="block text-sm font-medium text-zinc-300"
+            class="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             for="admin-password"
           >
             Password
@@ -114,7 +114,7 @@ export default function AdminLogin(
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded-lg"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors p-1 rounded-lg"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword
@@ -232,7 +232,7 @@ export default function AdminLogin(
         </button>
       </form>
 
-      <p class="mt-6 text-center text-xs text-zinc-600">
+      <p class="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-600">
         Only Supabase service accounts with admin privileges can log in.
       </p>
     </div>

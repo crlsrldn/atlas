@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { getSupabaseClient } from "../utils/supabase.ts";
+import ThemeToggle from "./ThemeToggle.tsx";
 
 interface NavbarProps {
   pathname: string;
@@ -50,7 +51,7 @@ export default function Navbar(
 
   return (
     <header class="sticky top-0 z-50 w-full">
-      <div class="absolute inset-0 bg-[#09090b]/80 backdrop-blur-2xl border-b border-white/[0.06]" />
+      <div class="absolute inset-0 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-2xl border-b border-black/10 dark:border-white/[0.06] transition-colors duration-200" />
       <nav class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <a href="/" class="flex items-center gap-3 group flex-shrink-0">
@@ -61,7 +62,7 @@ export default function Navbar(
               A
             </div>
           </div>
-          <span class="font-bold text-lg text-white tracking-tight">Atlas</span>
+          <span class="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">Atlas</span>
         </a>
 
         {/* Nav links */}
@@ -88,11 +89,14 @@ export default function Navbar(
             <button
               type="button"
               onClick={handleSignOut}
-              class="nav-link text-zinc-400 hover:text-white hover:bg-white/5 transition-colors ml-2"
+              class="nav-link text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors ml-2"
             >
               Sign Out
             </button>
           )}
+          <div class="pl-2 ml-2 border-l border-black/10 dark:border-white/10 flex items-center">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Mobile: hamburger placeholder */}
@@ -111,6 +115,7 @@ export default function Navbar(
               Sign Out
             </button>
           )}
+          <ThemeToggle />
         </div>
       </nav>
     </header>

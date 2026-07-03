@@ -80,10 +80,10 @@ export default function AuthForm(
             />
           </svg>
         </div>
-        <h2 class="text-2xl font-bold text-white">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">
           {type === "signup" ? "Create your account" : "Welcome back"}
         </h2>
-        <p class="text-zinc-400 mt-2 text-sm">
+        <p class="text-zinc-500 dark:text-zinc-400 mt-2 text-sm">
           {type === "signup"
             ? "Start streaming with the best sources."
             : "Sign in to manage your configuration."}
@@ -130,7 +130,7 @@ export default function AuthForm(
         )}
 
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-zinc-300">
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Email
           </label>
           <input
@@ -145,7 +145,7 @@ export default function AuthForm(
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-zinc-300">
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Password
           </label>
           <div class="relative">
@@ -160,7 +160,7 @@ export default function AuthForm(
             />
             <button
               type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
               onClick={() => setShowPassword(!showPassword)}
               tabIndex={-1}
             >
@@ -243,14 +243,14 @@ export default function AuthForm(
         </button>
       </form>
 
-      <div class="mt-6 text-center text-sm text-zinc-500">
+      <div class="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
         {type === "signup"
           ? (
             <>
               Already have an account?{" "}
               <a
                 href="/login"
-                class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition-colors"
               >
                 Sign in
               </a>
@@ -261,7 +261,7 @@ export default function AuthForm(
               Don't have an account?{" "}
               <a
                 href="/signup"
-                class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition-colors"
               >
                 Sign up
               </a>

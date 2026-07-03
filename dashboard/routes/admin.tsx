@@ -252,10 +252,10 @@ function LoginView(
         {/* Header */}
         <div class="text-center mb-8 space-y-2">
           <div class="section-label mx-auto w-fit mb-4">Admin Access</div>
-          <h1 class="text-3xl font-bold text-white tracking-tight">
+          <h1 class="text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
             System Console
           </h1>
-          <p class="text-zinc-400 text-sm">
+          <p class="text-zinc-500 dark:text-zinc-400 text-sm">
             Sign in to view live Atlas Core metrics.
           </p>
         </div>
@@ -426,10 +426,10 @@ function DashboardView({ data }: { data: AdminData }) {
             </svg>
           </div>
           <div>
-            <p class="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-0.5">
+            <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-0.5">
               Admin
             </p>
-            <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
+            <h1 class="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
               System Overview
             </h1>
           </div>
@@ -444,7 +444,7 @@ function DashboardView({ data }: { data: AdminData }) {
             </span>
           </div>
           {/* Last refreshed */}
-          <span class="text-xs text-zinc-500 hidden sm:block">
+          <span class="text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">
             Updated just now
           </span>
         </div>
@@ -480,7 +480,7 @@ function DashboardView({ data }: { data: AdminData }) {
           return (
             <div
               key={m.label}
-              class={`stat-card border border-white/[0.07] transition-all duration-200 ${c.glow} hover:-translate-y-0.5`}
+              class={`stat-card border border-black/5 dark:border-white/[0.07] transition-all duration-200 ${c.glow} hover:-translate-y-0.5`}
             >
               {/* Card header */}
               <div class="flex items-center justify-between mb-5">
@@ -493,11 +493,11 @@ function DashboardView({ data }: { data: AdminData }) {
               </div>
 
               {/* Big number */}
-              <p class="text-4xl font-black text-white tracking-tight tabular-nums">
+              <p class="text-4xl font-black text-zinc-900 dark:text-white tracking-tight tabular-nums">
                 {m.value}
               </p>
-              <p class="text-sm font-medium text-zinc-400 mt-1">{m.label}</p>
-              <p class="text-xs text-zinc-600 mt-1">{m.description}</p>
+              <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">{m.label}</p>
+              <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1">{m.description}</p>
             </div>
           );
         })}
@@ -523,7 +523,7 @@ function DashboardView({ data }: { data: AdminData }) {
                 />
               </svg>
             </div>
-            <h2 class="font-semibold text-white">System Health</h2>
+            <h2 class="font-semibold text-zinc-900 dark:text-white">System Health</h2>
           </div>
 
           <div class="space-y-3">
@@ -548,9 +548,9 @@ function DashboardView({ data }: { data: AdminData }) {
             ].map((s) => (
               <div
                 key={s.name}
-                class="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0"
+                class="flex items-center justify-between py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0"
               >
-                <span class="text-sm text-zinc-300">{s.name}</span>
+                <span class="text-sm text-zinc-700 dark:text-zinc-300">{s.name}</span>
                 <div class="flex items-center gap-2">
                   <span
                     class={`w-1.5 h-1.5 rounded-full ${
@@ -590,7 +590,7 @@ function DashboardView({ data }: { data: AdminData }) {
                 />
               </svg>
             </div>
-            <h2 class="font-semibold text-white">Quick Actions</h2>
+            <h2 class="font-semibold text-zinc-900 dark:text-white">Quick Actions</h2>
           </div>
 
           <div class="space-y-3">
@@ -618,12 +618,12 @@ function DashboardView({ data }: { data: AdminData }) {
                 rel={action.href.startsWith("http")
                   ? "noopener noreferrer"
                   : undefined}
-                class="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.06] transition-all group"
+                class="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/[0.04] border border-transparent hover:border-black/5 dark:hover:border-white/[0.06] transition-all group"
               >
-                <span class="text-sm text-zinc-300 group-hover:text-white transition-colors">
+                <span class="text-sm text-zinc-700 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white transition-colors">
                   {action.label}
                 </span>
-                <span class="text-zinc-600 text-sm group-hover:text-zinc-300 transition-colors">
+                <span class="text-zinc-500 dark:text-zinc-600 text-sm group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                   {action.icon}
                 </span>
               </a>
@@ -631,12 +631,12 @@ function DashboardView({ data }: { data: AdminData }) {
           </div>
 
           {/* Sign out */}
-          <div class="mt-5 pt-4 border-t border-white/[0.06]">
+          <div class="mt-5 pt-4 border-t border-black/5 dark:border-white/[0.06]">
             <form method="POST">
               <input type="hidden" name="action" value="logout" />
               <button
                 type="submit"
-                class="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-xl border border-white/5 shadow-sm transition-all duration-200"
+                class="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white text-sm font-medium rounded-xl border border-black/5 dark:border-white/5 shadow-sm transition-all duration-200"
               >
                 <svg
                   class="w-4 h-4 text-zinc-400"
@@ -677,8 +677,8 @@ export default function AdminPage({ data }: PageProps<AdminData>) {
     return (
       <div class="min-h-[80vh] flex flex-col items-center justify-center px-4">
         <div class="glass-card p-8 rounded-2xl max-w-md w-full text-center space-y-4 border-red-500/30">
-          <h2 class="text-xl font-bold text-white">Access Error</h2>
-          <p class="text-zinc-400">{data.error}</p>
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Access Error</h2>
+          <p class="text-zinc-500 dark:text-zinc-400">{data.error}</p>
         </div>
       </div>
     );

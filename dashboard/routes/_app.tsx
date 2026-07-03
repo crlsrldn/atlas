@@ -29,8 +29,21 @@ export default function App({ Component, url }: PageProps) {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
       </head>
-      <body class="antialiased min-h-screen bg-[#09090b] text-zinc-50 flex flex-col overflow-x-hidden">
+      <body class="antialiased min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
         {/* ── Background ambient glows ── */}
         <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div class="absolute -top-[20%] -left-[10%] w-[70%] h-[60%] bg-indigo-600/8 rounded-full blur-[120px]" />
@@ -51,7 +64,7 @@ export default function App({ Component, url }: PageProps) {
         </main>
 
         {/* ── Footer ── */}
-        <footer class="relative z-10 border-t border-white/[0.06] py-10 mt-auto">
+        <footer class="relative z-10 border-t border-black/10 dark:border-white/[0.06] py-10 mt-auto transition-colors duration-200">
           <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div class="flex items-center gap-2">
