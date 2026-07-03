@@ -11,6 +11,8 @@ interface ConfigFormProps {
 interface Preferences {
   torbox_api_key?: string;
   real_debrid_api_key?: string;
+  trakt_client_id?: string;
+  trakt_username?: string;
   max_resolution?: string;
   exclude_av1?: boolean;
 }
@@ -23,6 +25,8 @@ export default function ConfigForm(
 ) {
   const [torboxKey, setTorboxKey] = useState("");
   const [rdKey, setRdKey] = useState("");
+  const [traktClientId, setTraktClientId] = useState("");
+  const [traktUsername, setTraktUsername] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -84,6 +88,8 @@ export default function ConfigForm(
         const prefs: Preferences = data.prefs_json;
         setTorboxKey(prefs.torbox_api_key || "");
         setRdKey(prefs.real_debrid_api_key || "");
+        setTraktClientId(prefs.trakt_client_id || "");
+        setTraktUsername(prefs.trakt_username || "");
         if (prefs.max_resolution) setMaxResolution(prefs.max_resolution);
         if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
       }
@@ -129,6 +135,8 @@ export default function ConfigForm(
     const prefs_json: Preferences = {
       torbox_api_key: torboxKey,
       real_debrid_api_key: rdKey,
+      trakt_client_id: traktClientId,
+      trakt_username: traktUsername,
       max_resolution: maxResolution,
       exclude_av1: excludeAv1,
     };
@@ -418,6 +426,66 @@ export default function ConfigForm(
                 real-debrid.com/apitoken
               </a>
             </p>
+          </div>
+
+          {/* Separator */}
+          <div class="divider" />
+
+          {/* Trakt */}
+          <div class="space-y-4">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label
+                  class="block text-sm font-medium text-zinc-300"
+                  for="trakt-client-id"
+                >
+                  Trakt Client ID
+                </label>
+                <div class="flex items-center gap-2">
+                  <span
+                    class={`w-1.5 h-1.5 rounded-full ${
+                      traktClientId
+                        ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                        : "bg-zinc-700"
+                    }`}
+                  />
+                  <span class="text-[11px] text-zinc-500 font-medium">
+                    {traktClientId ? "Configured" : "Not set"}
+                  </span>
+                </div>
+              </div>
+              <input
+                id="trakt-client-id"
+                type="text"
+                value={traktClientId}
+                onInput={(e) => setTraktClientId((e.target as HTMLInputElement).value)}
+                class="input-field"
+                placeholder="Client ID for Infuse WebDAV integration"
+              />
+              <p class="text-xs text-zinc-600 mt-2">
+                Required to enable native Infuse WebDAV integration.
+              </p>
+            </div>
+
+            <div>
+              <label
+                class="block text-sm font-medium text-zinc-300 mb-2"
+                for="trakt-username"
+              >
+                Trakt Username (Optional)
+              </label>
+              <input
+                id="trakt-username"
+                type="text"
+                value={traktUsername}
+                onInput={(e) => setTraktUsername((e.target as HTMLInputElement).value)}
+                class="input-field"
+                placeholder="e.g. john_doe"
+              />
+              <p class="text-xs text-zinc-600 mt-2">
+                Enter your username to pull your personal Watchlist into WebDAV.
+              </p>
+            </div>
           </div>
         </div>
 
