@@ -273,13 +273,64 @@ func handleWebDAV(w http.ResponseWriter, r *http.Request) {
 		Cinemeta: NewCinemetaClient(),
 	}
 
+	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && strings.HasSuffix(r.URL.Path, ".mp4") {
+		imdbMatch := imdbRegex.FindStringSubmatch(r.URL.Path)
+		if len(imdbMatch) >= 2 {
+			imdbId := imdbMatch[1]
+			stremioId := imdbId
+
+			fileName := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+			epMatch := episodeRegex.FindStringSubmatch(fileName)
+			if len(epMatch) == 3 {
+				season, _ := strconv.Atoi(epMatch[1])
+				episode, _ := strconv.Atoi(epMatch[2])
+				stremioId = fmt.Sprintf("%s:%d:%d", imdbId, season, episode)
+			}
+
+			reqBody, _ := json.Marshal(map[string]interface{}{
+				"stremio_id":    stremioId,
+				"install_token": token,
+				"prefs":         prefs,
+				"user_agent":    "Atlas Infuse WebDAV",
+			})
+
+			client := &http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
+
+			req, _ := http.NewRequest(http.MethodPost, coreUrl+"/internal/resolve", bytes.NewBuffer(reqBody))
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Printf("WebDAV %s resolve error: %v", r.Method, err)
+				http.Error(w, "Failed to resolve stream", http.StatusInternalServerError)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusFound {
+				location := resp.Header.Get("Location")
+				log.Printf("WebDAV %s redirecting playback to: %s", r.Method, location)
+				http.Redirect(w, r, location, http.StatusFound)
+				return
+			}
+
+			log.Printf("WebDAV %s resolve failed with status: %d", r.Method, resp.StatusCode)
+			http.Error(w, "Stream not found", http.StatusNotFound)
+			return
+		}
+	}
+
 	handler := &webdav.Handler{
 		Prefix:     prefix,
 		FileSystem: fs,
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
-				log.Printf("WebDAV [%s]: %s, ERROR: %s\n", r.Method, r.URL, err)
+				log.Printf("WebDAV [%s]: %s, ERROR: %v\n", r.Method, r.URL.Path, err)
 			}
 		},
 	}

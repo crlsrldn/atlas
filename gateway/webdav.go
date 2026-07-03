@@ -82,7 +82,7 @@ func (fs *AtlasFS) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 }
 
 // Helpers to extract IDs
-var imdbRegex = regexp.MustCompile(`\[(tt\d+)\]`)
+var imdbRegex = regexp.MustCompile(`\{imdb-(tt\d+)\}`)
 var seasonRegex = regexp.MustCompile(`Season (\d+)`)
 var episodeRegex = regexp.MustCompile(`S(\d+)E(\d+)`)
 
@@ -279,9 +279,12 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 			}
 
 			for _, m := range movies {
-				if m.IDs.Imdb != "" {
-					name := fmt.Sprintf("%s [%s].mp4", sanitize(m.Title), m.IDs.Imdb)
-					infos = append(infos, &VirtualFile{name: name, size: 10 * 1024 * 1024 * 1024})
+				if m.Title != "" {
+					name := fmt.Sprintf("%s (%d) {imdb-%s}.mp4", sanitize(m.Title), m.Year, m.IDs.Imdb)
+					if m.Year == 0 {
+						name = fmt.Sprintf("%s {imdb-%s}.mp4", sanitize(m.Title), m.IDs.Imdb)
+					}
+					infos = append(infos, &VirtualFile{name: name, size: 10 * 1024 * 1024 * 1024}) // fake 10GB
 				}
 			}
 		} else {
@@ -306,7 +309,10 @@ func (n *VirtualNode) Readdir(count int) ([]os.FileInfo, error) {
 
 			for _, s := range shows {
 				if s.IDs.Imdb != "" {
-					name := fmt.Sprintf("%s [%s]", sanitize(s.Title), s.IDs.Imdb)
+					name := fmt.Sprintf("%s (%d) {imdb-%s}", sanitize(s.Title), s.Year, s.IDs.Imdb)
+					if s.Year == 0 {
+						name = fmt.Sprintf("%s {imdb-%s}", sanitize(s.Title), s.IDs.Imdb)
+					}
 					infos = append(infos, &VirtualDir{name: name})
 				}
 			}
