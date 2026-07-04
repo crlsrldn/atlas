@@ -2,7 +2,7 @@
   import '../app.css';
   import { page } from '$app/stores';
 
-  let { children, data } = $props();
+  let { children, data }: { children: any; data: any } = $props();
   
   let isAuthenticated = $derived(!!data.session);
   let pathname = $derived($page.url.pathname);

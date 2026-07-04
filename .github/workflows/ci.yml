@@ -66,7 +66,7 @@ jobs:
         run: go test -v ./...
 
   dashboard:
-    name: Node Dashboard
+    name: Bun Dashboard
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,18 +74,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: dashboard/package-lock.json
+          bun-version: latest
       - name: Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
       - name: Lint and Check
-        run: npm run check
+        run: bun run check
       - name: Build
-        run: npm run build
+        run: bun run build
 
 
   smoke:
