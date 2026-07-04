@@ -30,6 +30,7 @@ export default function App({ Component, url }: PageProps) {
           rel="stylesheet"
         />
         <script
+          // deno-lint-ignore react-no-danger
           dangerouslySetInnerHTML={{
             __html: `
               try {

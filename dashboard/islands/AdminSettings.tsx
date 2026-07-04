@@ -156,6 +156,7 @@ export default function AdminSettings() {
             <div />
           )}
           <button
+            type="button"
             onClick={saveConfig}
             disabled={saving}
             class="btn-primary flex items-center gap-2 px-6"

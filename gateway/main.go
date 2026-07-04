@@ -68,7 +68,6 @@ func main() {
 	http.HandleFunc("/health", handleRoot)
 	http.HandleFunc("/stremio/", handleStremio)
 
-
 	log.Println("Starting API gateway on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
@@ -286,5 +285,3 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
-
-

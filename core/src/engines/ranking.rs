@@ -7,7 +7,11 @@ pub struct RankedSource {
     pub score: u64,
 }
 
-pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences, monetization_enabled: bool) -> Vec<RankedSource> {
+pub fn rank_sources(
+    sources: Vec<SourceResult>,
+    prefs: &UserPreferences,
+    monetization_enabled: bool,
+) -> Vec<RankedSource> {
     let mut ranked: Vec<RankedSource> = sources
         .into_iter()
         .map(|source| {
@@ -22,7 +26,11 @@ pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences, monetiz
     ranked
 }
 
-fn calculate_score(source: &SourceResult, prefs: &UserPreferences, monetization_enabled: bool) -> u64 {
+fn calculate_score(
+    source: &SourceResult,
+    prefs: &UserPreferences,
+    monetization_enabled: bool,
+) -> u64 {
     let mut score: u64 = 1000;
 
     // Premium Restrictions

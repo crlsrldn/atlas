@@ -24,7 +24,7 @@ export default function ThemeToggle() {
         document.documentElement.classList.remove("dark");
       } else {
         // system
-        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        if (globalThis.matchMedia("(prefers-color-scheme: dark)").matches) {
           document.documentElement.classList.add("dark");
         } else {
           document.documentElement.classList.remove("dark");
@@ -36,7 +36,7 @@ export default function ThemeToggle() {
     
     // Listen for system changes if set to system
     if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const mediaQuery = globalThis.matchMedia("(prefers-color-scheme: dark)");
       const handler = (e: MediaQueryListEvent) => {
         if (e.matches) {
           document.documentElement.classList.add("dark");
@@ -65,6 +65,7 @@ export default function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={toggleTheme}
       class="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
       aria-label="Toggle theme"

@@ -147,7 +147,11 @@ pub async fn resolve_detailed_streams_with_preferences(
     }
 
     // 4. Rank the results based on user preferences and PRD rules
-    let mut ranked = rank_sources(unique_results.into_values().collect(), &prefs, monetization_enabled);
+    let mut ranked = rank_sources(
+        unique_results.into_values().collect(),
+        &prefs,
+        monetization_enabled,
+    );
 
     // 5. Visually deduplicate identical looking streams to avoid UI clutter
     let mut seen_visuals = std::collections::HashSet::new();
@@ -254,18 +258,32 @@ pub async fn resolve_stream_for_tenant(
     history_scope: &str,
     install_token: &str,
 ) -> Vec<StremioStream> {
-    let limit = if prefs.stream_limit > 0 { prefs.stream_limit as usize } else { 5 };
-    resolve_detailed_streams_with_preferences(atlas_id, prefs, monetization_enabled, history_scope, Some(install_token))
-        .await
-        .into_iter()
-        .take(limit)
-        .map(stremio_stream_from_detail)
-        .collect()
+    let limit = if prefs.stream_limit > 0 {
+        prefs.stream_limit as usize
+    } else {
+        5
+    };
+    resolve_detailed_streams_with_preferences(
+        atlas_id,
+        prefs,
+        monetization_enabled,
+        history_scope,
+        Some(install_token),
+    )
+    .await
+    .into_iter()
+    .take(limit)
+    .map(stremio_stream_from_detail)
+    .collect()
 }
 
 pub async fn resolve_stream(atlas_id: AtlasID) -> Vec<StremioStream> {
     let prefs = current_preferences();
-    let limit = if prefs.stream_limit > 0 { prefs.stream_limit as usize } else { 5 };
+    let limit = if prefs.stream_limit > 0 {
+        prefs.stream_limit as usize
+    } else {
+        5
+    };
     resolve_detailed_streams(atlas_id)
         .await
         .into_iter()

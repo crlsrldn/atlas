@@ -48,9 +48,14 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
         None => req.prefs,
     };
 
-    let streams =
-        crate::engines::playback::resolve_stream_for_tenant(atlas_id, smart_prefs, req.monetization_enabled, "global", token)
-            .await;
+    let streams = crate::engines::playback::resolve_stream_for_tenant(
+        atlas_id,
+        smart_prefs,
+        req.monetization_enabled,
+        "global",
+        token,
+    )
+    .await;
 
     Json(json!({ "streams": streams }))
 }

@@ -6,7 +6,7 @@ import Stripe from "npm:stripe@^14.0.0";
 export const handler: Handlers = {
   async GET(req) {
     const kv = await Deno.openKv();
-    const config = (await kv.get(["global_config"])).value as any;
+    const config = (await kv.get(["global_config"])).value as Record<string, unknown>;
 
     if (!config || !config.monetization_enabled || !config.stripe_secret_key) {
       return new Response("Monetization is not enabled.", { status: 400 });

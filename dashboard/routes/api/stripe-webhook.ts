@@ -5,7 +5,7 @@ import Stripe from "npm:stripe@^14.0.0";
 export const handler: Handlers = {
   async POST(req) {
     const kv = await Deno.openKv();
-    const config = (await kv.get(["global_config"])).value as any;
+    const config = (await kv.get(["global_config"])).value as Record<string, unknown>;
 
     if (!config || !config.stripe_secret_key || !config.stripe_webhook_secret) {
       return new Response("Webhook not configured", { status: 400 });

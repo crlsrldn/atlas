@@ -27,7 +27,7 @@ export const handler: Handlers = {
       }
     }
     
-    const value = config.value as any || {
+    const value = config.value as Record<string, unknown> || {
       monetization_enabled: false,
     };
     
@@ -72,7 +72,7 @@ export const handler: Handlers = {
       const body = await req.json();
       const kv = await Deno.openKv();
       
-      const currentConfig = (await kv.get(["global_config"])).value as any || {};
+      const currentConfig = (await kv.get(["global_config"])).value as Record<string, unknown> || {};
       
       const newConfig = {
         ...currentConfig,
@@ -84,7 +84,7 @@ export const handler: Handlers = {
       return new Response(JSON.stringify({ success: true }), {
         headers: { "Content-Type": "application/json" }
       });
-    } catch (e) {
+    } catch (_e) {
       return new Response("Bad Request", { status: 400 });
     }
   }
