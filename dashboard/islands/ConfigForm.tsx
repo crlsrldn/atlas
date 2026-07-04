@@ -17,6 +17,7 @@ interface Preferences {
   sort_preference?: string;
   stream_limit?: number;
   is_premium?: boolean;
+  device_profile?: string;
 }
 
 export default function ConfigForm(
@@ -39,6 +40,7 @@ export default function ConfigForm(
   const [monetizationEnabled, setMonetizationEnabled] = useState(false);
   const [showTorboxKey, setShowTorboxKey] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deviceProfile, setDeviceProfile] = useState("");
   const [testingKeys, setTestingKeys] = useState(false);
   const [testResults, setTestResults] = useState<{ error?: string, torbox?: { valid: boolean, premium: boolean, expires_at: string } } | null>(null);
 
@@ -101,6 +103,7 @@ export default function ConfigForm(
         if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
         if (prefs.stream_limit !== undefined) setStreamLimit(prefs.stream_limit);
         if (prefs.is_premium !== undefined) setIsPremium(prefs.is_premium);
+        if (prefs.device_profile) setDeviceProfile(prefs.device_profile);
       }
     } catch (e) {
       console.log("No existing preferences found or error loading them", e);
@@ -147,6 +150,7 @@ export default function ConfigForm(
       sort_preference: sortPreference,
       exclude_av1: excludeAv1,
       stream_limit: streamLimit,
+      device_profile: deviceProfile,
     };
 
     try {
@@ -588,6 +592,33 @@ export default function ConfigForm(
                 </span>
               </div>
             </button>
+          </div>
+
+
+          {/* Device Profile (Premium Only) */}
+          <div class="space-y-2">
+            <label
+              class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center justify-between"
+              for="device-profile"
+            >
+              <span>AI Device Profile</span>
+              {monetizationEnabled && !isPremium && (
+                <span class="text-xs bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-medium">Premium</span>
+              )}
+            </label>
+            <div class="relative">
+              <textarea
+                id="device-profile"
+                value={deviceProfile}
+                onChange={(e) => setDeviceProfile((e.target as HTMLTextAreaElement).value)}
+                placeholder="e.g. LG C2 OLED TV with Sonos Arc Soundbar"
+                disabled={monetizationEnabled && !isPremium}
+                class={`input-field min-h-[80px] resize-y ${monetizationEnabled && !isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">
+              Describe your hardware setup. Atlas AI will automatically optimize streams for your specific capabilities.
+            </p>
           </div>
         </div>
 

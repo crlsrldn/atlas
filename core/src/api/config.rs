@@ -43,6 +43,8 @@ pub struct UserPreferences {
     pub stream_limit: u32,
     #[serde(default)]
     pub is_premium: bool,
+    #[serde(default)]
+    pub device_profile: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -68,6 +70,7 @@ pub struct PublicUserPreferences {
     pub sort_preference: String,
     pub stream_limit: u32,
     pub is_premium: bool,
+    pub device_profile: String,
 }
 
 impl From<UserPreferences> for PublicUserPreferences {
@@ -94,6 +97,7 @@ impl From<UserPreferences> for PublicUserPreferences {
             sort_preference: prefs.sort_preference,
             stream_limit: prefs.stream_limit,
             is_premium: prefs.is_premium,
+            device_profile: prefs.device_profile,
         }
     }
 }
@@ -118,6 +122,7 @@ impl Default for UserPreferences {
             sort_preference: default_sort_preference(),
             stream_limit: default_stream_limit(),
             is_premium: false,
+            device_profile: String::new(),
         }
     }
 }

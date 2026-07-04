@@ -253,6 +253,11 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 			payload["episode"] = e
 		}
 	}
+	if cached := r.URL.Query().Get("cached"); cached != "" {
+		if c, err := strconv.ParseBool(cached); err == nil {
+			payload["cached"] = c
+		}
+	}
 
 	reqBody, _ := json.Marshal(payload)
 

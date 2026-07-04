@@ -22,6 +22,8 @@ pub struct ResolveHashRequest {
     pub episode: Option<u32>,
     #[serde(default)]
     pub monetization_enabled: bool,
+    #[serde(default)]
+    pub cached: bool,
 }
 
 pub fn router() -> Router {
@@ -78,6 +80,7 @@ async fn resolve_hash(
                 req.user_agent.as_deref(),
                 req.season,
                 req.episode,
+                req.cached,
             )
             .await
         }

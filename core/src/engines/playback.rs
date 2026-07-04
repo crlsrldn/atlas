@@ -60,13 +60,16 @@ pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> 
 
 pub async fn resolve_detailed_streams_with_preferences(
     atlas_id: AtlasID,
-    prefs: UserPreferences,
+    mut prefs: UserPreferences,
     monetization_enabled: bool,
     history_scope: &str,
     install_token: Option<&str>,
 ) -> Vec<DetailedStream> {
     // 1. Fetch Metadata
     let metadata = get_metadata(&atlas_id).await;
+
+    // Apply AI Device Profile constraints
+    prefs = crate::engines::ai_decision::evaluate_device_profile(prefs).await;
 
     // 2. Initialize Source Plugins
     let torbox = TorBoxProvider {
@@ -237,15 +240,16 @@ fn hosted_or_local_url(
         .unwrap_or_else(|_| "http://127.0.0.1:3000".to_string());
 
     let mut final_url = format!(
-        "{}/stremio/{}/resolve/{}/{}/play.mp4",
+        "{}/stremio/{}/resolve/{}/{}/play.mp4?cached={}",
         base_url.trim_end_matches('/'),
         token,
         provider_slug,
-        hash
+        hash,
+        source.is_cached
     );
 
     if let Some((season, episode)) = atlas_id.season_episode() {
-        final_url.push_str(&format!("?season={}&episode={}", season, episode));
+        final_url.push_str(&format!("&season={}&episode={}", season, episode));
     }
 
     Some(final_url)

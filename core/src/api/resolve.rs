@@ -38,7 +38,7 @@ pub fn router() -> Router {
 
 async fn resolve_torbox(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
-    resolve_torbox_with_key(hash, prefs.torbox_api_key, None, None, None, None).await
+    resolve_torbox_with_key(hash, prefs.torbox_api_key, None, None, None, None, false).await
 }
 
 pub async fn resolve_torbox_with_key(
@@ -48,6 +48,7 @@ pub async fn resolve_torbox_with_key(
     user_agent: Option<&str>,
     season: Option<u32>,
     episode: Option<u32>,
+    is_cached: bool,
 ) -> axum::response::Response {
     if api_key.is_empty() {
         return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
@@ -88,6 +89,14 @@ pub async fn resolve_torbox_with_key(
                             "user_agent": user_agent
                         }),
                     );
+
+                    // Feature 5: Automated Background Caching
+                    if !is_cached {
+                        // The torrent was just added to TorBox and is downloading.
+                        // We redirect the user to a static placeholder video so Stremio doesn't hang.
+                        let placeholder_url = "https://www.w3schools.com/html/mov_bbb.mp4";
+                        return (StatusCode::FOUND, [("Location", placeholder_url)]).into_response();
+                    }
 
                     return (StatusCode::FOUND, [("Location", dl_url)]).into_response();
                 }
