@@ -38,7 +38,17 @@ pub fn router() -> Router {
 
 async fn resolve_torbox(Path(hash): Path<String>) -> axum::response::Response {
     let prefs = current_preferences();
-    resolve_torbox_with_key(hash, prefs.torbox_api_key, None, None, None, None, false).await
+    resolve_torbox_with_key(
+        hash,
+        prefs.torbox_api_key,
+        None,
+        None,
+        None,
+        None,
+        false,
+        None,
+    )
+    .await
 }
 
 pub async fn resolve_torbox_with_key(
@@ -49,6 +59,7 @@ pub async fn resolve_torbox_with_key(
     season: Option<u32>,
     episode: Option<u32>,
     is_cached: bool,
+    user_id: Option<String>,
 ) -> axum::response::Response {
     if api_key.is_empty() {
         return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
@@ -86,7 +97,8 @@ pub async fn resolve_torbox_with_key(
                         serde_json::json!({
                             "provider": "torbox",
                             "success": true,
-                            "user_agent": user_agent
+                            "user_agent": user_agent,
+                            "user_id": user_id.clone()
                         }),
                     );
 
@@ -111,7 +123,8 @@ pub async fn resolve_torbox_with_key(
         serde_json::json!({
             "provider": "torbox",
             "success": false,
-            "user_agent": user_agent
+            "user_agent": user_agent,
+            "user_id": user_id
         }),
     );
 

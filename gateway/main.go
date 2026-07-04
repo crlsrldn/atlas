@@ -240,6 +240,7 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 		"prefs":                prefs,
 		"user_agent":           userAgent,
 		"monetization_enabled": getMonetizationEnabled(),
+		"install_token":        token,
 	}
 
 	// Forward season and episode if present

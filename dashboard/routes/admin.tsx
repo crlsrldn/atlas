@@ -612,6 +612,11 @@ function DashboardView({ data }: { data: AdminData }) {
                 icon: "↗",
               },
               {
+                label: "View Advanced Telemetry",
+                href: "/admin/telemetry",
+                icon: "📊",
+              },
+              {
                 label: "Refresh Statistics",
                 href: "/admin",
                 icon: "↺",

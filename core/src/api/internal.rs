@@ -24,6 +24,7 @@ pub struct ResolveHashRequest {
     pub monetization_enabled: bool,
     #[serde(default)]
     pub cached: bool,
+    pub install_token: Option<String>,
 }
 
 pub fn router() -> Router {
@@ -59,6 +60,15 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
     )
     .await;
 
+    crate::engines::telemetry::log_event(
+        "streams_requested",
+        serde_json::json!({
+            "user_id": req.install_token.as_deref().unwrap_or("demo"),
+            "stremio_id": stremio_id,
+            "streams_count": streams.len()
+        }),
+    );
+
     Json(json!({ "streams": streams }))
 }
 
@@ -81,6 +91,7 @@ async fn resolve_hash(
                 req.season,
                 req.episode,
                 req.cached,
+                req.install_token,
             )
             .await
         }
