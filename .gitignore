@@ -16,3 +16,7 @@ target/
 GEMINI.md
 PRD.md
 IMPLEMENTATION_PLAN.md
+
+core/playback_history.json
+core/preferences.json
+gateway/atlas-gateway
