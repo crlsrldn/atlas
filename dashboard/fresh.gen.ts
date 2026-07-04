@@ -13,6 +13,7 @@ import * as $index from "./routes/index.tsx";
 import * as $login from "./routes/login.tsx";
 import * as $signup from "./routes/signup.tsx";
 import * as $AdminLogin from "./islands/AdminLogin.tsx";
+import * as $AdminSettings from "./islands/AdminSettings.tsx";
 import * as $AuthForm from "./islands/AuthForm.tsx";
 import * as $ConfigForm from "./islands/ConfigForm.tsx";
 import * as $Counter from "./islands/Counter.tsx";
@@ -34,6 +35,7 @@ const manifest = {
   },
   islands: {
     "./islands/AdminLogin.tsx": $AdminLogin,
+    "./islands/AdminSettings.tsx": $AdminSettings,
     "./islands/AuthForm.tsx": $AuthForm,
     "./islands/ConfigForm.tsx": $ConfigForm,
     "./islands/Counter.tsx": $Counter,

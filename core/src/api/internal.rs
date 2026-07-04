@@ -10,6 +10,8 @@ pub struct ResolveRequest {
     pub install_token: Option<String>,
     pub prefs: UserPreferences,
     pub user_agent: Option<String>,
+    #[serde(default)]
+    pub monetization_enabled: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -18,6 +20,8 @@ pub struct ResolveHashRequest {
     pub user_agent: Option<String>,
     pub season: Option<u32>,
     pub episode: Option<u32>,
+    #[serde(default)]
+    pub monetization_enabled: bool,
 }
 
 pub fn router() -> Router {
@@ -45,7 +49,7 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
     };
 
     let streams =
-        crate::engines::playback::resolve_stream_for_tenant(atlas_id, smart_prefs, "global", token)
+        crate::engines::playback::resolve_stream_for_tenant(atlas_id, smart_prefs, req.monetization_enabled, "global", token)
             .await;
 
     Json(json!({ "streams": streams }))

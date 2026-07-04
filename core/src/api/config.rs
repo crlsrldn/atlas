@@ -39,6 +39,10 @@ pub struct UserPreferences {
     pub subtitle_mode: String,
     #[serde(default = "default_sort_preference")]
     pub sort_preference: String,
+    #[serde(default = "default_stream_limit")]
+    pub stream_limit: u32,
+    #[serde(default)]
+    pub is_premium: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -62,6 +66,8 @@ pub struct PublicUserPreferences {
     pub preferred_language: String,
     pub subtitle_mode: String,
     pub sort_preference: String,
+    pub stream_limit: u32,
+    pub is_premium: bool,
 }
 
 impl From<UserPreferences> for PublicUserPreferences {
@@ -86,6 +92,8 @@ impl From<UserPreferences> for PublicUserPreferences {
             preferred_language: prefs.preferred_language,
             subtitle_mode: prefs.subtitle_mode,
             sort_preference: prefs.sort_preference,
+            stream_limit: prefs.stream_limit,
+            is_premium: prefs.is_premium,
         }
     }
 }
@@ -108,6 +116,8 @@ impl Default for UserPreferences {
             preferred_language: default_language(),
             subtitle_mode: default_subtitle_mode(),
             sort_preference: default_sort_preference(),
+            stream_limit: default_stream_limit(),
+            is_premium: false,
         }
     }
 }
@@ -134,6 +144,10 @@ fn default_subtitle_mode() -> String {
 
 fn default_sort_preference() -> String {
     "balanced".to_string()
+}
+
+fn default_stream_limit() -> u32 {
+    5
 }
 
 impl UserPreferences {

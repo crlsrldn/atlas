@@ -3,6 +3,7 @@ import { getCookies } from "$std/http/cookie.ts";
 import { createClient } from "@supabase/supabase-js";
 import { getAdminSupabaseClient } from "../utils/admin_supabase.ts";
 import AdminLogin from "../islands/AdminLogin.tsx";
+import AdminSettings from "../islands/AdminSettings.tsx";
 
 interface ProviderHealth {
   name: string;
@@ -629,6 +630,9 @@ function DashboardView({ data }: { data: AdminData }) {
               </a>
             ))}
           </div>
+
+          {/* Monetization & Limits */}
+          <AdminSettings />
 
           {/* Sign out */}
           <div class="mt-5 pt-4 border-t border-black/5 dark:border-white/[0.06]">

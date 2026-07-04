@@ -7,11 +7,11 @@ pub struct RankedSource {
     pub score: u64,
 }
 
-pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences) -> Vec<RankedSource> {
+pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences, monetization_enabled: bool) -> Vec<RankedSource> {
     let mut ranked: Vec<RankedSource> = sources
         .into_iter()
         .map(|source| {
-            let score = calculate_score(&source, prefs);
+            let score = calculate_score(&source, prefs, monetization_enabled);
             RankedSource { source, score }
         })
         .collect();
@@ -22,8 +22,18 @@ pub fn rank_sources(sources: Vec<SourceResult>, prefs: &UserPreferences) -> Vec<
     ranked
 }
 
-fn calculate_score(source: &SourceResult, prefs: &UserPreferences) -> u64 {
+fn calculate_score(source: &SourceResult, prefs: &UserPreferences, monetization_enabled: bool) -> u64 {
     let mut score: u64 = 1000;
+
+    // Premium Restrictions
+    if monetization_enabled && !prefs.is_premium {
+        if !source.is_cached {
+            return 0; // Only cached streams for free users
+        }
+        if is_above_max_resolution(&source.resolution, "1080p") {
+            return 0; // 1080p max for free users
+        }
+    }
 
     // Compatibility and Codecs
     if prefs.exclude_av1 && source.codec == "AV1" {
@@ -200,14 +210,14 @@ mod tests {
 
     #[test]
     fn excludes_av1_when_preference_is_enabled() {
-        let ranked = rank_sources(vec![source("1080p", "AV1", false, true)], &prefs());
+        let ranked = rank_sources(vec![source("1080p", "AV1", false, true)], &prefs(), false);
 
         assert_eq!(ranked[0].score, 0);
     }
 
     #[test]
     fn excludes_resolution_above_user_maximum() {
-        let ranked = rank_sources(vec![source("4K", "HEVC", false, true)], &prefs());
+        let ranked = rank_sources(vec![source("4K", "HEVC", false, true)], &prefs(), false);
 
         assert_eq!(ranked[0].score, 0);
     }
@@ -220,6 +230,7 @@ mod tests {
                 source("1080p", "HEVC", false, true),
             ],
             &prefs(),
+            false,
         );
 
         assert!(ranked[0].source.is_cached);
@@ -238,7 +249,7 @@ mod tests {
         fast.provider_priority = 95;
         fast.provider_latency_ms = Some(100);
 
-        let ranked = rank_sources(vec![slow, fast], &prefs());
+        let ranked = rank_sources(vec![slow, fast], &prefs(), false);
 
         assert_eq!(ranked[0].source.provider_name, "Fast");
     }
@@ -253,7 +264,7 @@ mod tests {
         successful.provider_name = "Successful".to_string();
         successful.playback_successes = 2;
 
-        let ranked = rank_sources(vec![failed, successful], &prefs());
+        let ranked = rank_sources(vec![failed, successful], &prefs(), false);
 
         assert_eq!(ranked[0].source.provider_name, "Successful");
     }
@@ -268,7 +279,7 @@ mod tests {
         rich.bitrate_mbps = Some(50.0);
         rich.has_dolby_vision = true;
 
-        let ranked = rank_sources(vec![basic, rich], &prefs());
+        let ranked = rank_sources(vec![basic, rich], &prefs(), false);
 
         assert_eq!(ranked[0].source.provider_name, "Rich");
     }
@@ -322,6 +333,8 @@ mod tests2 {
             preferred_language: "en".to_string(),
             subtitle_mode: "auto".to_string(),
             sort_preference: "balanced".to_string(),
+            stream_limit: 5,
+            is_premium: false,
         }
     }
 
@@ -334,7 +347,7 @@ mod tests2 {
         let mut hevc = mock_source();
         hevc.codec = "HEVC".to_string();
 
-        assert!(calculate_score(&hevc, &prefs) > calculate_score(&h264, &prefs));
+        assert!(calculate_score(&hevc, &prefs, false) > calculate_score(&h264, &prefs, false));
     }
 
     #[test]
@@ -347,7 +360,7 @@ mod tests2 {
         let mut large = mock_source();
         large.size_bytes = Some(20_000_000_000); // 20GB (should get 150 boost)
 
-        assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
+        assert!(calculate_score(&large, &prefs, false) > calculate_score(&small, &prefs, false));
     }
 
     #[test]
@@ -361,14 +374,14 @@ mod tests2 {
         large.size_bytes = Some(20_000_000_000); // 20GB
 
         // Default (balanced) ranks large higher due to size boost
-        assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
+        assert!(calculate_score(&large, &prefs, false) > calculate_score(&small, &prefs, false));
 
         // Speed prefers smaller files
         prefs.sort_preference = "speed".to_string();
-        assert!(calculate_score(&small, &prefs) > calculate_score(&large, &prefs));
+        assert!(calculate_score(&small, &prefs, false) > calculate_score(&large, &prefs, false));
 
         // Quality prefers larger files (more aggressively)
         prefs.sort_preference = "quality".to_string();
-        assert!(calculate_score(&large, &prefs) > calculate_score(&small, &prefs));
+        assert!(calculate_score(&large, &prefs, false) > calculate_score(&small, &prefs, false));
     }
 }

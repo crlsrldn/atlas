@@ -15,6 +15,8 @@ interface Preferences {
   max_resolution?: string;
   exclude_av1?: boolean;
   sort_preference?: string;
+  stream_limit?: number;
+  is_premium?: boolean;
 }
 
 export default function ConfigForm(
@@ -32,10 +34,20 @@ export default function ConfigForm(
   const [maxResolution, setMaxResolution] = useState("4K");
   const [sortPreference, setSortPreference] = useState("balanced");
   const [excludeAv1, setExcludeAv1] = useState(false);
+  const [streamLimit, setStreamLimit] = useState(5);
+  const [isPremium, setIsPremium] = useState(false);
+  const [monetizationEnabled, setMonetizationEnabled] = useState(false);
   const [showTorboxKey, setShowTorboxKey] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [testingKeys, setTestingKeys] = useState(false);
   const [testResults, setTestResults] = useState<{ error?: string, torbox?: { valid: boolean, premium: boolean, expires_at: string } } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/global-config")
+      .then(res => res.json())
+      .then(data => setMonetizationEnabled(data.monetization_enabled === true))
+      .catch(e => console.error("Failed to fetch global config:", e));
+  }, []);
 
   const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
 
@@ -87,6 +99,8 @@ export default function ConfigForm(
         if (prefs.max_resolution) setMaxResolution(prefs.max_resolution);
         if (prefs.sort_preference) setSortPreference(prefs.sort_preference);
         if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
+        if (prefs.stream_limit !== undefined) setStreamLimit(prefs.stream_limit);
+        if (prefs.is_premium !== undefined) setIsPremium(prefs.is_premium);
       }
     } catch (e) {
       console.log("No existing preferences found or error loading them", e);
@@ -132,12 +146,22 @@ export default function ConfigForm(
       max_resolution: maxResolution,
       sort_preference: sortPreference,
       exclude_av1: excludeAv1,
+      stream_limit: streamLimit,
     };
 
     try {
+      const { data: currentPrefs } = await supabase
+        .from("preferences")
+        .select("prefs_json")
+        .eq("id", userId)
+        .single();
+        
+      const existingJson = currentPrefs?.prefs_json || {};
+      const newJson = { ...existingJson, ...prefs_json };
+
       const { error } = await supabase
         .from("preferences")
-        .upsert({ id: userId, prefs_json });
+        .upsert({ id: userId, prefs_json: newJson });
 
       if (error) {
         setSaveError("Failed to save: " + error.message);
@@ -239,6 +263,32 @@ export default function ConfigForm(
             </p>
           </div>
         </div>
+
+        {monetizationEnabled && !isPremium && (
+          <div class="mb-8 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/20 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
+            <div class="relative flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div>
+                <h3 class="text-base font-bold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                  Upgrade to Atlas Premium
+                </h3>
+                <p class="text-sm text-indigo-700/80 dark:text-indigo-200/70 mt-1">
+                  Unlock 4K streaming and instant uncached downloads.
+                </p>
+              </div>
+              <button
+                onClick={() => globalThis.location.href = "/api/stripe-checkout"}
+                type="button"
+                class="whitespace-nowrap px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95"
+              >
+                Upgrade Now
+              </button>
+            </div>
+          </div>
+        )}
 
         <div class="space-y-5">
           {/* TorBox */}
@@ -482,8 +532,35 @@ export default function ConfigForm(
                 <option value="speed">Speed First (Smallest Files)</option>
               </select>
             </div>
-            <p class="text-xs text-zinc-500 dark:text-zinc-600">
+            <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">
               How streams are ordered in Stremio.
+            </p>
+          </div>
+
+          {/* Stream Limit */}
+          <div class="space-y-2">
+            <label
+              class="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              for="stream-limit"
+            >
+              Results per Title
+            </label>
+            <div class="relative">
+              <select
+                id="stream-limit"
+                value={streamLimit.toString()}
+                onChange={(e) =>
+                  setStreamLimit(parseInt((e.target as HTMLSelectElement).value, 10))}
+                class="select-field"
+              >
+                <option value="5">5 Streams (Fastest)</option>
+                <option value="10">10 Streams</option>
+                <option value="20">20 Streams</option>
+                <option value="50">50 Streams</option>
+              </select>
+            </div>
+            <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">
+              How many streams to show in the list.
             </p>
           </div>
 

@@ -10,15 +10,58 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
+	"sync"
+	"time"
 )
 
 var coreUrl string
+var dashboardUrl string
+
+var globalConfigCache struct {
+	sync.RWMutex
+	MonetizationEnabled bool
+	LastFetched         time.Time
+}
+
+func getMonetizationEnabled() bool {
+	globalConfigCache.RLock()
+	cacheTime := globalConfigCache.LastFetched
+	val := globalConfigCache.MonetizationEnabled
+	globalConfigCache.RUnlock()
+
+	if time.Since(cacheTime) < 1*time.Minute {
+		return val
+	}
+
+	// Fetch update
+	go func() {
+		resp, err := http.Get(dashboardUrl + "/api/global-config")
+		if err == nil {
+			defer resp.Body.Close()
+			var data struct {
+				MonetizationEnabled bool `json:"monetization_enabled"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+				globalConfigCache.Lock()
+				globalConfigCache.MonetizationEnabled = data.MonetizationEnabled
+				globalConfigCache.LastFetched = time.Now()
+				globalConfigCache.Unlock()
+			}
+		}
+	}()
+
+	return val
+}
 
 func main() {
 	coreUrl = os.Getenv("ATLAS_CORE_URL")
 	if coreUrl == "" {
 		coreUrl = "http://127.0.0.1:3000"
+	}
+
+	dashboardUrl = os.Getenv("ATLAS_PUBLIC_BASE_URL")
+	if dashboardUrl == "" {
+		dashboardUrl = "http://127.0.0.1:3000"
 	}
 
 	http.HandleFunc("/", handleRoot)
@@ -139,16 +182,19 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 			"max_resolution":  "4K",
 			"exclude_av1":     false,
 			"sort_preference": "balanced",
+			"stream_limit":    5,
+			"is_premium":      false,
 		}
 	}
 
 	userAgent := r.Header.Get("User-Agent")
 
 	reqBody, _ := json.Marshal(map[string]interface{}{
-		"stremio_id":    id,
-		"install_token": token,
-		"prefs":         prefs,
-		"user_agent":    userAgent,
+		"stremio_id":           id,
+		"install_token":        token,
+		"prefs":                prefs,
+		"user_agent":           userAgent,
+		"monetization_enabled": getMonetizationEnabled(),
 	})
 
 	resp, err := http.Post(coreUrl+"/internal/resolve", "application/json", bytes.NewBuffer(reqBody))
@@ -192,8 +238,9 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	userAgent := r.Header.Get("User-Agent")
 
 	payload := map[string]interface{}{
-		"prefs":      prefs,
-		"user_agent": userAgent,
+		"prefs":                prefs,
+		"user_agent":           userAgent,
+		"monetization_enabled": getMonetizationEnabled(),
 	}
 
 	// Forward season and episode if present
