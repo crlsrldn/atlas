@@ -37,7 +37,7 @@ export const handler: Handlers = {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const stripe = new Stripe(config.stripe_secret_key, {
+    const stripe = new Stripe(config.stripe_secret_key as string, {
       apiVersion: "2023-10-16",
     });
 

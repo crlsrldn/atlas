@@ -14,7 +14,7 @@ export const handler: Handlers = {
       return new Response("Webhook not configured", { status: 400 });
     }
 
-    const stripe = new Stripe(config.stripe_secret_key, {
+    const stripe = new Stripe(config.stripe_secret_key as string, {
       apiVersion: "2023-10-16",
     });
 
@@ -30,7 +30,7 @@ export const handler: Handlers = {
       event = stripe.webhooks.constructEvent(
         body,
         signature,
-        config.stripe_webhook_secret,
+        config.stripe_webhook_secret as string,
       );
     } catch (err) {
       console.error("Webhook signature verification failed.", err);
