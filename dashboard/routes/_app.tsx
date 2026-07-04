@@ -7,7 +7,7 @@ export default function App({ Component, url }: PageProps) {
   const supabaseAnonKey = Deno.env.get("PUBLIC_SUPABASE_ANON_KEY") || "";
 
   return (
-    <html lang="en" class="scroll-smooth">
+    <html lang="en" class="dark scroll-smooth">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -29,27 +29,14 @@ export default function App({ Component, url }: PageProps) {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
-        <script
-          // deno-lint-ignore react-no-danger
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              } catch (_) {}
-            `,
-          }}
-        />
+          // script removed as dark mode is forced
       </head>
       <body class="antialiased min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
         {/* ── Background ambient glows ── */}
         <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div class="absolute -top-[20%] -left-[10%] w-[70%] h-[60%] bg-indigo-600/8 rounded-full blur-[120px]" />
-          <div class="absolute -bottom-[20%] -right-[10%] w-[60%] h-[55%] bg-purple-600/8 rounded-full blur-[120px]" />
-          <div class="absolute top-[40%] left-[50%] -translate-x-1/2 w-[40%] h-[30%] bg-indigo-500/4 rounded-full blur-[100px]" />
+          <div class="absolute -top-[20%] -left-[10%] w-[70%] h-[60%] bg-emerald-600/8 rounded-full blur-[120px]" />
+          <div class="absolute -bottom-[20%] -right-[10%] w-[60%] h-[55%] bg-teal-600/8 rounded-full blur-[120px]" />
+          <div class="absolute top-[40%] left-[50%] -translate-x-1/2 w-[40%] h-[30%] bg-emerald-500/4 rounded-full blur-[100px]" />
         </div>
 
         {/* ── Navigation ── */}
@@ -69,7 +56,7 @@ export default function App({ Component, url }: PageProps) {
           <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
+                <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs">
                   A
                 </div>
                 <span class="text-sm font-medium text-zinc-400">

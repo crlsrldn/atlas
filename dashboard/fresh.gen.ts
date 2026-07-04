@@ -21,7 +21,6 @@ import * as $AuthForm from "./islands/AuthForm.tsx";
 import * as $ConfigForm from "./islands/ConfigForm.tsx";
 import * as $Counter from "./islands/Counter.tsx";
 import * as $Navbar from "./islands/Navbar.tsx";
-import * as $ThemeToggle from "./islands/ThemeToggle.tsx";
 import type { Manifest } from "$fresh/server.ts";
 
 const manifest = {
@@ -47,7 +46,6 @@ const manifest = {
     "./islands/ConfigForm.tsx": $ConfigForm,
     "./islands/Counter.tsx": $Counter,
     "./islands/Navbar.tsx": $Navbar,
-    "./islands/ThemeToggle.tsx": $ThemeToggle,
   },
   baseUrl: import.meta.url,
 } satisfies Manifest;

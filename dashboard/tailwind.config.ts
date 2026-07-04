@@ -10,17 +10,17 @@ export default {
       },
       colors: {
         brand: {
-          50: "#eef2ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
-          950: "#1e1b4b",
+          50: "#e0f9f1",
+          100: "#b3f0da",
+          200: "#80e6c2",
+          300: "#4ddbaa",
+          400: "#26d499",
+          500: "#04bf8a",
+          600: "#03a87a",
+          700: "#028c66",
+          800: "#027052",
+          900: "#015941",
+          950: "#013829",
         },
       },
       animation: {
@@ -60,8 +60,8 @@ export default {
           "100%": { backgroundPosition: "200% 0" },
         },
         glow: {
-          "0%": { boxShadow: "0 0 20px rgba(99, 102, 241, 0.3)" },
-          "100%": { boxShadow: "0 0 40px rgba(99, 102, 241, 0.6)" },
+          "0%": { boxShadow: "0 0 20px rgba(4, 191, 138, 0.3)" },
+          "100%": { boxShadow: "0 0 40px rgba(4, 191, 138, 0.6)" },
         },
       },
       backgroundImage: {
@@ -75,12 +75,12 @@ export default {
         xs: "2px",
       },
       boxShadow: {
-        "glow-sm": "0 0 10px rgba(99, 102, 241, 0.2)",
-        "glow-md": "0 0 20px rgba(99, 102, 241, 0.3)",
-        "glow-lg": "0 0 40px rgba(99, 102, 241, 0.4)",
-        "glow-xl": "0 0 60px rgba(99, 102, 241, 0.5)",
-        "glow-purple-sm": "0 0 10px rgba(139, 92, 246, 0.2)",
-        "glow-purple-md": "0 0 20px rgba(139, 92, 246, 0.3)",
+        "glow-sm": "0 0 10px rgba(4, 191, 138, 0.2)",
+        "glow-md": "0 0 20px rgba(4, 191, 138, 0.3)",
+        "glow-lg": "0 0 40px rgba(4, 191, 138, 0.4)",
+        "glow-xl": "0 0 60px rgba(4, 191, 138, 0.5)",
+        "glow-purple-sm": "0 0 10px rgba(4, 191, 138, 0.2)",
+        "glow-purple-md": "0 0 20px rgba(4, 191, 138, 0.3)",
         "card":
           "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5)",
         "card-hover":

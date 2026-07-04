@@ -1,7 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
 import { getSupabaseClient } from "../utils/supabase.ts";
-import ThemeToggle from "./ThemeToggle.tsx";
-
 interface NavbarProps {
   pathname: string;
   supabaseUrl: string;
@@ -56,8 +54,8 @@ export default function Navbar(
         {/* Logo */}
         <a href="/" class="flex items-center gap-3 group flex-shrink-0">
           <div class="relative w-8 h-8">
-            <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 opacity-90 group-hover:opacity-100 transition-opacity" />
-            <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 blur-md opacity-0 group-hover:opacity-60 transition-opacity" />
+            <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+            <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 blur-md opacity-0 group-hover:opacity-60 transition-opacity" />
             <div class="relative flex items-center justify-center w-full h-full text-white font-bold text-sm rounded-xl">
               A
             </div>
@@ -78,7 +76,7 @@ export default function Navbar(
                 href={href}
                 class={`nav-link ${
                   isActive
-                    ? "nav-link-active text-indigo-300 bg-indigo-500/10"
+                    ? "nav-link-active text-emerald-300 bg-emerald-500/10"
                     : ""
                 }`}
               >
@@ -96,9 +94,6 @@ export default function Navbar(
               Sign Out
             </button>
           )}
-          <div class="pl-2 ml-2 border-l border-black/10 dark:border-white/10 flex items-center">
-            <ThemeToggle />
-          </div>
         </div>
 
         {/* Mobile: hamburger placeholder */}
@@ -117,7 +112,6 @@ export default function Navbar(
               Sign Out
             </button>
           )}
-          <ThemeToggle />
         </div>
       </nav>
     </header>
