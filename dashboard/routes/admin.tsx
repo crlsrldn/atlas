@@ -22,10 +22,13 @@ interface AdminData {
   needsLogin?: boolean;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  activeTab?: string;
 }
 
 export const handler: Handlers<AdminData> = {
   async GET(req, ctx) {
+    const url = new URL(req.url);
+    const activeTab = url.searchParams.get("tab") || "overview";
     const supabaseUrl = Deno.env.get("PUBLIC_SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("PUBLIC_SUPABASE_ANON_KEY");
 
@@ -37,6 +40,7 @@ export const handler: Handlers<AdminData> = {
         avgLatency: "—",
         providers: [],
         error: "Supabase configuration missing in environment.",
+        activeTab,
       });
     }
 
@@ -53,6 +57,7 @@ export const handler: Handlers<AdminData> = {
         needsLogin: true,
         supabaseUrl,
         supabaseAnonKey,
+        activeTab,
       });
     }
 
@@ -74,6 +79,7 @@ export const handler: Handlers<AdminData> = {
         needsLogin: true,
         supabaseUrl,
         supabaseAnonKey,
+        activeTab,
       });
     }
 
@@ -87,6 +93,7 @@ export const handler: Handlers<AdminData> = {
         providers: [],
         error:
           "Supabase service role key not configured. Cannot load live stats.",
+        activeTab,
       });
     }
 
@@ -108,6 +115,7 @@ export const handler: Handlers<AdminData> = {
         supabaseUrl,
         supabaseAnonKey,
         error: "Access denied. Administrator privileges required.",
+        activeTab,
       });
     }
 
@@ -206,6 +214,7 @@ export const handler: Handlers<AdminData> = {
         successRate,
         avgLatency,
         providers,
+        activeTab,
       });
     } catch (err) {
       console.error("Failed to load admin stats:", err);
@@ -216,6 +225,7 @@ export const handler: Handlers<AdminData> = {
         avgLatency: "—",
         providers: [],
         error: "Failed to fetch live stats from the database.",
+        activeTab,
       });
     }
   },
@@ -474,208 +484,249 @@ function DashboardView({ data }: { data: AdminData }) {
         </div>
       )}
 
-      {/* Metric cards grid */}
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-        {metrics.map((m) => {
-          const c = colorMap[m.color];
-          return (
-            <div
-              key={m.label}
-              class={`stat-card border border-black/5 dark:border-white/[0.07] transition-all duration-200 ${c.glow} hover:-translate-y-0.5`}
-            >
-              {/* Card header */}
-              <div class="flex items-center justify-between mb-5">
-                <div class={`icon-box icon-box-sm ${c.bg}`}>
-                  <span class={c.icon}>{m.icon}</span>
-                </div>
-                <span class={`badge text-[10px] px-2 py-0.5 border ${c.badge}`}>
-                  {m.change}
-                </span>
-              </div>
-
-              {/* Big number */}
-              <p class="text-4xl font-black text-zinc-900 dark:text-white tracking-tight tabular-nums">
-                {m.value}
-              </p>
-              <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">
-                {m.label}
-              </p>
-              <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1">
-                {m.description}
-              </p>
-            </div>
-          );
-        })}
+      {/* Tabs */}
+      <div class="flex gap-6 border-b border-black/10 dark:border-white/10 mb-8">
+        <a
+          href="?tab=overview"
+          class={`pb-3 text-sm font-medium transition-colors ${
+            data.activeTab === "overview"
+              ? "border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400"
+              : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 border-b-2 border-transparent"
+          }`}
+        >
+          Data Overview
+        </a>
+        <a
+          href="?tab=settings"
+          class={`pb-3 text-sm font-medium transition-colors ${
+            data.activeTab === "settings"
+              ? "border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400"
+              : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 border-b-2 border-transparent"
+          }`}
+        >
+          Platform Settings
+        </a>
       </div>
 
-      {/* Secondary info section */}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* System Status */}
-        <div class="glass-card-strong p-6 rounded-2xl">
-          <div class="flex items-center gap-3 mb-5">
-            <div class="icon-box icon-box-sm bg-emerald-500/10">
-              <svg
-                class="w-4 h-4 text-emerald-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width={2}
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
-                />
-              </svg>
-            </div>
-            <h2 class="font-semibold text-zinc-900 dark:text-white">
-              System Health
-            </h2>
-          </div>
+      {data.activeTab === "overview" && (
+        <>
+          {/* Metric cards grid */}
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+            {metrics.map((m) => {
+              const c = colorMap[m.color];
+              return (
+                <div
+                  key={m.label}
+                  class={`stat-card border border-black/5 dark:border-white/[0.07] transition-all duration-200 ${c.glow} hover:-translate-y-0.5`}
+                >
+                  {/* Card header */}
+                  <div class="flex items-center justify-between mb-5">
+                    <div class={`icon-box icon-box-sm ${c.bg}`}>
+                      <span class={c.icon}>{m.icon}</span>
+                    </div>
+                    <span
+                      class={`badge text-[10px] px-2 py-0.5 border ${c.badge}`}
+                    >
+                      {m.change}
+                    </span>
+                  </div>
 
-          <div class="space-y-3">
-            {[
-              {
-                name: "Atlas Gateway",
-                status: "Operational",
-                color: "emerald",
-              },
-              {
-                name: "Supabase DB",
-                status: data.error ? "Degraded" : "Operational",
-                color: data.error ? "amber" : "emerald",
-              },
-              ...data.providers.map((p) => ({
-                name: p.name,
-                status: p.latencyMs
-                  ? `${p.status} (${p.latencyMs}ms)`
-                  : p.status,
-                color: p.color,
-              })),
-            ].map((s) => (
-              <div
-                key={s.name}
-                class="flex items-center justify-between py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0"
-              >
-                <span class="text-sm text-zinc-700 dark:text-zinc-300">
-                  {s.name}
-                </span>
-                <div class="flex items-center gap-2">
-                  <span
-                    class={`w-1.5 h-1.5 rounded-full ${
-                      s.color === "emerald" ? "bg-emerald-400" : "bg-amber-400"
-                    }`}
-                  />
-                  <span
-                    class={`text-xs font-medium ${
-                      s.color === "emerald"
-                        ? "text-emerald-400"
-                        : "text-amber-400"
-                    }`}
-                  >
-                    {s.status}
-                  </span>
+                  {/* Big number */}
+                  <p class="text-4xl font-black text-zinc-900 dark:text-white tracking-tight tabular-nums">
+                    {m.value}
+                  </p>
+                  <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">
+                    {m.label}
+                  </p>
+                  <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1">
+                    {m.description}
+                  </p>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Secondary info section */}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* System Status */}
+            <div class="glass-card-strong p-6 rounded-2xl">
+              <div class="flex items-center gap-3 mb-5">
+                <div class="icon-box icon-box-sm bg-emerald-500/10">
+                  <svg
+                    class="w-4 h-4 text-emerald-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width={2}
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
+                    />
+                  </svg>
+                </div>
+                <h2 class="font-semibold text-zinc-900 dark:text-white">
+                  System Health
+                </h2>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Quick Actions */}
-        <div class="glass-card-strong p-6 rounded-2xl">
-          <div class="flex items-center gap-3 mb-5">
-            <div class="icon-box icon-box-sm bg-indigo-500/10">
-              <svg
-                class="w-4 h-4 text-indigo-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width={2}
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                />
-              </svg>
+              <div class="space-y-3">
+                {[
+                  {
+                    name: "Atlas Gateway",
+                    status: "Operational",
+                    color: "emerald",
+                  },
+                  {
+                    name: "Supabase DB",
+                    status: data.error ? "Degraded" : "Operational",
+                    color: data.error ? "amber" : "emerald",
+                  },
+                  ...data.providers.map((p) => ({
+                    name: p.name,
+                    status: p.latencyMs
+                      ? `${p.status} (${p.latencyMs}ms)`
+                      : p.status,
+                    color: p.color,
+                  })),
+                ].map((s) => (
+                  <div
+                    key={s.name}
+                    class="flex items-center justify-between py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0"
+                  >
+                    <span class="text-sm text-zinc-700 dark:text-zinc-300">
+                      {s.name}
+                    </span>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class={`w-1.5 h-1.5 rounded-full ${
+                          s.color === "emerald"
+                            ? "bg-emerald-400"
+                            : "bg-amber-400"
+                        }`}
+                      />
+                      <span
+                        class={`text-xs font-medium ${
+                          s.color === "emerald"
+                            ? "text-emerald-400"
+                            : "text-amber-400"
+                        }`}
+                      >
+                        {s.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <h2 class="font-semibold text-zinc-900 dark:text-white">
-              Quick Actions
-            </h2>
-          </div>
 
-          <div class="space-y-3">
-            {[
-              {
-                label: "View Supabase Dashboard",
-                href: "https://app.supabase.com",
-                icon: "↗",
-              },
-              {
-                label: "View Advanced Telemetry",
-                href: "/admin/telemetry",
-                icon: "📊",
-              },
-              {
-                label: "Refresh Statistics",
-                href: "/admin",
-                icon: "↺",
-              },
-              {
-                label: "View Gateway Logs",
-                href: "#",
-                icon: "📋",
-              },
-            ].map((action) => (
-              <a
-                key={action.label}
-                href={action.href}
-                target={action.href.startsWith("http") ? "_blank" : undefined}
-                rel={action.href.startsWith("http")
-                  ? "noopener noreferrer"
-                  : undefined}
-                class="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/[0.04] border border-transparent hover:border-black/5 dark:hover:border-white/[0.06] transition-all group"
-              >
-                <span class="text-sm text-zinc-700 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white transition-colors">
-                  {action.label}
-                </span>
-                <span class="text-zinc-500 dark:text-zinc-600 text-sm group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
-                  {action.icon}
-                </span>
-              </a>
-            ))}
-          </div>
+            {/* Quick Actions */}
+            <div class="glass-card-strong p-6 rounded-2xl">
+              <div class="flex items-center gap-3 mb-5">
+                <div class="icon-box icon-box-sm bg-indigo-500/10">
+                  <svg
+                    class="w-4 h-4 text-indigo-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width={2}
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                    />
+                  </svg>
+                </div>
+                <h2 class="font-semibold text-zinc-900 dark:text-white">
+                  Quick Actions
+                </h2>
+              </div>
 
-          {/* Monetization & Limits */}
+              <div class="space-y-3">
+                {[
+                  {
+                    label: "View Supabase Dashboard",
+                    href: "https://app.supabase.com",
+                    icon: "↗",
+                  },
+                  {
+                    label: "View Advanced Telemetry",
+                    href: "/admin/telemetry",
+                    icon: "📊",
+                  },
+                  {
+                    label: "Refresh Statistics",
+                    href: "/admin",
+                    icon: "↺",
+                  },
+                  {
+                    label: "View Gateway Logs",
+                    href: "#",
+                    icon: "📋",
+                  },
+                ].map((action) => (
+                  <a
+                    key={action.label}
+                    href={action.href}
+                    target={action.href.startsWith("http")
+                      ? "_blank"
+                      : undefined}
+                    rel={action.href.startsWith("http")
+                      ? "noopener noreferrer"
+                      : undefined}
+                    class="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/[0.04] border border-transparent hover:border-black/5 dark:hover:border-white/[0.06] transition-all group"
+                  >
+                    <span class="text-sm text-zinc-700 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white transition-colors">
+                      {action.label}
+                    </span>
+                    <span class="text-zinc-500 dark:text-zinc-600 text-sm group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                      {action.icon}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {data.activeTab === "settings" && (
+        <div class="max-w-2xl">
           <AdminSettings />
 
-          {/* Sign out */}
-          <div class="mt-5 pt-4 border-t border-black/5 dark:border-white/[0.06]">
-            <form method="POST">
-              <input type="hidden" name="action" value="logout" />
-              <button
-                type="submit"
-                class="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white text-sm font-medium rounded-xl border border-black/5 dark:border-white/5 shadow-sm transition-all duration-200"
-              >
-                <svg
-                  class="w-4 h-4 text-zinc-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width={2}
+          <div class="mt-8">
+            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-3">
+              Account
+            </h3>
+            <div class="glass-card-strong p-4 rounded-xl">
+              <form method="POST">
+                <input type="hidden" name="action" value="logout" />
+                <button
+                  type="submit"
+                  class="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl border border-red-200 dark:border-red-500/20 shadow-sm transition-all duration-200"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-                Sign Out
-              </button>
-            </form>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width={2}
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  Sign Out of Console
+                </button>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
