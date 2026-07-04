@@ -1,16 +1,42 @@
-# Fresh project
+# sv
 
-Your new Fresh project is ready to go. You can follow the Fresh "Getting
-Started" guide here: https://fresh.deno.dev/docs/getting-started
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-### Usage
+## Creating a project
 
-Make sure to install Deno: https://deno.land/manual/getting_started/installation
+If you're seeing this, you've probably already done this step. Congrats!
 
-Then start the project:
-
-```
-deno task start
+```sh
+# create a new project
+npx sv create my-app
 ```
 
-This will watch the project directory and restart as necessary.
+To recreate this project with the same configuration:
+
+```sh
+# recreate this project
+npx sv@0.16.2 create --template minimal --types ts --add tailwindcss="plugins:none" sveltekit-adapter="adapter:node" prettier eslint --install npm .
+```
+
+## Developing
+
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```sh
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```sh
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
