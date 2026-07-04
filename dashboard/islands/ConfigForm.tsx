@@ -42,13 +42,20 @@ export default function ConfigForm(
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deviceProfile, setDeviceProfile] = useState("");
   const [testingKeys, setTestingKeys] = useState(false);
-  const [testResults, setTestResults] = useState<{ error?: string, torbox?: { valid: boolean, premium: boolean, expires_at: string } } | null>(null);
+  const [testResults, setTestResults] = useState<
+    {
+      error?: string;
+      torbox?: { valid: boolean; premium: boolean; expires_at: string };
+    } | null
+  >(null);
 
   useEffect(() => {
     fetch("/api/global-config")
-      .then(res => res.json())
-      .then(data => setMonetizationEnabled(data.monetization_enabled === true))
-      .catch(e => console.error("Failed to fetch global config:", e));
+      .then((res) => res.json())
+      .then((data) =>
+        setMonetizationEnabled(data.monetization_enabled === true)
+      )
+      .catch((e) => console.error("Failed to fetch global config:", e));
   }, []);
 
   const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey);
@@ -101,7 +108,9 @@ export default function ConfigForm(
         if (prefs.max_resolution) setMaxResolution(prefs.max_resolution);
         if (prefs.sort_preference) setSortPreference(prefs.sort_preference);
         if (prefs.exclude_av1 !== undefined) setExcludeAv1(prefs.exclude_av1);
-        if (prefs.stream_limit !== undefined) setStreamLimit(prefs.stream_limit);
+        if (prefs.stream_limit !== undefined) {
+          setStreamLimit(prefs.stream_limit);
+        }
         if (prefs.is_premium !== undefined) setIsPremium(prefs.is_premium);
         if (prefs.device_profile) setDeviceProfile(prefs.device_profile);
       }
@@ -159,7 +168,7 @@ export default function ConfigForm(
         .select("prefs_json")
         .eq("id", userId)
         .single();
-        
+
       const existingJson = currentPrefs?.prefs_json || {};
       const newJson = { ...existingJson, ...prefs_json };
 
@@ -261,7 +270,9 @@ export default function ConfigForm(
             </svg>
           </div>
           <div>
-            <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Provider Keys</h2>
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
+              Provider Keys
+            </h2>
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Stored encrypted. Never exposed to clients.
             </p>
@@ -274,8 +285,18 @@ export default function ConfigForm(
             <div class="relative flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <div>
                 <h3 class="text-base font-bold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
-                  <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  <svg
+                    class="w-5 h-5 text-indigo-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                    />
                   </svg>
                   Upgrade to Atlas Premium
                 </h3>
@@ -284,7 +305,8 @@ export default function ConfigForm(
                 </p>
               </div>
               <button
-                onClick={() => globalThis.location.href = "/api/stripe-checkout"}
+                onClick={() =>
+                  globalThis.location.href = "/api/stripe-checkout"}
                 type="button"
                 class="whitespace-nowrap px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95"
               >
@@ -401,7 +423,9 @@ export default function ConfigForm(
                     }`}
                   />
                   <div>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-white">TorBox</p>
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-white">
+                      TorBox
+                    </p>
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
                       {testResults.torbox.valid
                         ? (testResults.torbox.premium
@@ -554,7 +578,9 @@ export default function ConfigForm(
                 id="stream-limit"
                 value={streamLimit.toString()}
                 onChange={(e) =>
-                  setStreamLimit(parseInt((e.target as HTMLSelectElement).value, 10))}
+                  setStreamLimit(
+                    parseInt((e.target as HTMLSelectElement).value, 10),
+                  )}
                 class="select-field"
               >
                 <option value="5">5 Streams (Fastest)</option>
@@ -594,7 +620,6 @@ export default function ConfigForm(
             </button>
           </div>
 
-
           {/* Device Profile (Premium Only) */}
           <div class="space-y-2">
             <label
@@ -603,21 +628,29 @@ export default function ConfigForm(
             >
               <span>AI Device Profile</span>
               {monetizationEnabled && !isPremium && (
-                <span class="text-xs bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-medium">Premium</span>
+                <span class="text-xs bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-medium">
+                  Premium
+                </span>
               )}
             </label>
             <div class="relative">
               <textarea
                 id="device-profile"
                 value={deviceProfile}
-                onChange={(e) => setDeviceProfile((e.target as HTMLTextAreaElement).value)}
+                onChange={(e) =>
+                  setDeviceProfile((e.target as HTMLTextAreaElement).value)}
                 placeholder="e.g. LG C2 OLED TV with Sonos Arc Soundbar"
                 disabled={monetizationEnabled && !isPremium}
-                class={`input-field min-h-[80px] resize-y ${monetizationEnabled && !isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+                class={`input-field min-h-[80px] resize-y ${
+                  monetizationEnabled && !isPremium
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
               />
             </div>
             <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">
-              Describe your hardware setup. Atlas AI will automatically optimize streams for your specific capabilities.
+              Describe your hardware setup. Atlas AI will automatically optimize
+              streams for your specific capabilities.
             </p>
           </div>
         </div>
@@ -833,8 +866,6 @@ export default function ConfigForm(
           </div>
         </div>
       </div>
-
-
     </div>
   );
 }

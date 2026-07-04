@@ -33,7 +33,7 @@ export default function ThemeToggle() {
     };
 
     applyTheme(theme);
-    
+
     // Listen for system changes if set to system
     if (theme === "system") {
       const mediaQuery = globalThis.matchMedia("(prefers-color-scheme: dark)");

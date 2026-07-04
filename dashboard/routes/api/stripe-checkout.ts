@@ -6,7 +6,10 @@ import Stripe from "npm:stripe@^14.0.0";
 export const handler: Handlers = {
   async GET(req) {
     const kv = await Deno.openKv();
-    const config = (await kv.get(["global_config"])).value as Record<string, unknown>;
+    const config = (await kv.get(["global_config"])).value as Record<
+      string,
+      unknown
+    >;
 
     if (!config || !config.monetization_enabled || !config.stripe_secret_key) {
       return new Response("Monetization is not enabled.", { status: 400 });
@@ -18,15 +21,18 @@ export const handler: Handlers = {
 
     const cookies = getCookies(req.headers);
     const authHeader = req.headers.get("Authorization");
-    
+
     // We can use session from cookies or Authorization header
-    const token = cookies["sb-access-token"] || (authHeader ? authHeader.replace("Bearer ", "") : null);
+    const token = cookies["sb-access-token"] ||
+      (authHeader ? authHeader.replace("Bearer ", "") : null);
 
     if (!token) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      token,
+    );
     if (authError || !user) {
       return new Response("Unauthorized", { status: 401 });
     }
@@ -47,7 +53,8 @@ export const handler: Handlers = {
               currency: "usd",
               product_data: {
                 name: "Atlas Premium",
-                description: "Unlock 4K streaming and instant uncached downloads.",
+                description:
+                  "Unlock 4K streaming and instant uncached downloads.",
               },
               unit_amount: 300, // $3.00/month
               recurring: {

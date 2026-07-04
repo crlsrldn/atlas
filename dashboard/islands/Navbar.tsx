@@ -62,7 +62,9 @@ export default function Navbar(
               A
             </div>
           </div>
-          <span class="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">Atlas</span>
+          <span class="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">
+            Atlas
+          </span>
         </a>
 
         {/* Nav links */}

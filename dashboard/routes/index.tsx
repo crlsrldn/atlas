@@ -196,7 +196,9 @@ export default function Home() {
                 <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
                   {stat.label}
                 </p>
-                <p class="text-xs text-zinc-500 dark:text-zinc-600">{stat.sublabel}</p>
+                <p class="text-xs text-zinc-500 dark:text-zinc-600">
+                  {stat.sublabel}
+                </p>
               </div>
             ))}
           </div>
@@ -345,7 +347,9 @@ export default function Home() {
                   </div>
                 </div>
                 <div class="space-y-2">
-                  <h3 class="font-semibold text-zinc-900 dark:text-white text-lg">{item.title}</h3>
+                  <h3 class="font-semibold text-zinc-900 dark:text-white text-lg">
+                    {item.title}
+                  </h3>
                   <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">
                     {item.desc}
                   </p>

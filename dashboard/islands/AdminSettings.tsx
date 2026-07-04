@@ -68,8 +68,18 @@ export default function AdminSettings() {
       <div class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              class="w-5 h-5 text-indigo-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             Monetization Settings
           </h2>
@@ -121,7 +131,8 @@ export default function AdminSettings() {
             <input
               type="password"
               value={stripeSecretKey}
-              onChange={(e) => setStripeSecretKey((e.target as HTMLInputElement).value)}
+              onChange={(e) =>
+                setStripeSecretKey((e.target as HTMLInputElement).value)}
               placeholder="sk_test_..."
               class="input-field font-mono text-sm"
             />
@@ -134,41 +145,55 @@ export default function AdminSettings() {
             <input
               type="password"
               value={stripeWebhookSecret}
-              onChange={(e) => setStripeWebhookSecret((e.target as HTMLInputElement).value)}
+              onChange={(e) =>
+                setStripeWebhookSecret((e.target as HTMLInputElement).value)}
               placeholder="whsec_..."
               class="input-field font-mono text-sm"
             />
             <p class="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-              Required to receive successful checkout events. Set this up in your Stripe Dashboard pointing to `/api/stripe-webhook`.
+              Required to receive successful checkout events. Set this up in
+              your Stripe Dashboard pointing to `/api/stripe-webhook`.
             </p>
           </div>
         </div>
 
         <div class="pt-4 flex items-center justify-between border-t border-zinc-200/50 dark:border-white/5">
-          {saveSuccess ? (
-            <span class="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              Saved successfully
-            </span>
-          ) : (
-            <div />
-          )}
+          {saveSuccess
+            ? (
+              <span class="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Saved successfully
+              </span>
+            )
+            : <div />}
           <button
             type="button"
             onClick={saveConfig}
             disabled={saving}
             class="btn-primary flex items-center gap-2 px-6"
           >
-            {saving ? (
-              <>
-                <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Settings"
-            )}
+            {saving
+              ? (
+                <>
+                  <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Saving...
+                </>
+              )
+              : (
+                "Save Settings"
+              )}
           </button>
         </div>
       </div>

@@ -75,11 +75,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.x
+      - name: Lint and Check
+        run: deno task check
       - name: Build
-        run: deno run -A dev.ts build
+        run: deno task build
 
 
   smoke:

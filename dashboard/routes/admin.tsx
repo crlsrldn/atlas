@@ -497,8 +497,12 @@ function DashboardView({ data }: { data: AdminData }) {
               <p class="text-4xl font-black text-zinc-900 dark:text-white tracking-tight tabular-nums">
                 {m.value}
               </p>
-              <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">{m.label}</p>
-              <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1">{m.description}</p>
+              <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">
+                {m.label}
+              </p>
+              <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1">
+                {m.description}
+              </p>
             </div>
           );
         })}
@@ -524,7 +528,9 @@ function DashboardView({ data }: { data: AdminData }) {
                 />
               </svg>
             </div>
-            <h2 class="font-semibold text-zinc-900 dark:text-white">System Health</h2>
+            <h2 class="font-semibold text-zinc-900 dark:text-white">
+              System Health
+            </h2>
           </div>
 
           <div class="space-y-3">
@@ -551,7 +557,9 @@ function DashboardView({ data }: { data: AdminData }) {
                 key={s.name}
                 class="flex items-center justify-between py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0"
               >
-                <span class="text-sm text-zinc-700 dark:text-zinc-300">{s.name}</span>
+                <span class="text-sm text-zinc-700 dark:text-zinc-300">
+                  {s.name}
+                </span>
                 <div class="flex items-center gap-2">
                   <span
                     class={`w-1.5 h-1.5 rounded-full ${
@@ -591,7 +599,9 @@ function DashboardView({ data }: { data: AdminData }) {
                 />
               </svg>
             </div>
-            <h2 class="font-semibold text-zinc-900 dark:text-white">Quick Actions</h2>
+            <h2 class="font-semibold text-zinc-900 dark:text-white">
+              Quick Actions
+            </h2>
           </div>
 
           <div class="space-y-3">
@@ -681,7 +691,9 @@ export default function AdminPage({ data }: PageProps<AdminData>) {
     return (
       <div class="min-h-[80vh] flex flex-col items-center justify-center px-4">
         <div class="glass-card p-8 rounded-2xl max-w-md w-full text-center space-y-4 border-red-500/30">
-          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Access Error</h2>
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">
+            Access Error
+          </h2>
           <p class="text-zinc-500 dark:text-zinc-400">{data.error}</p>
         </div>
       </div>

@@ -5,7 +5,10 @@ import Stripe from "npm:stripe@^14.0.0";
 export const handler: Handlers = {
   async POST(req) {
     const kv = await Deno.openKv();
-    const config = (await kv.get(["global_config"])).value as Record<string, unknown>;
+    const config = (await kv.get(["global_config"])).value as Record<
+      string,
+      unknown
+    >;
 
     if (!config || !config.stripe_secret_key || !config.stripe_webhook_secret) {
       return new Response("Webhook not configured", { status: 400 });
@@ -27,7 +30,7 @@ export const handler: Handlers = {
       event = stripe.webhooks.constructEvent(
         body,
         signature,
-        config.stripe_webhook_secret
+        config.stripe_webhook_secret,
       );
     } catch (err) {
       console.error("Webhook signature verification failed.", err);
@@ -44,7 +47,7 @@ export const handler: Handlers = {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
           const userId = session.client_reference_id;
-          
+
           if (userId) {
             // First fetch the existing preferences JSON
             const { data: prefData } = await supabase
@@ -52,7 +55,7 @@ export const handler: Handlers = {
               .select("prefs_json")
               .eq("id", userId)
               .single();
-              
+
             const prefs = prefData?.prefs_json || {};
             prefs.is_premium = true;
             prefs.stripe_customer_id = session.customer;
@@ -68,7 +71,7 @@ export const handler: Handlers = {
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
           const customerId = subscription.customer;
-          
+
           // Find the user with this customer ID
           // Since we store it in a JSON column, we have to query all or use Postgres JSON querying if we were writing raw SQL.
           // But Supabase JS client supports JSON filtering.
@@ -76,12 +79,12 @@ export const handler: Handlers = {
             .from("preferences")
             .select("id, prefs_json")
             .filter("prefs_json->>stripe_customer_id", "eq", customerId);
-            
+
           if (users && users.length > 0) {
             const user = users[0];
             const prefs = user.prefs_json || {};
             prefs.is_premium = false;
-            
+
             await supabase
               .from("preferences")
               .upsert({ id: user.id, prefs_json: prefs });
