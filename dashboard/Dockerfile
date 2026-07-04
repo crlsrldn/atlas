@@ -15,8 +15,9 @@ FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-# Copy built assets
+# Copy built assets and dependencies
 COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
 EXPOSE 3000
