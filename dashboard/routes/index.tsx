@@ -83,7 +83,8 @@ export default function Home() {
               <span class="text-[#04BF8A]">High-speed streaming.</span>
             </h1>
             <p class="text-lg sm:text-xl md:text-2xl text-zinc-400 font-light max-w-2xl mx-auto leading-relaxed text-balance">
-              Atlas brings modern, premium intelligence to your TorBox integration. Seamless and easy for anyone.
+              Atlas brings modern, premium intelligence to your TorBox
+              integration. Seamless and easy for anyone.
             </p>
           </div>
 
@@ -167,7 +168,8 @@ export default function Home() {
             Ready for the next level?
           </h2>
           <p class="text-zinc-400 text-lg max-w-lg mx-auto">
-            Takes under 60 seconds to configure your TorBox key and generate your secure install URL.
+            Takes under 60 seconds to configure your TorBox key and generate
+            your secure install URL.
           </p>
           <a
             href="/dashboard"
