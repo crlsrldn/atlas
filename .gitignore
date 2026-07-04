@@ -10,3 +10,9 @@ appwrite/
 .svelte-kit/
 target/
 .DS_Store
+
+# Agent files
+.gemini
+GEMINI.md
+PRD.md
+IMPLEMENTATION_PLAN.md

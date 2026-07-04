@@ -34,7 +34,6 @@ export const handler: Handlers = {
         }
       }
 
-
       return new Response(JSON.stringify(results), {
         headers: { "Content-Type": "application/json" },
       });
