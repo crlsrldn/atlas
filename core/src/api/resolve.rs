@@ -51,6 +51,7 @@ async fn resolve_torbox(Path(hash): Path<String>) -> axum::response::Response {
     .await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn resolve_torbox_with_key(
     hash: String,
     api_key: String,
