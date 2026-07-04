@@ -6,7 +6,6 @@ build/
 preferences.json
 backend/preferences.json
 backend/playback_history.json
-appwrite/
 .svelte-kit/
 target/
 .DS_Store

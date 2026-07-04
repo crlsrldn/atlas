@@ -25,7 +25,7 @@ The system is structured into specialized, provider-independent engines:
 - **Compute Core (Rust):** The heavy lifter. Performs cryptographic verification, metadata parsing, hashing, and quality ranking.
 - **API Gateway (Go):** The edge router. Handles incoming Stremio addon requests, token validation, and routes traffic efficiently.
 - **Dashboard (Deno + Fresh):** The configuration UI. Handles user onboarding, monetization toggles, telemetry aggregation, and provider setup.
-- **Database (Supabase / Appwrite):** Backend-as-a-service for managing encrypted provider secrets, authentication, webhooks, and telemetry data.
+- **Database (Supabase):** Backend-as-a-service for managing encrypted provider secrets, authentication, webhooks, and telemetry data.
 
 ## 🚀 Local Setup
 

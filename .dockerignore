@@ -3,6 +3,5 @@ frontend/node_modules
 frontend/src-tauri/target
 .git
 .github
-appwrite
 preferences.json
 playback_history.json

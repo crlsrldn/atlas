@@ -17,7 +17,7 @@ async fn recent_telemetry() -> Json<TelemetryResponse> {
     match crate::api::cloud::get_recent_telemetry(50).await {
         Ok(events) => Json(TelemetryResponse {
             events,
-            source: "appwrite",
+            source: "supabase",
             message: None,
         }),
         Err(err) => Json(TelemetryResponse {

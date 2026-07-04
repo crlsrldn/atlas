@@ -175,7 +175,7 @@ pub async fn init_preferences() {
             let mut prefs = PREFERENCES.lock().unwrap();
             *prefs = cloud_prefs.clone();
         }
-        tracing::info!("Loaded preferences from Appwrite Cloud.");
+        tracing::info!("Loaded preferences from Supabase.");
         let redacted_prefs = cloud_prefs.without_secrets();
         let _ = crate::api::cloud::save_preferences_to_cloud(&redacted_prefs).await;
         save_preferences_to_disk(&redacted_prefs);
@@ -239,7 +239,7 @@ async fn update_preferences(
 
     // Save to Cloud
     if let Err(e) = crate::api::cloud::save_preferences_to_cloud(&redacted_payload).await {
-        tracing::error!("Failed to save preferences to Appwrite: {}", e);
+        tracing::error!("Failed to save preferences to Supabase: {}", e);
     }
 
     save_preferences_to_disk(&redacted_payload);
