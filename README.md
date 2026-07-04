@@ -1,170 +1,111 @@
-# Project Atlas
+# Project Atlas 🌍
 
-Atlas is a hosted Stremio companion and Smart Play resolver that ranks playable streams across configured providers, explains the best match, and redirects to provider playback URLs without proxying media bytes.
+Atlas is a hosted Stremio companion and Smart Play resolver. It intelligently ranks playable streams across configured providers, verifies and explains the best match, and seamlessly redirects to provider playback URLs without proxying media bytes. 
 
-Atlas Cloud is a Rust Axum service deployed on Fly.io with tenant-scoped Stremio install URLs, encrypted provider secret handles, monthly quotas, and Stripe-compatible billing hooks.
+The architecture is designed to be highly modular, privacy-preserving, and incredibly fast. It operates using a microservices model split across Rust (Compute), Go (API Gateway), and Deno (Frontend Dashboard).
 
-## Supported Providers
+---
 
-Atlas currently supports:
+## ✨ Features
 
-- TorBox for cached torrent verification and playback resolution.
-- Real Debrid for cached torrent verification and playback resolution.
-- Gemini for optional AI catalog recommendations.
-- Appwrite for backend-owned preferences and telemetry storage.
+- **Smart Play Resolution:** Intelligently picks the best stream based on runtime evidence, quality, availability, and historical success.
+- **Provider Verification:** Structurally verifies media using evidence (duration, hashes, release groups) rather than relying blindly on filenames.
+- **Privacy First:** Atlas never stores or proxies media bytes. Telemetry and analytics are heavily redacted and anonymized. 
+- **Multi-Tenant SaaS:** Supports tenant-scoped install URLs and securely encrypted provider secret handles.
+- **Modern UI:** A fast, responsive, data-focused configuration dashboard built with Deno Fresh and styled with Tailwind CSS.
 
-## Atlas Cloud APIs
+### Supported Providers
+- **TorBox** - Cached torrent verification and playback resolution.
+- **Real Debrid** - Cached torrent verification and playback resolution.
 
-Hosted SaaS routes are available alongside the legacy local endpoints:
+## 🏗 Architecture
 
-- `POST /auth/session` creates or loads a lightweight tenant session.
-- `GET /v1/account` returns plan, quota, install token, and redacted preferences.
-- `GET /v1/preferences` and `POST /v1/preferences` manage tenant preferences.
-- `GET /v1/providers/status` tests provider keys from the tenant vault.
-- `POST /v1/billing/checkout` returns a Stripe Checkout URL placeholder.
-- `POST /v1/billing/webhook` updates subscription state for Stripe-style events.
-- `GET /stremio/:install_token/manifest.json` exposes a tenant-scoped Stremio manifest.
-- `GET /stremio/:install_token/stream/:type/:id.json` resolves tenant-scoped streams.
+The system is structured into specialized, provider-independent engines:
 
-Atlas Cloud caches metadata and resolver decisions only. It never stores or relays media bytes.
+- **Compute Core (Rust):** The heavy lifter. Performs cryptographic verification, metadata parsing, hashing, and quality ranking.
+- **API Gateway (Go):** The edge router. Handles incoming Stremio addon requests, token validation, and routes traffic efficiently.
+- **Dashboard (Deno + Fresh):** The configuration UI. Handles user onboarding, monetization toggles, telemetry aggregation, and provider setup.
+- **Database (Supabase / Appwrite):** Backend-as-a-service for managing encrypted provider secrets, authentication, webhooks, and telemetry data.
 
-Provider API keys are never returned by the public preferences API. On macOS desktop builds, Atlas stores provider secrets in Keychain under `com.cindrallabs.atlas` and persists only non-secret preferences to disk or Appwrite.
+## 🚀 Local Setup
 
-## Local Setup
+### Requirements
 
-Requirements:
+To run Atlas locally, you will need the following installed:
+- [Rust](https://www.rust-lang.org/tools/install) (Stable)
+- [Go](https://go.dev/doc/install) (1.20+)
+- [Deno](https://deno.land/manual/getting_started/installation) (1.37+)
 
-- Rust stable
-- Node.js 20
-- npm
+### Installation
 
-Install and verify:
+1. **Clone the repository and install dependencies:**
+   ```sh
+   make setup
+   ```
 
-```sh
-make setup
-make check
-```
+2. **Run the services (in separate terminals):**
 
-Run the backend:
+   *Start the Rust Compute Core:*
+   ```sh
+   make core-dev
+   ```
 
-```sh
-make backend-dev
-```
+   *Start the Go API Gateway:*
+   ```sh
+   make gateway-dev
+   ```
 
-Run the frontend in another terminal:
+   *Start the Deno Dashboard:*
+   ```sh
+   make dashboard-dev
+   ```
 
-```sh
-make frontend-dev
-```
+### Local Development URLs
+- **Compute Core (Backend):** `http://127.0.0.1:3000`
+- **Dashboard (Frontend):** `http://127.0.0.1:8000` (Default Deno port)
+- **API Gateway:** *(Check Go service output for port binding)*
 
-Default local URLs:
+## ⚙️ Configuration
 
-- Backend: `http://127.0.0.1:3000`
-- Frontend: `http://127.0.0.1:1420`
-- Stremio manifest: `http://127.0.0.1:3000/manifest.json`
-- Hosted demo manifest: `http://127.0.0.1:3000/stremio/demo-install-token/manifest.json`
-
-Useful checks:
-
-```sh
-curl http://127.0.0.1:3000/manifest.json
-curl http://127.0.0.1:3000/stream/movie/tt0133093.json
-curl http://127.0.0.1:3000/inspect/movie/tt0133093.json
-make smoke
-```
-
-## Configuration
-
-Atlas reads optional Appwrite settings from environment variables:
+Atlas is configured via environment variables. Create a `.env` file or export the following in your shell:
 
 ```sh
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# Database / Backend-as-a-Service
+PUBLIC_SUPABASE_URL=your-supabase-url
+PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Atlas Environment
 ATLAS_ENV=local
 ATLAS_BIND_ADDR=127.0.0.1:3000
 ATLAS_PUBLIC_BASE_URL=http://127.0.0.1:3000
 ATLAS_VAULT_MASTER_KEY=change-this-before-production
+
+# Billing (Optional)
 STRIPE_CHECKOUT_URL=
 ```
 
-The backend binds to `127.0.0.1:3000` by default. Override it with:
+Provider keys are meant to be entered securely through the **Platform Settings** tab in the dashboard. They are encrypted before being stored in the database.
+
+## 🛠 Testing & Validation
+
+The project includes an automated test suite across all services:
 
 ```sh
-ATLAS_BIND_ADDR=127.0.0.1:3001
+# Run all tests and type checks
+make check
+
+# Run a live smoke test against local or remote environments
+make smoke
+ATLAS_SMOKE_URL=https://staging.yourdomain.com make smoke
 ```
 
-Provider keys can be entered through the Settings page. The backend migrates legacy local secrets from `preferences.json` into Keychain when possible, then writes redacted preferences back to local/cloud storage.
+## ☁️ Deployment
 
-## Stremio Install Flow
+Atlas is designed for Fly.io deployments. The API Gateway (Go) and Dashboard (Deno) should be exposed publicly, while the Compute Core (Rust) can be isolated on a 6PN private network for enhanced security.
 
-1. Start the backend with `make backend-dev`.
-2. Open `http://127.0.0.1:3000/manifest.json` and confirm the manifest returns JSON.
-3. In Stremio, install the local addon using `http://127.0.0.1:3000/manifest.json`.
-4. Configure providers in the Atlas Settings page.
-5. Use Smart Play or request streams through Stremio.
+Deployment configurations are defined in `fly.toml` files, and continuous integration is managed via GitHub Actions.
 
-## Cloud Deployment
+---
 
-Build and run the hosted backend container:
-
-```sh
-docker build -t atlas-backend .
-docker run --rm -p 3000:3000 \
-  -e ATLAS_BIND_ADDR=0.0.0.0:3000 \
-  -e ATLAS_PUBLIC_BASE_URL=http://127.0.0.1:3000 \
-  -e ATLAS_VAULT_MASTER_KEY=change-this-before-production \
-  atlas-backend
-```
-
-Atlas ships with three Fly configs:
-
-- `fly.toml` for development: `cindral-atlas-api-dev`
-- `fly.staging.toml` for staging: `cindral-atlas-api-staging`
-- `fly.production.toml` for production: `cindral-atlas-api`
-
-Deploy to Fly.io from the CLI:
-
-```sh
-make deploy-dev
-make deploy-staging
-make deploy-production
-```
-
-Run smoke checks against any deployed environment:
-
-```sh
-ATLAS_SMOKE_URL=https://cindral-atlas-api-dev.fly.dev make smoke
-ATLAS_SMOKE_URL=https://cindral-atlas-api-staging.fly.dev make smoke
-ATLAS_SMOKE_URL=https://cindral-atlas-api.fly.dev make smoke
-```
-
-GitHub Actions CI/CD expects:
-
-```sh
-FLY_API_TOKEN              # repository secret
-FLY_DEV_APP                # optional repository variable, defaults to cindral-atlas-api-dev
-FLY_STAGING_APP            # optional repository variable, defaults to cindral-atlas-api-staging
-FLY_PRODUCTION_APP         # optional repository variable, defaults to cindral-atlas-api
-```
-
-Deployment flow:
-
-```text
-development branch -> development
-staging branch     -> staging
-production branch  -> production
-workflow_dispatch  -> selected environment
-```
-
-## Privacy and Operations
-
-Runtime logs use structured `tracing` fields and can be filtered with `RUST_LOG`, for example:
-
-```sh
-RUST_LOG=backend=debug make backend-dev
-```
-
-Logs and telemetry avoid API keys, download URLs, magnets, torrent hashes, and raw Stremio playback identifiers. Local playback history stays in `backend/playback_history.json`, which is ignored by Git.
-
-CI runs Rust format, clippy, backend tests, frontend checks, frontend builds, container builds, local API smoke checks, and environment deploy smoke checks.
+*Designed for speed, reliability, and an Apple-like premium experience.*
