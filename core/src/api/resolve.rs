@@ -95,7 +95,8 @@ pub async fn resolve_torbox_with_key(
                         // The torrent was just added to TorBox and is downloading.
                         // We redirect the user to a static placeholder video so Stremio doesn't hang.
                         let placeholder_url = "https://www.w3schools.com/html/mov_bbb.mp4";
-                        return (StatusCode::FOUND, [("Location", placeholder_url)]).into_response();
+                        return (StatusCode::FOUND, [("Location", placeholder_url)])
+                            .into_response();
                     }
 
                     return (StatusCode::FOUND, [("Location", dl_url)]).into_response();

@@ -5,7 +5,10 @@
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
 import * as $admin from "./routes/admin.tsx";
+import * as $api_global_config from "./routes/api/global-config.ts";
 import * as $api_joke from "./routes/api/joke.ts";
+import * as $api_stripe_checkout from "./routes/api/stripe-checkout.ts";
+import * as $api_stripe_webhook from "./routes/api/stripe-webhook.ts";
 import * as $api_test_providers from "./routes/api/test_providers.ts";
 import * as $dashboard from "./routes/dashboard.tsx";
 import * as $greet_name_ from "./routes/greet/[name].tsx";
@@ -18,6 +21,7 @@ import * as $AuthForm from "./islands/AuthForm.tsx";
 import * as $ConfigForm from "./islands/ConfigForm.tsx";
 import * as $Counter from "./islands/Counter.tsx";
 import * as $Navbar from "./islands/Navbar.tsx";
+import * as $ThemeToggle from "./islands/ThemeToggle.tsx";
 import type { Manifest } from "$fresh/server.ts";
 
 const manifest = {
@@ -25,7 +29,10 @@ const manifest = {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
     "./routes/admin.tsx": $admin,
+    "./routes/api/global-config.ts": $api_global_config,
     "./routes/api/joke.ts": $api_joke,
+    "./routes/api/stripe-checkout.ts": $api_stripe_checkout,
+    "./routes/api/stripe-webhook.ts": $api_stripe_webhook,
     "./routes/api/test_providers.ts": $api_test_providers,
     "./routes/dashboard.tsx": $dashboard,
     "./routes/greet/[name].tsx": $greet_name_,
@@ -40,6 +47,7 @@ const manifest = {
     "./islands/ConfigForm.tsx": $ConfigForm,
     "./islands/Counter.tsx": $Counter,
     "./islands/Navbar.tsx": $Navbar,
+    "./islands/ThemeToggle.tsx": $ThemeToggle,
   },
   baseUrl: import.meta.url,
 } satisfies Manifest;
