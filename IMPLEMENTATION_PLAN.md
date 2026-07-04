@@ -15,7 +15,7 @@
 
 - [x] Verify the Stremio `manifest.json` route remains provisioned by the backend.
 - [x] Finish TorBox resolution by selecting the largest playable file instead of assuming `file_id=1`.
-- [x] Finish Real Debrid integration with cache verification, file selection, unrestriction, and telemetry.
+
 - [x] Add provider health checks that feed ranking rather than static placeholder values.
 - [x] Normalize provider errors into structured internal statuses.
 

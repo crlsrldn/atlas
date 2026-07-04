@@ -16,7 +16,7 @@ The architecture is designed to be highly modular, privacy-preserving, and incre
 
 ### Supported Providers
 - **TorBox** - Cached torrent verification and playback resolution.
-- **Real Debrid** - Cached torrent verification and playback resolution.
+
 
 ## 🏗 Architecture
 

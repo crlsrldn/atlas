@@ -23,7 +23,7 @@ When writing code or suggesting architectural changes, adhere to the approved te
 Structure the system into distinct, provider-independent engines:
 - **Identity Engine:** Normalize all provider identifiers (TMDB, IMDb, TVDB, Trakt, AniDB) into a single internal `AtlasID`. Every internal system must reference `AtlasID` only.
 - **Metadata Engine:** Collect and normalize media metadata (runtime, HDR availability, cast, ratings, etc.).
-- **Source Engine:** Implement provider plugins (TorBox, Real Debrid, Local NAS, Plex, Jellyfin, etc.) via a standard interface (`Search()`, `Resolve()`, `Health()`, `Capabilities()`, `Priority()`).
+- **Source Engine:** Implement provider plugins (TorBox, Local NAS, Plex, Jellyfin, etc.) via a standard interface (`Search()`, `Resolve()`, `Health()`, `Capabilities()`, `Priority()`).
 - **Verification Engine:** Verify media using structural evidence (duration, hashes, release groups) instead of blind trust in filenames. Output a confidence score.
 - **Quality Ranking Engine:** Rank sources based on availability, quality, reliability, compatibility, speed, user preference, and historical success.
 - **Playback Engine:** Handle seamless source routing, CDN selection, subtitle fetching, and automatic failure retries.

@@ -190,7 +190,7 @@ export const handler: Handlers<AdminData> = {
         : "—";
 
       // Transform map into ProviderHealth array
-      const providers: ProviderHealth[] = ["TorBox", "Real Debrid"].map(
+      const providers: ProviderHealth[] = ["TorBox"].map(
         (name) => {
           const id = name.toLowerCase().replace(" ", "");
           const health = providerLatestHealth.get(id);

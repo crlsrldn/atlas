@@ -165,14 +165,14 @@ mod tests {
 
     #[test]
     fn source_keys_are_normalized() {
-        assert_eq!(source_key("Real Debrid", "ABC"), "real_debrid:abc");
+        assert_eq!(source_key("Test Provider", "ABC"), "test_provider:abc");
     }
 
     #[test]
     fn scoped_source_keys_keep_tenants_separate() {
         assert_ne!(
-            super::scoped_source_key("tenant-a", "Real Debrid", "ABC"),
-            super::scoped_source_key("tenant-b", "Real Debrid", "ABC")
+            super::scoped_source_key("tenant-a", "Test Provider", "ABC"),
+            super::scoped_source_key("tenant-b", "Test Provider", "ABC")
         );
     }
 }

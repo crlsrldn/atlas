@@ -298,7 +298,7 @@ Normalize all metadata.
 Provider Plugins:
 
 - TorBox
-- Real Debrid
+
 - Premiumize
 - EasyNews
 - Local NAS
