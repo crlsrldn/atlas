@@ -29,7 +29,7 @@ export default function App({ Component, url }: PageProps) {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
-        // script removed as dark mode is forced
+
       </head>
       <body class="antialiased min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
         {/* ── Background ambient glows ── */}
