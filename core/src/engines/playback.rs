@@ -3,7 +3,8 @@ use crate::engines::history::{remember_candidates, stats_for, PlaybackCandidate}
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
-use crate::engines::sources::{torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider};
+use crate::engines::sources::{ProviderHealthStatus, SourceProvider, SourceResult, torbox::TorBoxProvider};
+use crate::engines::telemetry::log_event;
 use crate::engines::verification::verify_source;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
@@ -99,7 +100,48 @@ pub async fn resolve_detailed_streams_with_preferences(
         if !matches!(health.status, ProviderHealthStatus::Ok) {
             continue;
         }
-        search_futures.push(provider.search(&atlas_id, &metadata));
+
+        let atlas_id_str = media_key(&atlas_id);
+        let provider_name = provider.name().to_string();
+        let atlas_id_clone = atlas_id.clone();
+        let metadata_clone = metadata.clone();
+
+        // Push an async block that checks cache, then falls back to search
+        search_futures.push(async move {
+            let cache_key = format!("atlas:sources:{}:{}", provider_name.to_lowercase(), atlas_id_str);
+            
+            if let Some(mut redis_client) = crate::engines::redis::get_redis() {
+                let get_result: Result<String, _> = redis::cmd("GET")
+                    .arg(&cache_key)
+                    .query_async(&mut redis_client)
+                    .await;
+                
+                if let Ok(cached_json) = get_result {
+                    if let Ok(results) = serde_json::from_str::<Vec<SourceResult>>(&cached_json) {
+                        tracing::info!("✅ Redis cache HIT for {}", cache_key);
+                        return results;
+                    }
+                }
+            }
+
+            // Await the provider's search implementation
+            let results = provider.search(&atlas_id_clone, &metadata_clone).await;
+
+            if !results.is_empty() {
+                if let Some(mut redis_client) = crate::engines::redis::get_redis() {
+                    if let Ok(json) = serde_json::to_string(&results) {
+                        let _: Result<(), _> = redis::cmd("SETEX")
+                            .arg(&cache_key)
+                            .arg(900) // 15 mins TTL
+                            .arg(json)
+                            .query_async(&mut redis_client)
+                            .await;
+                    }
+                }
+            }
+
+            results
+        });
     }
 
     let results = join_all(search_futures).await;

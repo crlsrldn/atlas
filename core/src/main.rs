@@ -18,6 +18,9 @@ async fn main() {
     // Initialize Cloud Preferences
     api::config::init_preferences().await;
 
+    // Initialize Redis
+    engines::redis::init_redis().await;
+
     let internal_cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_origin(Any)

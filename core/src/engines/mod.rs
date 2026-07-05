@@ -7,6 +7,7 @@ pub mod metadata;
 pub mod playback;
 pub mod privacy;
 pub mod ranking;
+pub mod redis;
 pub mod sources;
 pub mod telemetry;
 pub mod verification;

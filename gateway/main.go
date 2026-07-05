@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
 var coreUrl string
@@ -22,6 +24,8 @@ var globalConfigCache struct {
 	MonetizationEnabled bool
 	LastFetched         time.Time
 }
+
+var prefsCache = expirable.NewLRU[string, map[string]interface{}](10000, nil, time.Minute*10)
 
 func getMonetizationEnabled() bool {
 	globalConfigCache.RLock()
@@ -227,23 +231,29 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 
 	supabase := NewSupabaseClient()
 	var prefs map[string]interface{}
-	doc, err := supabase.GetUserPreferences(token)
-	if err != nil {
-		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
-		// Fallback to empty prefs or handle error appropriately.
-		// For MVP, we will send empty strings if fetch fails so the Rust core won't crash
-		prefs = map[string]interface{}{
-			"torbox_api_key":  "",
-			"trakt_client_id": "",
-			"trakt_username":  "",
-			"max_resolution":  "4K",
-			"exclude_av1":     false,
-			"sort_preference": "balanced",
-			"stream_limit":    5,
-			"is_premium":      false,
-		}
+
+	if cachedPrefs, ok := prefsCache.Get(token); ok {
+		prefs = cachedPrefs
 	} else {
-		prefs = doc.PrefsJson
+		doc, err := supabase.GetUserPreferences(token)
+		if err != nil {
+			log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
+			// Fallback to empty prefs or handle error appropriately.
+			// For MVP, we will send empty strings if fetch fails so the Rust core won't crash
+			prefs = map[string]interface{}{
+				"torbox_api_key":  "",
+				"trakt_client_id": "",
+				"trakt_username":  "",
+				"max_resolution":  "4K",
+				"exclude_av1":     false,
+				"sort_preference": "balanced",
+				"stream_limit":    5,
+				"is_premium":      false,
+			}
+		} else {
+			prefs = doc.PrefsJson
+			prefsCache.Add(token, prefs)
+		}
 	}
 
 	userAgent := r.Header.Get("User-Agent")

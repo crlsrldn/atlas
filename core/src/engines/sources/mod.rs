@@ -64,7 +64,9 @@ impl ProviderHealth {
     }
 }
 
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceResult {
     pub provider_name: String,
     pub provider_priority: u8,

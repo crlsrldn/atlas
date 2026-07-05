@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -14,17 +15,29 @@ type SupabaseClient struct {
 	Client         *http.Client
 }
 
-func NewSupabaseClient() *SupabaseClient {
-	endpoint := os.Getenv("SUPABASE_URL")
-	key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+var globalSupabaseClient *SupabaseClient
+var supabaseClientOnce sync.Once
 
-	return &SupabaseClient{
-		Endpoint:       endpoint,
-		ServiceRoleKey: key,
-		Client: &http.Client{
-			Timeout: 5 * time.Second,
-		},
-	}
+func NewSupabaseClient() *SupabaseClient {
+	supabaseClientOnce.Do(func() {
+		endpoint := os.Getenv("SUPABASE_URL")
+		key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+		t := http.DefaultTransport.(*http.Transport).Clone()
+		t.MaxIdleConns = 100
+		t.MaxConnsPerHost = 100
+		t.MaxIdleConnsPerHost = 100
+
+		globalSupabaseClient = &SupabaseClient{
+			Endpoint:       endpoint,
+			ServiceRoleKey: key,
+			Client: &http.Client{
+				Timeout:   5 * time.Second,
+				Transport: t,
+			},
+		}
+	})
+	return globalSupabaseClient
 }
 
 type SupabasePreferenceDoc struct {
