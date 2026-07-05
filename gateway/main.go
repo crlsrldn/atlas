@@ -69,9 +69,60 @@ func main() {
 	http.HandleFunc("/stremio/", handleStremio)
 
 	log.Println("Starting API gateway on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(":8080", telemetryMiddleware(http.DefaultServeMux)); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+type customResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *customResponseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func anonymizePath(p string) string {
+	if strings.HasPrefix(p, "/stremio/") {
+		parts := strings.Split(p, "/")
+		if len(parts) >= 4 {
+			// parts: ["", "stremio", "TOKEN", "stream", ...]
+			parts[2] = "[redacted]"
+			return strings.Join(parts, "/")
+		}
+	}
+	return p
+}
+
+func telemetryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		crw := &customResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(crw, r)
+
+		latency := time.Since(start).Milliseconds()
+
+		ua := r.Header.Get("User-Agent")
+		uaType := "unknown"
+		if strings.Contains(strings.ToLower(ua), "stremio") {
+			uaType = "stremio"
+		} else if strings.Contains(strings.ToLower(ua), "mozilla") || strings.Contains(strings.ToLower(ua), "chrome") || strings.Contains(strings.ToLower(ua), "safari") {
+			uaType = "browser"
+		} else if ua != "" {
+			uaType = "other"
+		}
+
+		LogTelemetryEvent("gateway_request", map[string]interface{}{
+			"path":            anonymizePath(r.URL.Path),
+			"status_code":     crw.statusCode,
+			"latency_ms":      latency,
+			"user_agent_type": uaType,
+		})
+	})
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {

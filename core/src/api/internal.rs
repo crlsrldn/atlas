@@ -34,6 +34,7 @@ pub fn router() -> Router {
 }
 
 async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
+    let start_time = std::time::Instant::now();
     let mut stremio_id = req.stremio_id;
     if stremio_id.ends_with(".json") {
         stremio_id = stremio_id.trim_end_matches(".json").to_string();
@@ -60,12 +61,41 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
     )
     .await;
 
+    let mut res_4k = 0;
+    let mut res_1080p = 0;
+    let mut res_720p = 0;
+    let mut res_unknown = 0;
+
+    for stream in &streams {
+        if let Some(name) = stream.get("name").and_then(|n| n.as_str()) {
+            if name.contains("4K") || name.contains("2160p") {
+                res_4k += 1;
+            } else if name.contains("1080p") {
+                res_1080p += 1;
+            } else if name.contains("720p") {
+                res_720p += 1;
+            } else {
+                res_unknown += 1;
+            }
+        } else {
+            res_unknown += 1;
+        }
+    }
+
+    let latency_ms = start_time.elapsed().as_millis();
+
     crate::engines::telemetry::log_event(
         "streams_requested",
         serde_json::json!({
-            "user_id": req.install_token.as_deref().unwrap_or("demo"),
             "stremio_id": stremio_id,
-            "streams_count": streams.len()
+            "streams_count": streams.len(),
+            "latency_ms": latency_ms as u64,
+            "resolution_distribution": {
+                "4k": res_4k,
+                "1080p": res_1080p,
+                "720p": res_720p,
+                "unknown": res_unknown
+            }
         }),
     );
 

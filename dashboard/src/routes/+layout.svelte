@@ -7,6 +7,17 @@
   let isAuthenticated = $derived(!!data.session);
   let pathname = $derived($page.url.pathname);
 
+  $effect(() => {
+    fetch('/api/telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'dashboard_page_view',
+        event_data: { path: pathname }
+      })
+    }).catch(() => {});
+  });
+
   let navLinks = $derived(isAuthenticated
     ? [
         { href: "/", label: "Home" },

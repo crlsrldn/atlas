@@ -142,6 +142,23 @@
       } else {
         saveSuccess = true;
         setTimeout(() => (saveSuccess = false), 4000);
+
+        fetch('/api/telemetry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_type: 'config_saved',
+            event_data: {
+              has_torbox_key: !!torboxKey,
+              max_resolution: maxResolution,
+              sort_preference: sortPreference,
+              exclude_av1: excludeAv1,
+              stream_limit: streamLimit,
+              is_premium: isPremium,
+              has_device_profile: !!deviceProfile
+            }
+          })
+        }).catch(() => {});
       }
     } catch (_err) {
       saveError = 'Unexpected error saving preferences. Please try again.';

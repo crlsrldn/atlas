@@ -28,30 +28,45 @@ impl SourceProvider for TorBoxProvider {
         let client = reqwest::Client::new();
         let mut cached_hashes = Vec::new();
 
+        let mut error_msg: Option<String> = None;
+
         let start_time = std::time::Instant::now();
-        if let Ok(res) = client.get(&url).bearer_auth(&self.api_key).send().await {
-            if let Ok(text) = res.text().await {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
-                    if json["success"].as_bool() == Some(true) {
-                        if let Some(arr) = json["data"].as_array() {
-                            for item in arr {
-                                if let Some(h) = item.as_str() {
-                                    cached_hashes.push(h.to_lowercase());
-                                } else if let Some(obj) = item.as_object() {
-                                    if let Some(h) = obj.get("hash").and_then(|h| h.as_str()) {
-                                        cached_hashes.push(h.to_lowercase());
+        match client.get(&url).bearer_auth(&self.api_key).send().await {
+            Ok(res) => {
+                if res.status().is_success() {
+                    if let Ok(text) = res.text().await {
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if json["success"].as_bool() == Some(true) {
+                                if let Some(arr) = json["data"].as_array() {
+                                    for item in arr {
+                                        if let Some(h) = item.as_str() {
+                                            cached_hashes.push(h.to_lowercase());
+                                        } else if let Some(obj) = item.as_object() {
+                                            if let Some(h) = obj.get("hash").and_then(|h| h.as_str()) {
+                                                cached_hashes.push(h.to_lowercase());
+                                            }
+                                        }
+                                    }
+                                } else if let Some(obj) = json["data"].as_object() {
+                                    for key in obj.keys() {
+                                        cached_hashes.push(key.to_lowercase());
                                     }
                                 }
+                            } else {
+                                let detail = json["detail"].as_str().unwrap_or("TorBox API returned success=false");
+                                tracing::warn!("Torbox checkcached failed: {}", detail);
+                                error_msg = Some(detail.to_string());
                             }
-                        } else if let Some(obj) = json["data"].as_object() {
-                            for key in obj.keys() {
-                                cached_hashes.push(key.to_lowercase());
-                            }
+                        } else {
+                            error_msg = Some("Failed to parse TorBox JSON".to_string());
                         }
-                    } else {
-                        tracing::warn!("Torbox checkcached failed: {:?}", json);
                     }
+                } else {
+                    error_msg = Some(format!("HTTP Error {}", res.status()));
                 }
+            }
+            Err(e) => {
+                error_msg = Some(e.to_string());
             }
         }
         let latency_ms = start_time.elapsed().as_millis() as u64;
@@ -61,7 +76,8 @@ impl SourceProvider for TorBoxProvider {
             serde_json::json!({
                 "latency_ms": latency_ms,
                 "hashes_checked": hashes.len(),
-                "hashes_cached": cached_hashes.len()
+                "hashes_cached": cached_hashes.len(),
+                "error": error_msg
             }),
         );
 
