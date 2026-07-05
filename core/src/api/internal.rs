@@ -67,12 +67,12 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
     let mut res_unknown = 0;
 
     for stream in &streams {
-        if let Some(name) = stream.get("name").and_then(|n| n.as_str()) {
-            if name.contains("4K") || name.contains("2160p") {
+        if let Some(desc) = &stream.description {
+            if desc.contains("4K") || desc.contains("2160p") {
                 res_4k += 1;
-            } else if name.contains("1080p") {
+            } else if desc.contains("1080p") {
                 res_1080p += 1;
-            } else if name.contains("720p") {
+            } else if desc.contains("720p") {
                 res_720p += 1;
             } else {
                 res_unknown += 1;
