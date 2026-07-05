@@ -3,7 +3,9 @@ use crate::engines::history::{remember_candidates, stats_for, PlaybackCandidate}
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
-use crate::engines::sources::{ProviderHealthStatus, SourceProvider, SourceResult, torbox::TorBoxProvider};
+use crate::engines::sources::{
+    torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider, SourceResult,
+};
 
 use crate::engines::verification::verify_source;
 use futures::future::join_all;
@@ -108,14 +110,18 @@ pub async fn resolve_detailed_streams_with_preferences(
 
         // Push an async block that checks cache, then falls back to search
         search_futures.push(async move {
-            let cache_key = format!("atlas:sources:{}:{}", provider_name.to_lowercase(), atlas_id_str);
-            
+            let cache_key = format!(
+                "atlas:sources:{}:{}",
+                provider_name.to_lowercase(),
+                atlas_id_str
+            );
+
             if let Some(mut redis_client) = crate::engines::redis::get_redis() {
                 let get_result: Result<String, _> = redis::cmd("GET")
                     .arg(&cache_key)
                     .query_async(&mut redis_client)
                     .await;
-                
+
                 if let Ok(cached_json) = get_result {
                     if let Ok(results) = serde_json::from_str::<Vec<SourceResult>>(&cached_json) {
                         tracing::info!("✅ Redis cache HIT for {}", cache_key);
