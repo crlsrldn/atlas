@@ -82,14 +82,40 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
     let latencyTotal = 0;
     let latencyCount = 0;
 
+    let res4k = 0;
+    let res1080p = 0;
+    let res720p = 0;
+    let resUnknown = 0;
+
+    let latencyTimeline: { time: string; latency: number }[] = [];
+
     const providerLatestHealth = new Map<string, { healthy: boolean; latency_ms: number | null }>();
 
     if (telemetryEvents) {
-      for (const event of telemetryEvents) {
+      // Sort chronologically for timelines
+      const chronologicalEvents = [...telemetryEvents].reverse();
+
+      for (const event of chronologicalEvents) {
         if (event.event_type === "playback_started") {
           playbackTotal++;
           if (event.event_data && event.event_data.success) {
             playbackSuccess++;
+          }
+        } else if (event.event_type === "streams_requested") {
+          const data = event.event_data;
+          if (data) {
+            if (data.resolution_distribution) {
+              res4k += data.resolution_distribution["4k"] || 0;
+              res1080p += data.resolution_distribution["1080p"] || 0;
+              res720p += data.resolution_distribution["720p"] || 0;
+              resUnknown += data.resolution_distribution.unknown || 0;
+            }
+            if (typeof data.latency_ms === "number" && data.latency_ms > 0) {
+              latencyTimeline.push({
+                time: new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                latency: data.latency_ms
+              });
+            }
           }
         } else if (event.event_type === "provider_health") {
           const pName = event.event_data?.provider;
@@ -135,12 +161,28 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       };
     });
 
+    // Simplify latency timeline to max 20 points
+    if (latencyTimeline.length > 20) {
+      const step = Math.ceil(latencyTimeline.length / 20);
+      latencyTimeline = latencyTimeline.filter((_, i) => i % step === 0).slice(-20);
+    }
+
     return {
       totalUsers: totalUsers || 0,
       streamsResolved: streamsResolved || 0,
       successRate,
       avgLatency,
       providers,
+      analytics: {
+        playback: { total: playbackTotal, success: playbackSuccess, failure: playbackTotal - playbackSuccess },
+        resolution: {
+          '4K UHD': res4k,
+          '1080p HD': res1080p,
+          '720p HD': res720p,
+          'Unknown': resUnknown
+        },
+        latencyTimeline
+      }
     };
   } catch (err) {
     console.error("Failed to load admin stats:", err);

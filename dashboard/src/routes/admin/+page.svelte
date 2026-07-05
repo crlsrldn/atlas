@@ -1,8 +1,98 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import AdminLogin from '$lib/components/AdminLogin.svelte';
+  import Chart from 'chart.js/auto';
 
   let { data }: { data: PageData } = $props();
+
+  let resolutionCanvas: HTMLCanvasElement;
+  let latencyCanvas: HTMLCanvasElement;
+  let playbackCanvas: HTMLCanvasElement;
+
+  $effect(() => {
+    if (data.analytics && typeof window !== 'undefined') {
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#a1a1aa', font: { family: 'inherit' } }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#a1a1aa' }, grid: { color: '#ffffff10' } },
+          y: { ticks: { color: '#a1a1aa' }, grid: { color: '#ffffff10' } }
+        }
+      };
+
+      if (resolutionCanvas) {
+        new Chart(resolutionCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(data.analytics.resolution),
+            datasets: [{
+              data: Object.values(data.analytics.resolution),
+              backgroundColor: ['#10b981', '#6366f1', '#a855f7', '#3f3f46'],
+              borderWidth: 0,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+              legend: { position: 'bottom', labels: { color: '#a1a1aa', padding: 20, usePointStyle: true } }
+            }
+          }
+        });
+      }
+
+      if (latencyCanvas) {
+        new Chart(latencyCanvas, {
+          type: 'line',
+          data: {
+            labels: data.analytics.latencyTimeline.map((t: any) => t.time),
+            datasets: [{
+              label: 'Resolution Latency (ms)',
+              data: data.analytics.latencyTimeline.map((t: any) => t.latency),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHitRadius: 10
+            }]
+          },
+          options: {
+            ...commonOptions,
+            plugins: { legend: { display: false } },
+            interaction: { intersect: false, mode: 'index' }
+          }
+        });
+      }
+
+      if (playbackCanvas) {
+        new Chart(playbackCanvas, {
+          type: 'bar',
+          data: {
+            labels: ['Success', 'Failure'],
+            datasets: [{
+              data: [data.analytics.playback.success, data.analytics.playback.failure],
+              backgroundColor: ['#10b981', '#ef4444'],
+              borderRadius: 6,
+              barThickness: 40
+            }]
+          },
+          options: {
+            ...commonOptions,
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+    }
+  });
 
   const colorMap: Record<string, { bg: string; icon: string; badge: string; glow: string }> = {
     indigo: {
@@ -128,6 +218,39 @@
           </p>
         </div>
       {/each}
+    </div>
+
+    <!-- Analytics Section -->
+    <div class="mb-10 space-y-5">
+      <div class="flex items-center gap-3 mb-6">
+        <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Telemetry & Analytics</h2>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <!-- Resolution Distribution -->
+        <div class="glass-card-strong p-6 rounded-2xl flex flex-col">
+          <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-6">Resolution Demand</h3>
+          <div class="relative flex-grow min-h-[250px]">
+            <canvas bind:this={resolutionCanvas}></canvas>
+          </div>
+        </div>
+
+        <!-- Latency Timeline -->
+        <div class="glass-card-strong p-6 rounded-2xl flex flex-col lg:col-span-2">
+          <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-6">Provider Latency</h3>
+          <div class="relative flex-grow min-h-[250px]">
+            <canvas bind:this={latencyCanvas}></canvas>
+          </div>
+        </div>
+
+        <!-- Playback Reliability -->
+        <div class="glass-card-strong p-6 rounded-2xl flex flex-col lg:col-span-3">
+          <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-6">Playback Reliability</h3>
+          <div class="relative flex-grow min-h-[250px]">
+            <canvas bind:this={playbackCanvas}></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Secondary info section -->
