@@ -42,7 +42,9 @@ impl SourceProvider for TorBoxProvider {
                                         if let Some(h) = item.as_str() {
                                             cached_hashes.push(h.to_lowercase());
                                         } else if let Some(obj) = item.as_object() {
-                                            if let Some(h) = obj.get("hash").and_then(|h| h.as_str()) {
+                                            if let Some(h) =
+                                                obj.get("hash").and_then(|h| h.as_str())
+                                            {
                                                 cached_hashes.push(h.to_lowercase());
                                             }
                                         }
@@ -53,7 +55,9 @@ impl SourceProvider for TorBoxProvider {
                                     }
                                 }
                             } else {
-                                let detail = json["detail"].as_str().unwrap_or("TorBox API returned success=false");
+                                let detail = json["detail"]
+                                    .as_str()
+                                    .unwrap_or("TorBox API returned success=false");
                                 tracing::warn!("Torbox checkcached failed: {}", detail);
                                 error_msg = Some(detail.to_string());
                             }
