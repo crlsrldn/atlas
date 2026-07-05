@@ -88,8 +88,14 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
     let resUnknown = 0;
 
     let latencyTimeline: { time: string; latency: number }[] = [];
-
     const providerLatestHealth = new Map<string, { healthy: boolean; latency_ms: number | null }>();
+    
+    // New aggregations
+    const leaderboardMap = new Map<string, number>();
+    const activeTokens15m = new Set<string>();
+    let apiErrors = 0;
+    const nowMs = Date.now();
+    const fifteenMinsMs = 15 * 60 * 1000;
 
     if (telemetryEvents) {
       // Sort chronologically for timelines
@@ -100,10 +106,18 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
           playbackTotal++;
           if (event.event_data && event.event_data.success) {
             playbackSuccess++;
+          } else {
+            apiErrors++;
           }
         } else if (event.event_type === "streams_requested") {
           const data = event.event_data;
           if (data) {
+            if (data.stremio_id) {
+              leaderboardMap.set(data.stremio_id, (leaderboardMap.get(data.stremio_id) || 0) + 1);
+            }
+            if (data.install_token && (nowMs - new Date(event.created_at).getTime()) <= fifteenMinsMs) {
+              activeTokens15m.add(data.install_token);
+            }
             if (data.resolution_distribution) {
               res4k += data.resolution_distribution["4k"] || 0;
               res1080p += data.resolution_distribution["1080p"] || 0;
@@ -118,7 +132,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
             }
           }
         } else if (event.event_type === "provider_health") {
-          const pName = event.event_data?.provider;
+          const pName = event.event_data?.provider?.toLowerCase().replace(" ", "");
           const isHealthy = event.event_data?.healthy;
           const latencyMs = event.event_data?.latency_ms;
 
@@ -167,12 +181,20 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       latencyTimeline = latencyTimeline.filter((_, i) => i % step === 0).slice(-20);
     }
 
+    const leaderboard = Array.from(leaderboardMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([id, count]) => ({ id, count }));
+
     return {
       totalUsers: totalUsers || 0,
       streamsResolved: streamsResolved || 0,
       successRate,
       avgLatency,
       providers,
+      activeUsers15m: activeTokens15m.size,
+      apiErrors,
+      leaderboard,
       analytics: {
         playback: { total: playbackTotal, success: playbackSuccess, failure: playbackTotal - playbackSuccess },
         resolution: {

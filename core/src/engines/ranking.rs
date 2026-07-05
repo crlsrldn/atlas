@@ -43,6 +43,16 @@ fn calculate_score(
         }
     }
 
+    // Max Size Restriction
+    if let Some(max_gb) = prefs.max_size_gb {
+        if let Some(size_bytes) = source.size_bytes {
+            let gb = size_bytes as f64 / 1_073_741_824.0;
+            if gb > max_gb as f64 {
+                return 0;
+            }
+        }
+    }
+
     // Compatibility and Codecs
     if prefs.exclude_av1 && source.codec == "AV1" {
         return 0; // completely exclude
@@ -344,6 +354,7 @@ mod tests2 {
             stream_limit: 5,
             is_premium: false,
             device_profile: String::new(),
+            max_size_gb: None,
         }
     }
 

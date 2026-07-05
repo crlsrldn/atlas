@@ -15,15 +15,24 @@
   let saveSuccess = $state(false);
   let saveError: string | null = $state(null);
 
+  type Profile = { id: string; user_id: string; profile_name: string; prefs_json: any };
+  let profiles = $state<Profile[]>([]);
+  let currentProfileId = $state('');
+  let newProfileName = $state('');
+  let showNewProfileModal = $state(false);
+
+  // Form State
   let torboxKey = $state('');
   let maxResolution = $state('4K');
   let sortPreference = $state('balanced');
   let excludeAv1 = $state(false);
   let streamLimit = $state(5);
+  let maxSizeGb = $state(0);
   let isPremium = $state(false);
   let monetizationEnabled = $state(false);
   let showTorboxKey = $state(false);
   let deviceProfile = $state('');
+  let copiedLink = $state(false);
   
   let testingKeys = $state(false);
   let testResults = $state<{
@@ -32,7 +41,6 @@
   } | null>(null);
 
   onMount(async () => {
-    // Fetch global config
     try {
       const res = await fetch('/api/global-config');
       if (res.ok) {
@@ -43,14 +51,13 @@
       console.error('Failed to fetch global config:', e);
     }
 
-    // Initialize Auth
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) console.error('Session error:', sessionError);
 
       if (session?.user) {
         userId = session.user.id;
-        await loadPreferences(session.user.id);
+        await loadProfiles(session.user.id);
       } else {
         window.location.href = '/login';
         return;
@@ -62,26 +69,59 @@
     }
   });
 
-  async function loadPreferences(uid: string) {
+  async function loadProfiles(uid: string) {
     try {
       const { data } = await supabase
         .from('preferences')
-        .select('prefs_json')
-        .eq('id', uid)
-        .single();
+        .select('*')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: true });
 
-      if (data?.prefs_json) {
-        const prefs = data.prefs_json;
-        torboxKey = prefs.torbox_api_key || '';
-        if (prefs.max_resolution) maxResolution = prefs.max_resolution;
-        if (prefs.sort_preference) sortPreference = prefs.sort_preference;
-        if (prefs.exclude_av1 !== undefined) excludeAv1 = prefs.exclude_av1;
-        if (prefs.stream_limit !== undefined) streamLimit = prefs.stream_limit;
-        if (prefs.is_premium !== undefined) isPremium = prefs.is_premium;
-        if (prefs.device_profile) deviceProfile = prefs.device_profile;
+      if (data && data.length > 0) {
+        profiles = data;
+        selectProfile(data[0].id);
+      } else {
+        // Create default profile if none exists
+        await createProfile('Default Profile');
       }
     } catch (e) {
-      console.log('No existing preferences found or error loading them', e);
+      console.log('Error loading preferences', e);
+    }
+  }
+
+  function selectProfile(id: string) {
+    currentProfileId = id;
+    const p = profiles.find(x => x.id === id);
+    if (p && p.prefs_json) {
+      const prefs = p.prefs_json;
+      torboxKey = prefs.torbox_api_key || '';
+      maxResolution = prefs.max_resolution || '4K';
+      sortPreference = prefs.sort_preference || 'balanced';
+      excludeAv1 = prefs.exclude_av1 || false;
+      streamLimit = prefs.stream_limit !== undefined ? prefs.stream_limit : 5;
+      maxSizeGb = prefs.max_size_gb || 0;
+      isPremium = prefs.is_premium || false;
+      deviceProfile = prefs.device_profile || '';
+    }
+  }
+
+  async function createProfile(name: string) {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase
+        .from('preferences')
+        .insert({ user_id: userId, profile_name: name, prefs_json: {} })
+        .select()
+        .single();
+      
+      if (data) {
+        profiles = [...profiles, data];
+        selectProfile(data.id);
+      }
+      showNewProfileModal = false;
+      newProfileName = '';
+    } catch (e) {
+      console.error('Failed to create profile', e);
     }
   }
 
@@ -120,22 +160,19 @@
       sort_preference: sortPreference,
       exclude_av1: excludeAv1,
       stream_limit: streamLimit,
+      max_size_gb: maxSizeGb,
       device_profile: deviceProfile,
     };
 
     try {
-      const { data: currentPrefs } = await supabase
-        .from('preferences')
-        .select('prefs_json')
-        .eq('id', userId)
-        .single();
-
-      const existingJson = currentPrefs?.prefs_json || {};
+      const currentProf = profiles.find(p => p.id === currentProfileId);
+      const existingJson = currentProf?.prefs_json || {};
       const newJson = { ...existingJson, ...prefs_json };
 
       const { error } = await supabase
         .from('preferences')
-        .upsert({ id: userId, prefs_json: newJson });
+        .update({ prefs_json: newJson })
+        .eq('id', currentProfileId);
 
       if (error) {
         saveError = 'Failed to save: ' + error.message;
@@ -173,8 +210,21 @@
   }
 
   let baseDomain = $derived(gatewayUrl.replace('https://', '').replace('http://', ''));
-  let installLink = $derived(userId ? `stremio://${baseDomain}/stremio/${userId}/manifest.json` : '#');
+  let installLink = $derived(currentProfileId ? `stremio://${baseDomain}/stremio/${currentProfileId}/manifest.json` : '#');
 </script>
+
+{#if showNewProfileModal}
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="glass-card-strong p-6 rounded-2xl w-full max-w-sm animate-fade-in-up">
+      <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-4">Create New Profile</h3>
+      <input type="text" bind:value={newProfileName} placeholder="e.g. Living Room TV" class="input-field mb-4" />
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick={() => showNewProfileModal = false} class="px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">Cancel</button>
+        <button type="button" onclick={() => createProfile(newProfileName)} disabled={!newProfileName.trim()} class="btn-primary py-2 text-sm">Create</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if loading}
   <div class="space-y-4">
@@ -209,6 +259,26 @@
         </div>
       </div>
     {/if}
+
+    <!-- Profile Selector Card -->
+    <div class="glass-card-strong p-6 sm:p-8 rounded-2xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Active Profile</h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Switch profiles to manage different configurations.</p>
+        </div>
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <select class="select-field flex-grow sm:flex-grow-0" value={currentProfileId} onchange={(e) => selectProfile(e.currentTarget.value)}>
+            {#each profiles as profile}
+              <option value={profile.id}>{profile.profile_name}</option>
+            {/each}
+          </select>
+          <button type="button" onclick={() => showNewProfileModal = true} class="btn-primary py-2 px-3 text-sm whitespace-nowrap">
+            + New
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Provider API Keys Card -->
     <div class="glass-card-strong p-6 sm:p-8 rounded-2xl">
@@ -392,6 +462,22 @@
           <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">How many streams to show in the list.</p>
         </div>
 
+        <!-- Maximum File Size -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="max-size">Maximum Stream Size</label>
+          <div class="relative">
+            <select id="max-size" bind:value={maxSizeGb} class="select-field">
+              <option value={0}>Unlimited</option>
+              <option value={5}>5 GB</option>
+              <option value={10}>10 GB</option>
+              <option value={15}>15 GB</option>
+              <option value={20}>20 GB</option>
+              <option value={30}>30 GB</option>
+            </select>
+          </div>
+          <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">Filters out streams larger than this size.</p>
+        </div>
+
         <!-- AV1 toggle -->
         <div class="space-y-2">
           <p class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Device Compatibility</p>
@@ -514,8 +600,35 @@
             Install Addon
           </a>
 
+          <button
+            type="button"
+            onclick={() => {
+              if (userId) {
+                // If it's a stremio:// link, we probably want to copy the https:// version
+                const httpsLink = installLink.startsWith('stremio://') ? installLink.replace('stremio://', 'https://') : installLink;
+                navigator.clipboard.writeText(httpsLink);
+                copiedLink = true;
+                setTimeout(() => copiedLink = false, 2000);
+              }
+            }}
+            disabled={!userId}
+            class={`inline-flex items-center gap-2.5 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 ${userId ? "bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white border-black/10 dark:border-white/10 border" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed border-black/5 dark:border-white/5 border"}`}
+          >
+            {#if copiedLink}
+              <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Copied!
+            {:else}
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              Copy Link
+            {/if}
+          </button>
+          
           {#if userId}
-            <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full justify-between">
+            <div class="mt-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 justify-between">
               <div class="flex items-center gap-2 text-xs text-zinc-500">
                 <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />

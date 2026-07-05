@@ -2,12 +2,61 @@
   import type { PageData } from './$types';
   import AdminLogin from '$lib/components/AdminLogin.svelte';
   import Chart from 'chart.js/auto';
+  import { onMount, onDestroy } from 'svelte';
+  import { createBrowserClient } from '@supabase/ssr';
+  import { env as publicEnv } from '$env/dynamic/public';
 
   let { data }: { data: PageData } = $props();
 
   let resolutionCanvas = $state<HTMLCanvasElement>();
   let latencyCanvas = $state<HTMLCanvasElement>();
   let playbackCanvas = $state<HTMLCanvasElement>();
+  
+  let activeUsers = $state(data.activeUsers15m ?? 0);
+  let apiErrors = $state(data.apiErrors ?? 0);
+  let successRate = $state(data.successRate ?? "—");
+  let avgLatency = $state(data.avgLatency ?? "—");
+  let streamsResolved = $state(data.streamsResolved ?? 0);
+  let totalUsers = $state(data.totalUsers ?? 0);
+  let leaderboard = $state(data.leaderboard ?? []);
+  
+  let realtimeChannel: any;
+
+  onMount(() => {
+    if (!data.needsLogin && !data.error && typeof window !== 'undefined') {
+      const supabaseUrl = publicEnv.PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = publicEnv.PUBLIC_SUPABASE_ANON_KEY || '';
+      const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+      
+      realtimeChannel = supabase.channel('telemetry-changes')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'telemetry' },
+          (payload) => {
+            const ev = payload.new;
+            if (ev.event_type === 'playback_started') {
+              streamsResolved++;
+              if (ev.event_data?.success === false) {
+                apiErrors++;
+              }
+            } else if (ev.event_type === 'streams_requested') {
+              if (ev.event_data?.install_token) {
+                // Approximate: bump active users dynamically
+                // (True 15m window requires a rolling set, this is a fun live bump)
+                activeUsers++;
+              }
+            }
+          }
+        )
+        .subscribe();
+    }
+  });
+
+  onDestroy(() => {
+    if (realtimeChannel) {
+      realtimeChannel.unsubscribe();
+    }
+  });
 
   $effect(() => {
     if (data.analytics && typeof window !== 'undefined') {
@@ -192,12 +241,14 @@
     </div>
 
     <!-- Metric cards grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
       {#each [
-        { label: "Total Users", value: (data.totalUsers ?? 0).toLocaleString(), color: "indigo", description: "Registered subscribers" },
-        { label: "Streams Resolved", value: (data.streamsResolved ?? 0).toLocaleString(), color: "purple", description: "Successful stream events" },
-        { label: "Success Rate", value: data.successRate, color: "emerald", description: "Stream resolution success" },
-        { label: "Avg. Resolution", value: data.avgLatency, color: "amber", description: "Source selection speed" }
+        { label: "Total Users", value: totalUsers.toLocaleString(), color: "indigo", description: "Registered subscribers" },
+        { label: "Active Users (15m)", value: activeUsers.toLocaleString(), color: "emerald", description: "Currently streaming" },
+        { label: "Streams Resolved", value: streamsResolved.toLocaleString(), color: "purple", description: "Total stream requests" },
+        { label: "API Errors", value: apiErrors.toLocaleString(), color: "amber", description: "Failed requests / provider errors" },
+        { label: "Success Rate", value: successRate, color: "emerald", description: "Stream resolution success" },
+        { label: "Avg. Latency", value: avgLatency, color: "indigo", description: "Source selection speed" }
       ] as m}
         {@const c = colorMap[m.color]}
         <div class={`stat-card border border-black/5 dark:border-white/[0.07] transition-all duration-200 ${c.glow} hover:-translate-y-0.5`}>
@@ -254,7 +305,33 @@
     </div>
 
     <!-- Secondary info section -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Leaderboard -->
+      <div class="glass-card-strong p-6 rounded-2xl flex flex-col">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="icon-box icon-box-sm bg-purple-500/10">
+            <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <h2 class="font-semibold text-zinc-900 dark:text-white">Top Media Leaderboard</h2>
+        </div>
+        <div class="space-y-3">
+          {#if leaderboard.length === 0}
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">No data available yet.</p>
+          {/if}
+          {#each leaderboard as item, index}
+            <div class="flex items-center justify-between py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0">
+              <span class="text-sm text-zinc-700 dark:text-zinc-300">
+                <span class="text-zinc-400 dark:text-zinc-500 mr-2">#{index + 1}</span>
+                {item.id}
+              </span>
+              <span class="text-xs font-medium text-purple-600 dark:text-purple-400">{item.count} plays</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+
       <!-- System Status -->
       <div class="glass-card-strong p-6 rounded-2xl">
         <div class="flex items-center gap-3 mb-5">

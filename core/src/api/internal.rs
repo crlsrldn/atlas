@@ -90,6 +90,7 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
             "stremio_id": stremio_id,
             "streams_count": streams.len(),
             "latency_ms": latency_ms as u64,
+            "install_token": token,
             "resolution_distribution": {
                 "4k": res_4k,
                 "1080p": res_1080p,
