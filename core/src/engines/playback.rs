@@ -70,7 +70,6 @@ pub async fn resolve_detailed_streams_with_preferences(
 
     // Apply AI Device Profile constraints
 
-
     // 2. Initialize Source Plugins
     let torbox = TorBoxProvider {
         api_key: prefs.torbox_api_key.clone(),
