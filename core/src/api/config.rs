@@ -3,7 +3,7 @@ use axum::{
     Json, Router,
 };
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fs;
 use std::sync::{Arc, Mutex};
 
@@ -39,11 +39,14 @@ pub struct UserPreferences {
     pub subtitle_mode: String,
     #[serde(default = "default_sort_preference")]
     pub sort_preference: String,
-    #[serde(default = "default_stream_limit")]
+    #[serde(
+        default = "default_stream_limit",
+        deserialize_with = "deserialize_number_from_string"
+    )]
     pub stream_limit: u32,
     #[serde(default)]
     pub is_premium: bool,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional_number_from_string")]
     pub max_size_gb: Option<u32>,
 }
 
@@ -145,6 +148,57 @@ fn default_language() -> String {
 
 fn default_subtitle_mode() -> String {
     "auto".to_string()
+}
+
+pub fn deserialize_number_from_string<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrInt {
+        String(String),
+        Number(u32),
+    }
+
+    match StringOrInt::deserialize(deserializer)? {
+        StringOrInt::String(s) => {
+            if s.is_empty() {
+                Ok(0)
+            } else {
+                s.parse::<u32>().map_err(serde::de::Error::custom)
+            }
+        }
+        StringOrInt::Number(i) => Ok(i),
+    }
+}
+
+pub fn deserialize_optional_number_from_string<'de, D>(
+    deserializer: D,
+) -> Result<Option<u32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OptionalStringOrInt {
+        String(String),
+        Number(u32),
+        None,
+    }
+
+    match Option::<OptionalStringOrInt>::deserialize(deserializer)? {
+        Some(OptionalStringOrInt::String(s)) => {
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                s.parse::<u32>().map(Some).map_err(serde::de::Error::custom)
+            }
+        }
+        Some(OptionalStringOrInt::Number(i)) => Ok(Some(i)),
+        Some(OptionalStringOrInt::None) => Ok(None),
+        None => Ok(None),
+    }
 }
 
 fn default_sort_preference() -> String {

@@ -45,10 +45,12 @@ fn calculate_score(
 
     // Max Size Restriction
     if let Some(max_gb) = prefs.max_size_gb {
-        if let Some(size_bytes) = source.size_bytes {
-            let gb = size_bytes as f64 / 1_073_741_824.0;
-            if gb > max_gb as f64 {
-                return 0;
+        if max_gb > 0 {
+            if let Some(size_bytes) = source.size_bytes {
+                let gb = size_bytes as f64 / 1_073_741_824.0;
+                if gb > max_gb as f64 {
+                    return 0;
+                }
             }
         }
     }
