@@ -217,11 +217,6 @@
     }
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  }
-
   let baseDomain = $derived(gatewayUrl.replace('https://', '').replace('http://', ''));
   let installLink = $derived(currentProfileId ? `stremio://${baseDomain}/stremio/${currentProfileId}/manifest.json` : '#');
 </script>

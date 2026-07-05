@@ -199,7 +199,7 @@ func handleManifest(w http.ResponseWriter, r *http.Request, token string) {
 	}
 
 	manifest := map[string]interface{}{
-		"id":          "com.cindrallabs.atlas",
+		"id":          "com.cindrallabs.atlas." + token,
 		"name":        addonName,
 		"version":     "1.0.0",
 		"description": "Premium AI-powered multi-source streaming",
