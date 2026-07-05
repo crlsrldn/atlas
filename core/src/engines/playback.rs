@@ -39,6 +39,7 @@ pub struct DetailedStream {
     pub playback_failures: u32,
     pub is_cached: bool,
     pub release_group: Option<String>,
+    pub size_bytes: Option<u64>,
 }
 
 pub fn media_key(atlas_id: &AtlasID) -> String {
@@ -216,6 +217,7 @@ pub async fn resolve_detailed_streams_with_preferences(
                 playback_failures: entry.source.playback_failures,
                 is_cached: entry.source.is_cached,
                 release_group: entry.source.release_group.clone(),
+                size_bytes: entry.source.size_bytes,
             })
         })
         .collect()
@@ -321,6 +323,10 @@ fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
     }
     if let Some(mbps) = stream.bitrate_mbps {
         specs.push(format!("{:.1} Mbps", mbps));
+    }
+    if let Some(bytes) = stream.size_bytes {
+        let gb = bytes as f64 / 1_073_741_824.0;
+        specs.push(format!("{:.2} GB", gb));
     }
     if let Some(rg) = stream.release_group {
         specs.push(rg);
