@@ -181,10 +181,30 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       latencyTimeline = latencyTimeline.filter((_, i) => i % step === 0).slice(-20);
     }
 
-    const leaderboard = Array.from(leaderboardMap.entries())
+    const leaderboard = await Promise.all(Array.from(leaderboardMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
-      .map(([id, count]) => ({ id, count }));
+      .map(async ([id, count]) => {
+        let name = id;
+        if (id.startsWith('tt')) {
+          try {
+            const mRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${id}.json`);
+            if (mRes.ok) {
+              const mData = await mRes.json();
+              if (mData?.meta?.name) {
+                name = mData.meta.name;
+              } else {
+                const sRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${id}.json`);
+                if (sRes.ok) {
+                  const sData = await sRes.json();
+                  if (sData?.meta?.name) name = sData.meta.name;
+                }
+              }
+            }
+          } catch (e) {}
+        }
+        return { id, name, count };
+      }));
 
     // Extract recent errors
     const recentErrors = (telemetryEvents || [])

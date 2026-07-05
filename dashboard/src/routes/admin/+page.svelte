@@ -59,10 +59,39 @@
                 const existing = leaderboard.find((l: any) => l.id === id);
                 if (existing) {
                   existing.count++;
+                  leaderboard = [...leaderboard].sort((a: any, b: any) => b.count - a.count).slice(0, 10);
                 } else {
-                  leaderboard.push({ id, count: 1 });
+                  const newItem = { id, name: id, count: 1 };
+                  leaderboard.push(newItem);
+                  leaderboard = [...leaderboard].sort((a: any, b: any) => b.count - a.count).slice(0, 10);
+                  
+                  if (id.startsWith('tt')) {
+                    fetch(`https://v3-cinemeta.strem.io/meta/movie/${id}.json`)
+                      .then(r => r.json())
+                      .then(d => {
+                        if (d?.meta?.name) {
+                          const idx = leaderboard.findIndex((l: any) => l.id === id);
+                          if (idx !== -1) {
+                             leaderboard[idx].name = d.meta.name;
+                             leaderboard = [...leaderboard];
+                          }
+                        } else {
+                          fetch(`https://v3-cinemeta.strem.io/meta/series/${id}.json`)
+                            .then(r => r.json())
+                            .then(d2 => {
+                              if (d2?.meta?.name) {
+                                const idx2 = leaderboard.findIndex((l: any) => l.id === id);
+                                if (idx2 !== -1) {
+                                   leaderboard[idx2].name = d2.meta.name;
+                                   leaderboard = [...leaderboard];
+                                }
+                              }
+                            }).catch(() => {});
+                        }
+                      })
+                      .catch(() => {});
+                  }
                 }
-                leaderboard = [...leaderboard].sort((a: any, b: any) => b.count - a.count).slice(0, 10);
               }
             }
           }
@@ -343,7 +372,7 @@
             <div class="flex items-center justify-between py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0">
               <span class="text-sm text-zinc-700 dark:text-zinc-300">
                 <span class="text-zinc-400 dark:text-zinc-500 mr-2">#{index + 1}</span>
-                {item.id}
+                {item.name || item.id}
               </span>
               <span class="text-xs font-medium text-purple-600 dark:text-purple-400">{item.count} plays</span>
             </div>

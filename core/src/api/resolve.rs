@@ -125,7 +125,9 @@ pub async fn resolve_torbox_with_key(
             "provider": "torbox",
             "success": false,
             "user_agent": user_agent,
-            "user_id": user_id
+            "user_id": user_id,
+            "error": "Failed to resolve playable link",
+            "stremio_id": hash
         }),
     );
 

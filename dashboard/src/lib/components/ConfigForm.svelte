@@ -281,11 +281,13 @@
               <option value={profile.id}>{profile.profile_name}</option>
             {/each}
           </select>
-          <button type="button" onclick={() => showNewProfileModal = true} class="btn-primary py-2 px-3 text-sm whitespace-nowrap" title="Create New Profile">
-            +
+          <button type="button" onclick={() => showNewProfileModal = true} class="w-10 h-10 flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors" title="Create New Profile">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
           </button>
           {#if profiles.length > 1}
-            <button type="button" onclick={() => deleteProfile(currentProfileId)} class="py-2 px-3 text-sm text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-xl transition-colors" title="Delete Profile">
+            <button type="button" onclick={() => deleteProfile(currentProfileId)} class="w-10 h-10 flex items-center justify-center shrink-0 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-500 hover:text-red-600 rounded-xl transition-colors" title="Delete Profile">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
