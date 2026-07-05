@@ -44,8 +44,6 @@ pub struct UserPreferences {
     #[serde(default)]
     pub is_premium: bool,
     #[serde(default)]
-    pub device_profile: String,
-    #[serde(default)]
     pub max_size_gb: Option<u32>,
 }
 
@@ -72,7 +70,6 @@ pub struct PublicUserPreferences {
     pub sort_preference: String,
     pub stream_limit: u32,
     pub is_premium: bool,
-    pub device_profile: String,
     pub max_size_gb: Option<u32>,
 }
 
@@ -100,7 +97,6 @@ impl From<UserPreferences> for PublicUserPreferences {
             sort_preference: prefs.sort_preference,
             stream_limit: prefs.stream_limit,
             is_premium: prefs.is_premium,
-            device_profile: prefs.device_profile,
             max_size_gb: prefs.max_size_gb,
         }
     }
@@ -126,7 +122,6 @@ impl Default for UserPreferences {
             sort_preference: default_sort_preference(),
             stream_limit: default_stream_limit(),
             is_premium: false,
-            device_profile: String::new(),
             max_size_gb: None,
         }
     }

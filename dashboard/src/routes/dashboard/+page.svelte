@@ -17,11 +17,8 @@
         </svg>
       </div>
       <div>
-        <p class="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">
-          My Setup
-        </p>
         <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
-          Subscriber Settings
+          Settings
         </h1>
       </div>
     </div>

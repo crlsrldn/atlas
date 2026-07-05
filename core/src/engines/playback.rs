@@ -60,7 +60,7 @@ pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> 
 
 pub async fn resolve_detailed_streams_with_preferences(
     atlas_id: AtlasID,
-    mut prefs: UserPreferences,
+    prefs: UserPreferences,
     monetization_enabled: bool,
     history_scope: &str,
     install_token: Option<&str>,
@@ -69,7 +69,7 @@ pub async fn resolve_detailed_streams_with_preferences(
     let metadata = get_metadata(&atlas_id).await;
 
     // Apply AI Device Profile constraints
-    prefs = crate::engines::ai_decision::evaluate_device_profile(prefs).await;
+
 
     // 2. Initialize Source Plugins
     let torbox = TorBoxProvider {

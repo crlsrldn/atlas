@@ -31,7 +31,6 @@
   let isPremium = $state(false);
   let monetizationEnabled = $state(false);
   let showTorboxKey = $state(false);
-  let deviceProfile = $state('');
   let copiedLink = $state(false);
   
   let testingKeys = $state(false);
@@ -101,7 +100,6 @@
       streamLimit = prefs.stream_limit !== undefined ? prefs.stream_limit : 5;
       maxSizeGb = prefs.max_size_gb || 0;
       isPremium = prefs.is_premium || false;
-      deviceProfile = prefs.device_profile || '';
     }
   }
 
@@ -178,7 +176,6 @@
       exclude_av1: excludeAv1,
       stream_limit: streamLimit,
       max_size_gb: maxSizeGb,
-      device_profile: deviceProfile,
     };
 
     try {
@@ -208,8 +205,7 @@
               sort_preference: sortPreference,
               exclude_av1: excludeAv1,
               stream_limit: streamLimit,
-              is_premium: isPremium,
-              has_device_profile: !!deviceProfile
+              is_premium: isPremium
             }
           })
         }).catch(() => {});
@@ -514,26 +510,6 @@
               <span class="text-xs text-zinc-500 dark:text-zinc-600 block mt-0.5">Recommended for older TVs & Apple devices</span>
             </div>
           </button>
-        </div>
-
-        <!-- Device Profile -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center justify-between" for="device-profile">
-            <span>AI Device Profile</span>
-            {#if monetizationEnabled && !isPremium}
-              <span class="text-xs bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-medium">Premium</span>
-            {/if}
-          </label>
-          <div class="relative">
-            <textarea
-              id="device-profile"
-              bind:value={deviceProfile}
-              placeholder="e.g. LG C2 OLED TV with Sonos Arc Soundbar"
-              disabled={monetizationEnabled && !isPremium}
-              class={`input-field min-h-[80px] resize-y ${monetizationEnabled && !isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
-            ></textarea>
-          </div>
-          <p class="text-xs text-zinc-500 dark:text-zinc-600 mt-1.5">Describe your hardware setup. Atlas AI will automatically optimize streams for your specific capabilities.</p>
         </div>
       </div>
 
