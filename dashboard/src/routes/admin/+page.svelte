@@ -19,6 +19,7 @@
   let streamsResolved = $state(data.streamsResolved ?? 0);
   let totalUsers = $state(data.totalUsers ?? 0);
   let leaderboard = $state(data.leaderboard ?? []);
+  let recentErrors = $state(data.recentErrors ?? []);
   
   let realtimeChannel: any;
 
@@ -38,12 +39,30 @@
               streamsResolved++;
               if (ev.event_data?.success === false) {
                 apiErrors++;
+                recentErrors = [
+                  {
+                    time: ev.created_at,
+                    message: ev.event_data?.error || "Unknown error",
+                    context: ev.event_data?.stremio_id || "Unknown context"
+                  },
+                  ...recentErrors
+                ].slice(0, 10);
               }
             } else if (ev.event_type === 'streams_requested') {
               if (ev.event_data?.install_token) {
                 // Approximate: bump active users dynamically
                 // (True 15m window requires a rolling set, this is a fun live bump)
                 activeUsers++;
+              }
+              if (ev.event_data?.stremio_id) {
+                const id = ev.event_data.stremio_id;
+                const existing = leaderboard.find((l: any) => l.id === id);
+                if (existing) {
+                  existing.count++;
+                } else {
+                  leaderboard.push({ id, count: 1 });
+                }
+                leaderboard = [...leaderboard].sort((a: any, b: any) => b.count - a.count).slice(0, 10);
               }
             }
           }
@@ -367,16 +386,38 @@
       </div>
 
       <div class="glass-card-strong p-6 rounded-2xl flex flex-col">
-        <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-3">
-          Account
-        </h3>
-        <div class="flex-grow"></div>
-        <form method="POST" action="?/logout">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="icon-box icon-box-sm bg-red-500/10">
+            <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 class="font-semibold text-zinc-900 dark:text-white">Recent Errors</h2>
+        </div>
+        <div class="space-y-3 flex-grow max-h-[300px] overflow-y-auto pr-1">
+          {#if recentErrors.length === 0}
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">No recent errors detected.</p>
+          {/if}
+          {#each recentErrors as err}
+            <div class="flex flex-col py-2 border-b border-black/5 dark:border-white/[0.04] last:border-0">
+              <div class="flex justify-between items-start mb-1">
+                <span class="text-xs font-semibold text-red-500 break-all">{err.message}</span>
+                <span class="text-[10px] text-zinc-400 whitespace-nowrap ml-2">
+                  {new Date(err.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <span class="text-xs text-zinc-500 dark:text-zinc-400 font-mono bg-black/5 dark:bg-white/5 w-fit px-1.5 py-0.5 rounded">
+                {err.context}
+              </span>
+            </div>
+          {/each}
+        </div>
+        <form method="POST" action="?/logout" class="mt-4 pt-4 border-t border-black/5 dark:border-white/5">
           <button
             type="submit"
-            class="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl border border-red-200 dark:border-red-500/20 shadow-sm transition-all duration-200 w-full"
+            class="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-medium rounded-xl transition-all duration-200 w-full"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sign Out of Console

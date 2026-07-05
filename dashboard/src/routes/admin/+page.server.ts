@@ -136,7 +136,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
           const isHealthy = event.event_data?.healthy;
           const latencyMs = event.event_data?.latency_ms;
 
-          if (pName && !providerLatestHealth.has(pName)) {
+          if (pName) {
             providerLatestHealth.set(pName, {
               healthy: isHealthy,
               latency_ms: latencyMs || null,
@@ -186,6 +186,16 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       .slice(0, 10)
       .map(([id, count]) => ({ id, count }));
 
+    // Extract recent errors
+    const recentErrors = (telemetryEvents || [])
+      .filter(e => e.event_type === "playback_started" && e.event_data?.success === false)
+      .map(e => ({
+        time: e.created_at,
+        message: e.event_data?.error || "Unknown error",
+        context: e.event_data?.stremio_id || "Unknown context"
+      }))
+      .slice(0, 10);
+
     return {
       totalUsers: totalUsers || 0,
       streamsResolved: streamsResolved || 0,
@@ -195,6 +205,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       activeUsers15m: activeTokens15m.size,
       apiErrors,
       leaderboard,
+      recentErrors,
       analytics: {
         playback: { total: playbackTotal, success: playbackSuccess, failure: playbackTotal - playbackSuccess },
         resolution: {
