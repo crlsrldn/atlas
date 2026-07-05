@@ -28,15 +28,16 @@ func NewSupabaseClient() *SupabaseClient {
 }
 
 type SupabasePreferenceDoc struct {
-	PrefsJson map[string]interface{} `json:"prefs_json"`
+	PrefsJson   map[string]interface{} `json:"prefs_json"`
+	ProfileName string                 `json:"profile_name"`
 }
 
-func (s *SupabaseClient) GetUserPreferences(token string) (map[string]interface{}, error) {
+func (s *SupabaseClient) GetUserPreferences(token string) (*SupabasePreferenceDoc, error) {
 	if s.Endpoint == "" || s.ServiceRoleKey == "" {
 		return nil, fmt.Errorf("supabase not configured")
 	}
 
-	url := fmt.Sprintf("%s/rest/v1/preferences?id=eq.%s&select=prefs_json", s.Endpoint, token)
+	url := fmt.Sprintf("%s/rest/v1/preferences?id=eq.%s&select=prefs_json,profile_name", s.Endpoint, token)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -63,5 +64,5 @@ func (s *SupabaseClient) GetUserPreferences(token string) (map[string]interface{
 		return nil, err
 	}
 
-	return doc.PrefsJson, nil
+	return &doc, nil
 }

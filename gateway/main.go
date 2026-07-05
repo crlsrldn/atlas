@@ -171,7 +171,7 @@ func handleStremio(w http.ResponseWriter, r *http.Request) {
 	rest := parts[1]
 
 	if rest == "manifest.json" {
-		handleManifest(w, r)
+		handleManifest(w, r, token)
 		return
 	}
 
@@ -188,13 +188,19 @@ func handleStremio(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-func handleManifest(w http.ResponseWriter, r *http.Request) {
+func handleManifest(w http.ResponseWriter, r *http.Request, token string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
+	addonName := "Atlas"
+	supabase := NewSupabaseClient()
+	if doc, err := supabase.GetUserPreferences(token); err == nil && doc.ProfileName != "" {
+		addonName = "Atlas - " + doc.ProfileName
+	}
+
 	manifest := map[string]interface{}{
 		"id":          "com.cindrallabs.atlas",
-		"name":        "Atlas",
+		"name":        addonName,
 		"version":     "1.0.0",
 		"description": "Premium AI-powered multi-source streaming",
 		"resources":   []string{"stream"},
@@ -220,7 +226,8 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 	id := strings.TrimSuffix(idParam, ".json")
 
 	supabase := NewSupabaseClient()
-	prefs, err := supabase.GetUserPreferences(token)
+	var prefs map[string]interface{}
+	doc, err := supabase.GetUserPreferences(token)
 	if err != nil {
 		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
 		// Fallback to empty prefs or handle error appropriately.
@@ -235,6 +242,8 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 			"stream_limit":    5,
 			"is_premium":      false,
 		}
+	} else {
+		prefs = doc.PrefsJson
 	}
 
 	userAgent := r.Header.Get("User-Agent")
@@ -272,7 +281,8 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 	url := fmt.Sprintf("%s/internal/resolve_hash/%s/%s", coreUrl, provider, hash)
 
 	supabase := NewSupabaseClient()
-	prefs, err := supabase.GetUserPreferences(token)
+	var prefs map[string]interface{}
+	doc, err := supabase.GetUserPreferences(token)
 	if err != nil {
 		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
 		// Fallback to empty prefs or handle error appropriately.
@@ -283,6 +293,8 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 			"max_resolution":  "4K",
 			"exclude_av1":     false,
 		}
+	} else {
+		prefs = doc.PrefsJson
 	}
 
 	userAgent := r.Header.Get("User-Agent")
