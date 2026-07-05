@@ -1,13 +1,14 @@
 import { createBrowserClient, isBrowser } from '@supabase/ssr';
 import type { LayoutLoad } from './$types';
+import { env } from '$env/dynamic/public';
 
 export const load: LayoutLoad = async ({ fetch, data, depends }) => {
   depends('supabase:auth');
 
   const supabase = isBrowser()
     ? createBrowserClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        env.PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co',
+        env.PUBLIC_SUPABASE_ANON_KEY || 'dummy',
         {
           global: {
             fetch,

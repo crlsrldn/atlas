@@ -2,8 +2,8 @@ import { createServerClient } from '@supabase/ssr';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/public';
 
-const supabaseUrl = env.PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = env.PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = env.PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
+const supabaseAnonKey = env.PUBLIC_SUPABASE_ANON_KEY || 'dummy';
 
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
