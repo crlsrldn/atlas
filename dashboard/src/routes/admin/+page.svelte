@@ -5,9 +5,9 @@
 
   let { data }: { data: PageData } = $props();
 
-  let resolutionCanvas: HTMLCanvasElement;
-  let latencyCanvas: HTMLCanvasElement;
-  let playbackCanvas: HTMLCanvasElement;
+  let resolutionCanvas = $state<HTMLCanvasElement>();
+  let latencyCanvas = $state<HTMLCanvasElement>();
+  let playbackCanvas = $state<HTMLCanvasElement>();
 
   $effect(() => {
     if (data.analytics && typeof window !== 'undefined') {
