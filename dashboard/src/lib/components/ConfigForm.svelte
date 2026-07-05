@@ -110,7 +110,7 @@
     try {
       const { data, error } = await supabase
         .from('preferences')
-        .insert({ user_id: userId, profile_name: name, prefs_json: {} })
+        .insert({ user_id: userId, profile_name: name, prefs_json: { torbox_api_key: torboxKey } })
         .select()
         .single();
       
@@ -214,7 +214,7 @@
 </script>
 
 {#if showNewProfileModal}
-  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-[20vh] pb-[20vh] overflow-y-auto">
     <div class="glass-card-strong p-6 rounded-2xl w-full max-w-sm animate-fade-in-up">
       <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-4">Create New Profile</h3>
       <input type="text" bind:value={newProfileName} placeholder="e.g. Living Room TV" class="input-field mb-4" />
@@ -627,7 +627,7 @@
             {/if}
           </button>
           
-          {#if userId}
+          {#if userId && torboxKey}
             <div class="mt-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 justify-between">
               <div class="flex items-center gap-2 text-xs text-zinc-500">
                 <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -635,9 +635,6 @@
                 </svg>
                 <span>Authenticated & ready</span>
               </div>
-              <button type="button" onclick={handleSignOut} class="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
-                Sign Out
-              </button>
             </div>
           {/if}
         </div>
