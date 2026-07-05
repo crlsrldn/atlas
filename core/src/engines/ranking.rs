@@ -353,7 +353,6 @@ mod tests2 {
             sort_preference: "balanced".to_string(),
             stream_limit: 5,
             is_premium: false,
-            device_profile: String::new(),
             max_size_gb: None,
         }
     }
