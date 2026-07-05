@@ -286,8 +286,8 @@
               <option value={profile.id}>{profile.profile_name}</option>
             {/each}
           </select>
-          <button type="button" onclick={() => showNewProfileModal = true} class="btn-primary py-2 px-3 text-sm whitespace-nowrap">
-            + New
+          <button type="button" onclick={() => showNewProfileModal = true} class="btn-primary py-2 px-3 text-sm whitespace-nowrap" title="Create New Profile">
+            +
           </button>
           {#if profiles.length > 1}
             <button type="button" onclick={() => deleteProfile(currentProfileId)} class="py-2 px-3 text-sm text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-xl transition-colors" title="Delete Profile">
