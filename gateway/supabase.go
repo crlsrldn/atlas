@@ -37,7 +37,7 @@ func (s *SupabaseClient) GetUserPreferences(token string) (*SupabasePreferenceDo
 		return nil, fmt.Errorf("supabase not configured")
 	}
 
-	url := fmt.Sprintf("%s/rest/v1/preferences?id=eq.%s&select=prefs_json,profile_name", s.Endpoint, token)
+	url := fmt.Sprintf("%s/rest/v1/preferences?id=eq.%s&select=*", s.Endpoint, token)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
