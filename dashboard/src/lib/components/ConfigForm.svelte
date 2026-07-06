@@ -5,7 +5,7 @@
 
   const supabaseUrl = env.PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = env.PUBLIC_SUPABASE_ANON_KEY || '';
-  const gatewayUrl = env.PUBLIC_GATEWAY_URL || 'http://127.0.0.1:8080';
+  const gatewayUrl = env.PUBLIC_GATEWAY_URL || 'https://cindral-atlas-gateway-dev.fly.dev';
 
   const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
