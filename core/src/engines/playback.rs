@@ -136,12 +136,17 @@ pub async fn resolve_detailed_streams_with_preferences(
             if !results.is_empty() {
                 if let Some(mut redis_client) = crate::engines::redis::get_redis() {
                     if let Ok(json) = serde_json::to_string(&results) {
-                        let _: Result<(), _> = redis::cmd("SETEX")
+                        let set_res: Result<(), redis::RedisError> = redis::cmd("SETEX")
                             .arg(&cache_key)
                             .arg(900) // 15 mins TTL
                             .arg(json)
                             .query_async(&mut redis_client)
                             .await;
+                        if let Err(e) = set_res {
+                            tracing::error!("Redis SETEX failed for {}: {:?}", cache_key, e);
+                        } else {
+                            tracing::info!("✅ Redis cache SET for {}", cache_key);
+                        }
                     }
                 }
             }
