@@ -70,6 +70,7 @@ func main() {
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/health", handleRoot)
+	http.HandleFunc("/logo.svg", handleLogo)
 	http.HandleFunc("/stremio/", handleStremio)
 
 	log.Println("Starting API gateway on :8080")
@@ -192,6 +193,24 @@ func handleStremio(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
+const atlasLogoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#9333EA" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="50" fill="url(#grad)" />
+  <path d="M128 50 L208 190 L48 190 Z" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linejoin="round" />
+  <circle cx="128" cy="140" r="24" fill="#FFFFFF" />
+</svg>`
+
+func handleLogo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write([]byte(atlasLogoSVG))
+}
+
 func handleManifest(w http.ResponseWriter, r *http.Request, token string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -202,11 +221,18 @@ func handleManifest(w http.ResponseWriter, r *http.Request, token string) {
 		addonName = "Atlas - " + doc.ProfileName
 	}
 
+	scheme := "http://"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https://"
+	}
+	logoUrl := scheme + r.Host + "/logo.svg"
+
 	manifest := map[string]interface{}{
 		"id":          "com.cindrallabs.atlas." + token,
 		"name":        addonName,
 		"version":     "1.0.0",
-		"description": "Premium AI-powered multi-source streaming",
+		"description": "Premium AI-powered multi-source streaming via TorBox. Experience personalized, unthrottled, and ultra-fast playback.",
+		"logo":        logoUrl,
 		"resources":   []string{"stream"},
 		"types":       []string{"movie", "series"},
 		"idPrefixes":  []string{"tt"},
