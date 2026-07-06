@@ -47,12 +47,8 @@
   <nav class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
     <!-- Logo -->
     <a href="/" class="flex items-center gap-3 group flex-shrink-0">
-      <div class="relative w-8 h-8">
-        <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 opacity-90 group-hover:opacity-100 transition-opacity"></div>
-        <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 blur-md opacity-0 group-hover:opacity-60 transition-opacity"></div>
-        <div class="relative flex items-center justify-center w-full h-full text-white font-bold text-sm rounded-xl">
-          A
-        </div>
+      <div class="relative w-8 h-8 group-hover:scale-105 transition-transform duration-300">
+        <img src="/favicon.svg" alt="Atlas Logo" class="w-full h-full object-contain" />
       </div>
       <span class="font-bold text-lg text-white tracking-tight">
         Atlas
