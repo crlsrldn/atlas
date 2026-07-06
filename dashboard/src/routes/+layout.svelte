@@ -121,9 +121,7 @@
         &copy; {new Date().getFullYear()} Project Atlas. Built with privacy first.
       </p>
       <div class="flex items-center gap-4 text-xs text-zinc-600">
-        <a href="/admin" class="hover:text-zinc-400 transition-colors">
-          Admin Console
-        </a>
+
         <span class="flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
           All Systems Operational
