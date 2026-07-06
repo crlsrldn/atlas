@@ -501,7 +501,7 @@
     -webkit-background-clip: text;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+    background-image: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-accent) 100%);
   }
 
   .gradient-text-bright {
@@ -509,7 +509,7 @@
     -webkit-background-clip: text;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(135deg, #04BF8A 0%, #a855f7 50%, #ec4899 100%);
+    background-image: linear-gradient(135deg, var(--color-brand-300) 0%, var(--color-brand-500) 50%, var(--color-brand-700) 100%);
   }
 
   /* ============================================================

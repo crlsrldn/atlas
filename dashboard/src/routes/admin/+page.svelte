@@ -12,13 +12,21 @@
   let latencyCanvas = $state<HTMLCanvasElement>();
   let playbackCanvas = $state<HTMLCanvasElement>();
   
+  // svelte-ignore state_referenced_locally
   let activeUsers = $state(data.activeUsers15m ?? 0);
+  // svelte-ignore state_referenced_locally
   let apiErrors = $state(data.apiErrors ?? 0);
+  // svelte-ignore state_referenced_locally
   let successRate = $state(data.successRate ?? "—");
+  // svelte-ignore state_referenced_locally
   let avgLatency = $state(data.avgLatency ?? "—");
+  // svelte-ignore state_referenced_locally
   let streamsResolved = $state(data.streamsResolved ?? 0);
+  // svelte-ignore state_referenced_locally
   let totalUsers = $state(data.totalUsers ?? 0);
+  // svelte-ignore state_referenced_locally
   let leaderboard = $state(data.leaderboard ?? []);
+  // svelte-ignore state_referenced_locally
   let recentErrors = $state(data.recentErrors ?? []);
   
   let realtimeChannel: any;
