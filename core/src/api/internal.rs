@@ -46,8 +46,13 @@ async fn resolve(Json(req): Json<ResolveRequest>) -> Json<Value> {
     };
 
     let token = req.install_token.as_deref().unwrap_or("demo");
-    
-    tracing::info!("Resolving for stremio_id: {}, token: {}, prefs: {:?}", stremio_id, token, req.prefs);
+
+    tracing::info!(
+        "Resolving for stremio_id: {}, token: {}, prefs: {:?}",
+        stremio_id,
+        token,
+        req.prefs
+    );
 
     let smart_prefs = match req.user_agent.as_deref() {
         Some(ua) => crate::engines::ai_decision::infer_capabilities(ua, req.prefs),
