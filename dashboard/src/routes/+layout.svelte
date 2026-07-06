@@ -106,8 +106,8 @@
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs">
-          A
+        <div class="w-6 h-6">
+          <img src="/favicon.svg" alt="Atlas Logo" class="w-full h-full object-contain" />
         </div>
         <span class="text-sm font-medium text-zinc-400">
           Project Atlas
