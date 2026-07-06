@@ -196,8 +196,8 @@ func handleStremio(w http.ResponseWriter, r *http.Request) {
 const atlasLogoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4F46E5" />
-      <stop offset="100%" stop-color="#9333EA" />
+      <stop offset="0%" stop-color="#12141b" />
+      <stop offset="100%" stop-color="#04BF8A" />
     </linearGradient>
   </defs>
   <rect width="256" height="256" rx="50" fill="url(#grad)" />
@@ -231,7 +231,7 @@ func handleManifest(w http.ResponseWriter, r *http.Request, token string) {
 		"id":          "com.cindrallabs.atlas." + token,
 		"name":        addonName,
 		"version":     "1.0.0",
-		"description": "Premium AI-powered multi-source streaming via TorBox. Experience personalized, unthrottled, and ultra-fast playback.",
+		"description": "Premium multi-source streaming via TorBox. Experience personalized, unthrottled, and ultra-fast playback.",
 		"logo":        logoUrl,
 		"resources":   []string{"stream"},
 		"types":       []string{"movie", "series"},
