@@ -5,8 +5,18 @@
 
   const supabaseUrl = env.PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = env.PUBLIC_SUPABASE_ANON_KEY || '';
-  const gatewayUrl = env.PUBLIC_GATEWAY_URL || 'https://cindral-atlas-gateway-dev.fly.dev';
-
+  let defaultGateway = 'http://127.0.0.1:8080';
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host.includes('dev')) {
+      defaultGateway = 'https://cindral-atlas-gateway-dev.fly.dev';
+    } else if (host.includes('staging')) {
+      defaultGateway = 'https://cindral-atlas-gateway-staging.fly.dev';
+    } else if (host !== 'localhost' && host !== '127.0.0.1') {
+      defaultGateway = 'https://cindral-atlas-gateway.fly.dev';
+    }
+  }
+  const gatewayUrl = env.PUBLIC_GATEWAY_URL || defaultGateway;
   const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
   let userId: string | null = $state(null);
