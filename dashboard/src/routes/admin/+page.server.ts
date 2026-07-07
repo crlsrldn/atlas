@@ -186,20 +186,28 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       .slice(0, 10)
       .map(async ([id, count]) => {
         let name = id;
-        if (id.startsWith('tt')) {
+        const baseId = id.split(':')[0];
+        if (baseId.startsWith('tt')) {
           try {
-            const mRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${id}.json`);
+            const mRes = await fetch(`https://v3-cinemeta.strem.io/meta/movie/${baseId}.json`);
             if (mRes.ok) {
               const mData = await mRes.json();
               if (mData?.meta?.name) {
                 name = mData.meta.name;
               } else {
-                const sRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${id}.json`);
+                const sRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${baseId}.json`);
                 if (sRes.ok) {
                   const sData = await sRes.json();
                   if (sData?.meta?.name) name = sData.meta.name;
                 }
               }
+            } else {
+                // If movie fetch fails (e.g. 404), fallback to series
+                const sRes = await fetch(`https://v3-cinemeta.strem.io/meta/series/${baseId}.json`);
+                if (sRes.ok) {
+                  const sData = await sRes.json();
+                  if (sData?.meta?.name) name = sData.meta.name;
+                }
             }
           } catch (e) {}
         }
