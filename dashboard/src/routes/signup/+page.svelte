@@ -1,5 +1,6 @@
 <script lang="ts">
   import AuthForm from '$lib/components/AuthForm.svelte';
+  import { enhance } from '$app/forms';
   
   let { data, form } = $props<{
     data: import('./$types').PageData;
@@ -58,7 +59,7 @@
       {/if}
 
       {#if view === 'waitlist'}
-        <form method="POST" action="?/waitlist" class="space-y-4">
+        <form method="POST" action="?/waitlist" class="space-y-4" use:enhance>
           <div class="space-y-1.5">
             <label for="email" class="block text-sm font-medium text-zinc-300">Email</label>
             <input type="email" id="email" name="email" required class="input-field w-full py-2.5 px-3" placeholder="you@example.com" />
@@ -66,7 +67,7 @@
           <button type="submit" class="btn-primary w-full py-2.5">Join Waitlist</button>
         </form>
       {:else}
-        <form method="POST" action="?/signupWithInvite" class="space-y-4">
+        <form method="POST" action="?/signupWithInvite" class="space-y-4" use:enhance>
           <div class="space-y-1.5">
             <label for="invite-email" class="block text-sm font-medium text-zinc-300">Email</label>
             <input type="email" id="invite-email" name="email" required class="input-field w-full py-2.5 px-3" placeholder="you@example.com" />

@@ -3,6 +3,7 @@
   import AdminLogin from '$lib/components/AdminLogin.svelte';
   import Chart from 'chart.js/auto';
   import { onMount, onDestroy } from 'svelte';
+  import { enhance } from '$app/forms';
   import { createBrowserClient } from '@supabase/ssr';
   import { env as publicEnv } from '$env/dynamic/public';
 
@@ -376,7 +377,7 @@
                 <div class="font-medium text-zinc-900 dark:text-white text-sm">Open Signups</div>
                 <div class="text-xs text-zinc-500">Allow anyone to register without an invite code</div>
               </div>
-              <form method="POST" action="?/toggleSignups">
+              <form method="POST" action="?/toggleSignups" use:enhance>
                 <input type="hidden" name="isOpen" value={!data.signupsOpen} />
                 <button type="submit" aria-label="Toggle Signups" class={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${data.signupsOpen ? 'bg-emerald-500' : 'bg-zinc-600'}`}>
                   <span class={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.signupsOpen ? 'translate-x-6' : 'translate-x-1'}`}></span>
@@ -387,7 +388,7 @@
 
           <div>
             <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-4">Generate Invite Code</h3>
-            <form method="POST" action="?/generateInvite" class="flex gap-2">
+            <form method="POST" action="?/generateInvite" class="flex gap-2" use:enhance>
               <input type="text" name="code" placeholder="Leave blank for random" class="input-field flex-grow py-2 px-3 text-sm" />
               <button type="submit" class="btn-primary py-2 px-4 whitespace-nowrap text-sm">Generate</button>
             </form>
@@ -410,7 +411,7 @@
         <div class="glass-card-strong p-6 rounded-2xl flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Waitlist ({(data.waitlist || []).filter(w => w.status === 'pending').length} pending)</h3>
-            <form method="POST" action="?/approveWaitlist">
+            <form method="POST" action="?/approveWaitlist" use:enhance>
               <button type="submit" class="btn-secondary py-1 px-3 text-xs" disabled={(data.waitlist || []).filter(w => w.status === 'pending').length === 0}>
                 Approve Next
               </button>

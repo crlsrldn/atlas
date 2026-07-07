@@ -11,7 +11,6 @@ const SENSITIVE_KEYS: &[&str] = &[
     "magnet",
     "password",
     "secret",
-    "stremio_id",
     "token",
     "url",
 ];
