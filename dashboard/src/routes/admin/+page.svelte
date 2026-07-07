@@ -360,6 +360,84 @@
       </div>
     </div>
 
+    <!-- Access Control Section -->
+    <div class="mb-10 space-y-5">
+      <div class="flex items-center gap-3 mb-6">
+        <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Access Control</h2>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <!-- Signups & Invites -->
+        <div class="glass-card-strong p-6 rounded-2xl flex flex-col space-y-6">
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-4">Registration Settings</h3>
+            <div class="flex items-center justify-between p-4 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/[0.04]">
+              <div>
+                <div class="font-medium text-zinc-900 dark:text-white text-sm">Open Signups</div>
+                <div class="text-xs text-zinc-500">Allow anyone to register without an invite code</div>
+              </div>
+              <form method="POST" action="?/toggleSignups">
+                <input type="hidden" name="isOpen" value={!data.signupsOpen} />
+                <button type="submit" aria-label="Toggle Signups" class={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${data.signupsOpen ? 'bg-emerald-500' : 'bg-zinc-600'}`}>
+                  <span class={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.signupsOpen ? 'translate-x-6' : 'translate-x-1'}`}></span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white mb-4">Generate Invite Code</h3>
+            <form method="POST" action="?/generateInvite" class="flex gap-2">
+              <input type="text" name="code" placeholder="Leave blank for random" class="input-field flex-grow py-2 px-3 text-sm" />
+              <button type="submit" class="btn-primary py-2 px-4 whitespace-nowrap text-sm">Generate</button>
+            </form>
+            <div class="mt-4 max-h-[150px] overflow-y-auto space-y-2 pr-1">
+              {#each (data.invites || []) as invite}
+                <div class="flex items-center justify-between p-2 rounded bg-black/5 dark:bg-white/5 text-sm border border-black/5 dark:border-white/[0.04]">
+                  <span class="font-mono font-medium {invite.used_by ? 'line-through text-zinc-500' : 'text-emerald-400'}">{invite.code}</span>
+                  {#if invite.used_by}
+                    <span class="text-[10px] text-zinc-500 uppercase tracking-wide">Used</span>
+                  {:else}
+                    <span class="text-[10px] text-emerald-500 uppercase tracking-wide">Available</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+
+        <!-- Waitlist -->
+        <div class="glass-card-strong p-6 rounded-2xl flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Waitlist ({(data.waitlist || []).filter(w => w.status === 'pending').length} pending)</h3>
+            <form method="POST" action="?/approveWaitlist">
+              <button type="submit" class="btn-secondary py-1 px-3 text-xs" disabled={(data.waitlist || []).filter(w => w.status === 'pending').length === 0}>
+                Approve Next
+              </button>
+            </form>
+          </div>
+          <div class="flex-grow max-h-[350px] overflow-y-auto pr-1 space-y-2">
+            {#if (data.waitlist || []).length === 0}
+              <p class="text-sm text-zinc-500 text-center mt-8">The waitlist is currently empty.</p>
+            {/if}
+            {#each (data.waitlist || []) as item}
+              <div class="flex items-center justify-between p-3 rounded-lg bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/[0.04]">
+                <div class="flex flex-col">
+                  <span class="text-sm font-medium text-zinc-900 dark:text-white">{item.email}</span>
+                  <span class="text-[10px] text-zinc-500">{new Date(item.created_at).toLocaleDateString()}</span>
+                </div>
+                {#if item.status === 'pending'}
+                  <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">Pending</span>
+                {:else}
+                  <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Approved</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Secondary info section -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       <!-- Leaderboard -->

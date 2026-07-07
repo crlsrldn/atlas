@@ -49,6 +49,8 @@
     torbox?: { valid: boolean; premium: boolean; expires_at: string };
   } | null>(null);
 
+  let userTier = $state('free');
+
   onMount(async () => {
     try {
       const res = await fetch('/api/global-config');
@@ -66,6 +68,13 @@
 
       if (session?.user) {
         userId = session.user.id;
+        
+        // Fetch user tier
+        const { data: userData } = await supabase.from('app_users').select('tier').eq('id', session.user.id).single();
+        if (userData?.tier) {
+          userTier = userData.tier;
+        }
+        
         await loadProfiles(session.user.id);
       } else {
         window.location.href = '/login';
@@ -115,6 +124,10 @@
 
   async function createProfile(name: string) {
     if (!userId) return;
+    if (userTier === 'free' && profiles.length >= 2) {
+      alert("You have reached the maximum number of profiles for the free tier. Upgrade to Premium to add more.");
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('preferences')
@@ -291,9 +304,24 @@
               <option value={profile.id}>{profile.profile_name}</option>
             {/each}
           </select>
-          <button type="button" onclick={() => showNewProfileModal = true} class="w-10 h-10 flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors" title="Create New Profile">
+          <button 
+            type="button" 
+            onclick={() => {
+              if (userTier === 'free' && profiles.length >= 2) {
+                alert("You have reached the maximum number of profiles for the free tier. Upgrade to Premium to add more.");
+                return;
+              }
+              showNewProfileModal = true;
+            }} 
+            class="w-10 h-10 flex items-center justify-center shrink-0 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+            title={userTier === 'free' && profiles.length >= 2 ? "Upgrade to Premium to add more profiles" : "Create New Profile"}
+          >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              {#if userTier === 'free' && profiles.length >= 2}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              {:else}
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              {/if}
             </svg>
           </button>
           {#if profiles.length > 1}

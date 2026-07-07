@@ -216,6 +216,13 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       }))
       .slice(0, 10);
 
+    // Fetch Admin Data for new features
+    const { data: appSettings } = await supabase.from("app_settings").select("*");
+    const { data: invites } = await supabase.from("invites").select("*").order("created_at", { ascending: false });
+    const { data: waitlist } = await supabase.from("waitlist").select("*").order("created_at", { ascending: true });
+
+    const signupsOpen = appSettings?.find(s => s.key === 'signups_open')?.value ?? false;
+
     return {
       totalUsers: totalUsers || 0,
       streamsResolved: streamsResolved || 0,
@@ -226,6 +233,9 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
       apiErrors,
       leaderboard,
       recentErrors,
+      signupsOpen,
+      invites: invites || [],
+      waitlist: waitlist || [],
       analytics: {
         playback: { total: playbackTotal, success: playbackSuccess, failure: playbackTotal - playbackSuccess },
         resolution: {
@@ -248,6 +258,46 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 export const actions: Actions = {
   logout: async ({ cookies }) => {
     cookies.delete('sb-admin-token', { path: '/' });
+    return { success: true };
+  },
+
+  toggleSignups: async ({ cookies, request }) => {
+    const token = cookies.get('sb-admin-token');
+    if (!token || !env.SUPABASE_SERVICE_ROLE_KEY) return { success: false };
+    const supabase = createClient(publicEnv.PUBLIC_SUPABASE_URL as string, env.SUPABASE_SERVICE_ROLE_KEY);
+    const form = await request.formData();
+    const isOpen = form.get('isOpen') === 'true';
+
+    await supabase.from('app_settings').upsert({ key: 'signups_open', value: isOpen });
+    return { success: true };
+  },
+
+  generateInvite: async ({ cookies, request }) => {
+    const token = cookies.get('sb-admin-token');
+    if (!token || !env.SUPABASE_SERVICE_ROLE_KEY) return { success: false };
+    const supabase = createClient(publicEnv.PUBLIC_SUPABASE_URL as string, env.SUPABASE_SERVICE_ROLE_KEY);
+    const form = await request.formData();
+    let code = form.get('code')?.toString().trim();
+    
+    if (!code) {
+      code = 'ATLAS-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    await supabase.from('invites').insert({ code });
+    return { success: true };
+  },
+
+  approveWaitlist: async ({ cookies }) => {
+    const token = cookies.get('sb-admin-token');
+    if (!token || !env.SUPABASE_SERVICE_ROLE_KEY) return { success: false };
+    const supabase = createClient(publicEnv.PUBLIC_SUPABASE_URL as string, env.SUPABASE_SERVICE_ROLE_KEY);
+    
+    const { data: pending } = await supabase.from('waitlist').select('*').eq('status', 'pending').order('created_at', { ascending: true }).limit(1).single();
+    if (pending) {
+      const code = 'ATLAS-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      await supabase.from('invites').insert({ code });
+      await supabase.from('waitlist').update({ status: 'approved' }).eq('id', pending.id);
+    }
     return { success: true };
   }
 };
