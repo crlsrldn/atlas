@@ -2,7 +2,6 @@ use crate::engines::identity::AtlasID;
 use crate::engines::metadata::MediaMetadata;
 use crate::engines::sources::{ProviderHealth, SourceProvider, SourceResult};
 use async_trait::async_trait;
-use reqwest;
 
 pub struct TorBoxProvider {
     pub api_key: String,
@@ -25,7 +24,7 @@ impl SourceProvider for TorBoxProvider {
 
         let url = format!("https://api.torbox.app/v1/api/torrents/checkcached?hash={}&format=list&list_files=false", hash_param);
 
-        let client = reqwest::Client::new();
+        let client = crate::engines::http::client();
         let mut cached_hashes = Vec::new();
 
         let mut error_msg: Option<String> = None;
@@ -132,7 +131,7 @@ impl SourceProvider for TorBoxProvider {
         }
 
         let started = std::time::Instant::now();
-        match reqwest::Client::new()
+        match crate::engines::http::client()
             .get("https://api.torbox.app/v1/api/user/me")
             .bearer_auth(&self.api_key)
             .send()

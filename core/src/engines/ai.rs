@@ -1,10 +1,6 @@
 use crate::api::config::current_preferences;
-use once_cell::sync::Lazy;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Recommendation {
@@ -38,7 +34,11 @@ pub async fn get_movie_recommendations() -> Vec<Recommendation> {
         }
     });
 
-    let res = HTTP_CLIENT.post(&url).json(&payload).send().await;
+    let res = crate::engines::http::client()
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await;
 
     if let Ok(response) = res {
         if let Ok(text) = response.text().await {

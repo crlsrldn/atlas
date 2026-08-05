@@ -8,7 +8,8 @@ pub const METADATA_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 pub const PROVIDER_HEALTH_TTL: Duration = Duration::from_secs(5 * 60);
 pub const SOURCE_RESULTS_TTL: Duration = Duration::from_secs(20 * 60);
 pub const FAILED_PROVIDER_TTL: Duration = Duration::from_secs(2 * 60);
-pub const PLAYBACK_URL_TTL: Duration = Duration::from_secs(60);
+pub const PLAYBACK_URL_TTL: Duration = Duration::from_secs(15 * 60);
+pub const TORRENT_HANDLE_TTL: Duration = Duration::from_secs(6 * 60 * 60);
 
 #[derive(Debug, Clone)]
 struct CacheEntry {

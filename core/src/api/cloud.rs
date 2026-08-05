@@ -1,11 +1,8 @@
-use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
 use std::env;
 
-use once_cell::sync::Lazy;
-
-static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
+use crate::engines::http::client as http_client;
 
 // Note: For MVP, global prefs uses a hardcoded UUID or we skip it.
 // The Deno Dashboard saves per-user preferences with their UUID.
@@ -21,7 +18,7 @@ pub async fn get_preferences_from_cloud() -> Option<crate::api::config::UserPref
         endpoint, GLOBAL_PREFS_ID
     );
 
-    let res = HTTP_CLIENT
+    let res = http_client()
         .get(&url)
         .header("apikey", &key)
         .header("Authorization", format!("Bearer {}", key))
@@ -55,7 +52,7 @@ pub async fn save_preferences_to_cloud(
 
     let payload_val = serde_json::to_value(prefs).unwrap();
 
-    let res = HTTP_CLIENT
+    let res = http_client()
         .post(&url)
         .header("apikey", &key)
         .header("Authorization", format!("Bearer {}", key))
@@ -80,7 +77,7 @@ pub async fn get_recent_telemetry(limit: usize) -> Result<Vec<Value>, Box<dyn st
 
     let url = format!("{}/rest/v1/telemetry", endpoint);
 
-    let response = HTTP_CLIENT
+    let response = http_client()
         .get(&url)
         .header("apikey", &key)
         .header("Authorization", format!("Bearer {}", key))

@@ -1,9 +1,5 @@
-use once_cell::sync::Lazy;
-use reqwest::Client;
 use serde_json::{json, Value};
 use std::env;
-
-static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
 pub fn log_event(event_name: &str, payload: Value) {
     let event_name = event_name.to_string();
@@ -17,7 +13,7 @@ pub fn log_event(event_name: &str, payload: Value) {
         ) {
             let url = format!("{}/rest/v1/telemetry", endpoint);
 
-            let res = HTTP_CLIENT
+            let res = crate::engines::http::client()
                 .post(&url)
                 .header("apikey", &key)
                 .header("Authorization", format!("Bearer {}", key))

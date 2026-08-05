@@ -316,21 +316,26 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 
 	url := fmt.Sprintf("%s/internal/resolve_hash/%s/%s", coreUrl, provider, hash)
 
-	supabase := NewSupabaseClient()
 	var prefs map[string]interface{}
-	doc, err := supabase.GetUserPreferences(token)
-	if err != nil {
-		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
-		// Fallback to empty prefs or handle error appropriately.
-		prefs = map[string]interface{}{
-			"torbox_api_key":  "",
-			"trakt_client_id": "",
-			"trakt_username":  "",
-			"max_resolution":  "4K",
-			"exclude_av1":     false,
-		}
+	if cachedPrefs, ok := prefsCache.Get(token); ok {
+		prefs = cachedPrefs
 	} else {
-		prefs = doc.PrefsJson
+		supabase := NewSupabaseClient()
+		doc, err := supabase.GetUserPreferences(token)
+		if err != nil {
+			log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
+			// Fallback to empty prefs or handle error appropriately.
+			prefs = map[string]interface{}{
+				"torbox_api_key":  "",
+				"trakt_client_id": "",
+				"trakt_username":  "",
+				"max_resolution":  "4K",
+				"exclude_av1":     false,
+			}
+		} else {
+			prefs = doc.PrefsJson
+			prefsCache.Add(token, prefs)
+		}
 	}
 
 	userAgent := r.Header.Get("User-Agent")

@@ -1,5 +1,4 @@
 use crate::engines::identity::AtlasID;
-use reqwest;
 use serde::Deserialize;
 use tracing::warn;
 
@@ -160,7 +159,7 @@ async fn fetch_cinemeta_metadata(
         "https://v3-cinemeta.strem.io/meta/{}/{}.json",
         media_type, imdb_id
     );
-    let response = reqwest::get(url).await.ok()?;
+    let response = crate::engines::http::client().get(url).send().await.ok()?;
     let body = response.json::<CinemetaResponse>().await.ok()?;
     let meta = body.meta?;
 
@@ -195,7 +194,7 @@ async fn fetch_cinemeta_metadata(
 }
 
 async fn fetch_torrentio_sources(url: &str) -> Option<Vec<YTSTorrent>> {
-    let res = reqwest::get(url).await.ok()?;
+    let res = crate::engines::http::client().get(url).send().await.ok()?;
     let json = res.json::<TorrentioResponse>().await.ok()?;
     let streams = json.streams?;
     let mut torrents = Vec::new();

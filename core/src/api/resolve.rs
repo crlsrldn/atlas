@@ -1,14 +1,17 @@
 use crate::api::config::current_preferences;
+use crate::engines::cache::{get_json, scoped_key, set_json, PLAYBACK_URL_TTL, TORRENT_HANDLE_TTL};
 use crate::engines::history::{
     fallback_candidates, fallback_candidates_scope, media_key_from_hash, media_key_from_hash_scope,
     record_playback, record_playback_scope,
 };
+use crate::engines::http;
 use axum::http::StatusCode;
 use axum::{extract::Path, response::IntoResponse, routing::get, Router};
 use regex::Regex;
-use reqwest;
 use serde::Deserialize;
 use serde_json::Value;
+
+const LOCAL_SCOPE: &str = "local";
 
 #[derive(Deserialize)]
 struct TorboxCreateResponse {
@@ -66,56 +69,69 @@ pub async fn resolve_torbox_with_key(
         return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
     }
 
-    let client = reqwest::Client::new();
-    let magnet = format!("magnet:?xt=urn:btih:{}", hash);
+    let scope = user_id
+        .clone()
+        .or_else(|| history_scope.map(str::to_string))
+        .unwrap_or_else(|| LOCAL_SCOPE.to_string());
+    // Season packs resolve to a different file per episode, so the cache key
+    // must carry the episode context alongside the hash.
+    let cache_id = playback_cache_id(&hash, season, episode);
 
-    // 1. Create/Add the torrent
-    let create_res = client
-        .post("https://api.torbox.app/v1/api/torrents/createtorrent")
-        .bearer_auth(&api_key)
-        .form(&[("magnet", magnet.as_str())])
-        .send()
-        .await;
-
-    if let Ok(res) = create_res {
-        if let Ok(json) = res.json::<TorboxCreateResponse>().await {
-            if json.success {
-                if let Some(data) = json.data {
-                    let torrent_id = data.torrent_id;
-                    let file_id = match select_best_video_file(&data.files, season, episode) {
-                        Some(file_id) => file_id,
-                        None => {
-                            find_best_torbox_file_id(&client, &api_key, torrent_id, season, episode)
-                                .await
-                                .unwrap_or(1)
-                        }
-                    };
-                    let dl_url = format!("https://api.torbox.app/v1/api/torrents/requestdl?token={}&torrent_id={}&file_id={}&redirect=true", api_key, torrent_id, file_id);
-
-                    record_provider_playback(history_scope, "TorBox", &hash, true);
-                    crate::engines::telemetry::log_event(
-                        "playback_started",
-                        serde_json::json!({
-                            "provider": "torbox",
-                            "success": true,
-                            "user_agent": user_agent,
-                            "user_id": user_id.clone()
-                        }),
-                    );
-
-                    // Feature 5: Automated Background Caching
-                    if !is_cached {
-                        // The torrent was just added to TorBox and is downloading.
-                        // We redirect the user to a static placeholder video so Stremio doesn't hang.
-                        let placeholder_url = "https://www.w3schools.com/html/mov_bbb.mp4";
-                        return (StatusCode::FOUND, [("Location", placeholder_url)])
-                            .into_response();
-                    }
-
-                    return (StatusCode::FOUND, [("Location", dl_url)]).into_response();
-                }
-            }
+    // Player reconnects (seeks, range re-requests) hit this endpoint repeatedly;
+    // a cached CDN URL turns those into a single cheap redirect.
+    if is_cached {
+        if let Some(url) = cached_playback_url(&scope, &cache_id) {
+            crate::engines::telemetry::log_event(
+                "playback_started",
+                serde_json::json!({
+                    "provider": "torbox",
+                    "success": true,
+                    "cached": true,
+                    "user_agent": user_agent,
+                    "user_id": user_id
+                }),
+            );
+            return (StatusCode::FOUND, [("Location", url)]).into_response();
         }
+    }
+
+    let client = http::client();
+
+    // Feature 5: Automated Background Caching. The torrent is not cached on
+    // TorBox yet, so requesting a download link would fail — just add it so
+    // TorBox starts downloading, and redirect to a placeholder video so
+    // Stremio doesn't hang.
+    if !is_cached {
+        if add_torbox_magnet(client, &hash, &api_key).await.is_some() {
+            record_provider_playback(history_scope, "TorBox", &hash, true);
+            crate::engines::telemetry::log_event(
+                "playback_started",
+                serde_json::json!({
+                    "provider": "torbox",
+                    "success": true,
+                    "cached": false,
+                    "user_agent": user_agent,
+                    "user_id": user_id
+                }),
+            );
+            let placeholder_url = "https://www.w3schools.com/html/mov_bbb.mp4";
+            return (StatusCode::FOUND, [("Location", placeholder_url)]).into_response();
+        }
+    } else if let Some(url) =
+        resolve_torbox_playback(client, &hash, &api_key, &scope, &cache_id, season, episode).await
+    {
+        record_provider_playback(history_scope, "TorBox", &hash, true);
+        crate::engines::telemetry::log_event(
+            "playback_started",
+            serde_json::json!({
+                "provider": "torbox",
+                "success": true,
+                "cached": false,
+                "user_agent": user_agent,
+                "user_id": user_id.clone()
+            }),
+        );
+        return (StatusCode::FOUND, [("Location", url)]).into_response();
     }
 
     record_provider_playback(history_scope, "TorBox", &hash, false);
@@ -132,6 +148,148 @@ pub async fn resolve_torbox_with_key(
     );
 
     fallback_redirect_for_hash(history_scope, &hash, "https://torbox.app")
+}
+
+/// Resolves a hash to the final TorBox CDN URL server-side, so the client is
+/// redirected straight to the CDN and the API key never leaves the backend.
+async fn resolve_torbox_playback(
+    client: &reqwest::Client,
+    hash: &str,
+    api_key: &str,
+    scope: &str,
+    cache_id: &str,
+    season: Option<u32>,
+    episode: Option<u32>,
+) -> Option<String> {
+    // A cached torrent handle skips createtorrent, but may be stale (torrent
+    // removed from the account) — on failure fall through to a fresh create.
+    if let Some((torrent_id, file_id)) = cached_torrent_handle(scope, cache_id) {
+        if let Some(url) = request_torbox_download(client, api_key, torrent_id, file_id).await {
+            store_playback_url(scope, cache_id, &url);
+            return Some(url);
+        }
+    }
+
+    let (torrent_id, file_id) =
+        create_torbox_torrent(client, hash, api_key, season, episode).await?;
+    let url = request_torbox_download(client, api_key, torrent_id, file_id).await?;
+
+    store_torrent_handle(scope, cache_id, torrent_id, file_id);
+    store_playback_url(scope, cache_id, &url);
+    Some(url)
+}
+
+async fn add_torbox_magnet(
+    client: &reqwest::Client,
+    hash: &str,
+    api_key: &str,
+) -> Option<TorboxTorrentData> {
+    let magnet = format!("magnet:?xt=urn:btih:{}", hash);
+
+    let res = client
+        .post("https://api.torbox.app/v1/api/torrents/createtorrent")
+        .bearer_auth(api_key)
+        .form(&[("magnet", magnet.as_str())])
+        .send()
+        .await
+        .ok()?;
+
+    let json = res.json::<TorboxCreateResponse>().await.ok()?;
+    if !json.success {
+        return None;
+    }
+    json.data
+}
+
+async fn create_torbox_torrent(
+    client: &reqwest::Client,
+    hash: &str,
+    api_key: &str,
+    season: Option<u32>,
+    episode: Option<u32>,
+) -> Option<(u64, u64)> {
+    let data = add_torbox_magnet(client, hash, api_key).await?;
+    let torrent_id = data.torrent_id;
+
+    let file_id = match select_best_video_file(&data.files, season, episode) {
+        Some(file_id) => file_id,
+        None => find_best_torbox_file_id(client, api_key, torrent_id, season, episode).await?,
+    };
+
+    Some((torrent_id, file_id))
+}
+
+async fn request_torbox_download(
+    client: &reqwest::Client,
+    api_key: &str,
+    torrent_id: u64,
+    file_id: u64,
+) -> Option<String> {
+    let url = format!(
+        "https://api.torbox.app/v1/api/torrents/requestdl?token={}&torrent_id={}&file_id={}",
+        api_key, torrent_id, file_id
+    );
+
+    let res = client.get(&url).send().await.ok()?;
+    let json = res.json::<Value>().await.ok()?;
+    extract_torbox_download_url(&json)
+}
+
+fn extract_torbox_download_url(json: &Value) -> Option<String> {
+    if json.get("success").and_then(Value::as_bool) != Some(true) {
+        return None;
+    }
+
+    let data = json.get("data")?;
+    let url = match data {
+        Value::String(url) => Some(url.as_str()),
+        Value::Object(map) => ["url", "download_url", "link"]
+            .iter()
+            .find_map(|key| map.get(*key).and_then(Value::as_str)),
+        _ => None,
+    }?;
+
+    if url.starts_with("http") {
+        Some(url.to_string())
+    } else {
+        None
+    }
+}
+
+fn playback_cache_id(hash: &str, season: Option<u32>, episode: Option<u32>) -> String {
+    match (season, episode) {
+        (Some(season), Some(episode)) => {
+            format!("{}:{}:{}", hash.to_lowercase(), season, episode)
+        }
+        _ => hash.to_lowercase(),
+    }
+}
+
+fn cached_playback_url(scope: &str, cache_id: &str) -> Option<String> {
+    let key = scoped_key(scope, "playback_url_torbox", cache_id);
+    get_json(&key)?.as_str().map(str::to_string)
+}
+
+fn store_playback_url(scope: &str, cache_id: &str, url: &str) {
+    let key = scoped_key(scope, "playback_url_torbox", cache_id);
+    set_json(key, Value::String(url.to_string()), PLAYBACK_URL_TTL);
+}
+
+fn cached_torrent_handle(scope: &str, cache_id: &str) -> Option<(u64, u64)> {
+    let key = scoped_key(scope, "torbox_torrent", cache_id);
+    let value = get_json(&key)?;
+    let torrent_id = value.get("torrent_id")?.as_u64()?;
+    let file_id = value.get("file_id")?.as_u64()?;
+    Some((torrent_id, file_id))
+}
+
+fn store_torrent_handle(scope: &str, cache_id: &str, torrent_id: u64, file_id: u64) {
+    let key = scoped_key(scope, "torbox_torrent", cache_id);
+    set_json(
+        key,
+        serde_json::json!({ "torrent_id": torrent_id, "file_id": file_id }),
+        TORRENT_HANDLE_TTL,
+    );
 }
 
 async fn find_best_torbox_file_id(
@@ -376,6 +534,83 @@ fn record_provider_playback(
 
 #[cfg(test)]
 mod tests {
+    use super::{
+        cached_playback_url, cached_torrent_handle, extract_torbox_download_url, playback_cache_id,
+        store_playback_url, store_torrent_handle,
+    };
+    use serde_json::json;
+
+    #[test]
+    fn extracts_cdn_url_from_requestdl_string_payload() {
+        let payload = json!({
+            "success": true,
+            "data": "https://store-031.weur.tb-cdn.st/movie.mkv?token=signed"
+        });
+
+        assert_eq!(
+            extract_torbox_download_url(&payload),
+            Some("https://store-031.weur.tb-cdn.st/movie.mkv?token=signed".to_string())
+        );
+    }
+
+    #[test]
+    fn extracts_cdn_url_from_requestdl_object_payload() {
+        let payload = json!({
+            "success": true,
+            "data": { "url": "https://cdn.torbox.app/movie.mkv" }
+        });
+
+        assert_eq!(
+            extract_torbox_download_url(&payload),
+            Some("https://cdn.torbox.app/movie.mkv".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_failed_or_malformed_requestdl_payloads() {
+        assert_eq!(
+            extract_torbox_download_url(&json!({ "success": false, "data": "https://x" })),
+            None
+        );
+        assert_eq!(
+            extract_torbox_download_url(&json!({ "success": true, "data": "not-a-url" })),
+            None
+        );
+        assert_eq!(
+            extract_torbox_download_url(&json!({ "success": true })),
+            None
+        );
+    }
+
+    #[test]
+    fn playback_cache_id_carries_episode_context() {
+        assert_eq!(playback_cache_id("ABC123", None, None), "abc123");
+        assert_eq!(playback_cache_id("ABC123", Some(1), Some(2)), "abc123:1:2");
+        assert_ne!(
+            playback_cache_id("abc123", Some(1), Some(2)),
+            playback_cache_id("abc123", Some(1), Some(3))
+        );
+    }
+
+    #[test]
+    fn playback_url_cache_round_trips_and_is_scope_isolated() {
+        store_playback_url("tenant-a", "abc123", "https://cdn.torbox.app/a.mkv");
+
+        assert_eq!(
+            cached_playback_url("tenant-a", "abc123"),
+            Some("https://cdn.torbox.app/a.mkv".to_string())
+        );
+        assert_eq!(cached_playback_url("tenant-b", "abc123"), None);
+    }
+
+    #[test]
+    fn torrent_handle_cache_round_trips() {
+        store_torrent_handle("local", "def456:1:2", 42, 7);
+
+        assert_eq!(cached_torrent_handle("local", "def456:1:2"), Some((42, 7)));
+        assert_eq!(cached_torrent_handle("other", "def456:1:2"), None);
+    }
+
     #[test]
     fn test_episode_marker_matches() {
         use super::episode_marker_matches;

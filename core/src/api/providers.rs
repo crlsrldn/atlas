@@ -47,7 +47,7 @@ async fn test_gemini(api_key: String) -> ProviderStatus {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash?key={}",
         api_key
     );
-    match reqwest::Client::new().get(url).send().await {
+    match crate::engines::http::client().get(url).send().await {
         Ok(response) if response.status().is_success() => ok("Gemini", started),
         Ok(response) => error("Gemini", started, format!("HTTP {}", response.status())),
         Err(err) => error("Gemini", started, err.to_string()),
