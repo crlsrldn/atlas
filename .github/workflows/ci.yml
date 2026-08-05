@@ -63,7 +63,9 @@ jobs:
       - name: Build
         run: go build -v ./...
       - name: Test
-        run: go test -v ./...
+        # -race because the gateway runs telemetry on a worker pool and shares
+        # caches across request goroutines.
+        run: go test -race -v ./...
 
   dashboard:
     name: Bun Dashboard

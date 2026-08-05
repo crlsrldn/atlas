@@ -63,8 +63,16 @@ func main() {
 		coreUrl = "http://127.0.0.1:3000"
 	}
 
-	dashboardUrl = os.Getenv("ATLAS_PUBLIC_BASE_URL")
+	// ATLAS_PUBLIC_BASE_URL means the public GATEWAY url in core, but meant the
+	// DASHBOARD url here — a collision that already left this pointing at
+	// localhost in production, silently breaking the global-config fetch. The
+	// old name is still read so a stale Fly secret keeps working.
+	dashboardUrl = os.Getenv("ATLAS_DASHBOARD_URL")
 	if dashboardUrl == "" {
+		dashboardUrl = os.Getenv("ATLAS_PUBLIC_BASE_URL")
+	}
+	if dashboardUrl == "" {
+		log.Println("Neither ATLAS_DASHBOARD_URL nor ATLAS_PUBLIC_BASE_URL is set — global config will fall back to defaults")
 		dashboardUrl = "http://127.0.0.1:3000"
 	}
 

@@ -6,7 +6,7 @@ primary_region = "iad"
 
 [env]
   ATLAS_CORE_URL = "http://cindral-atlas-core.internal:3000"
-  ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-dashboard.fly.dev"
+  ATLAS_DASHBOARD_URL = "https://cindral-atlas-dashboard.fly.dev"
 
 [http_service]
   internal_port = 8080
