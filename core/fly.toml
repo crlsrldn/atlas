@@ -1,3 +1,9 @@
+# Development. Staging and production use fly.staging.toml / fly.production.toml.
+#
+# Core has no [http_service] on purpose: it is reached only over 6PN private
+# networking (<app>.internal) by the gateway, never from the public internet.
+# That also means the Fly proxy never auto-stops it, so there is no cold start
+# on the playback path.
 app = "cindral-atlas-core-dev"
 primary_region = "iad"
 
@@ -6,4 +12,6 @@ primary_region = "iad"
 
 [env]
   ATLAS_BIND_ADDR = "[::]:3000"
+  # Stamped into the stream URLs handed to players, so it must name the
+  # gateway for THIS environment.
   ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-gateway-dev.fly.dev"

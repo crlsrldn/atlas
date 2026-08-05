@@ -1,0 +1,19 @@
+app = "cindral-atlas-gateway"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ATLAS_CORE_URL = "http://cindral-atlas-core.internal:3000"
+  ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-dashboard.fly.dev"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  # The gateway is on the playback path: every seek and range re-request hits
+  # it, so production always keeps one machine warm.
+  min_machines_running = 1
+  processes = ["app"]

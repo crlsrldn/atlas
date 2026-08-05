@@ -1,7 +1,4 @@
-# Development. Staging and production use fly.staging.toml / fly.production.toml.
-# The dashboard derives its gateway URL from window.location at runtime, so it
-# needs no per-environment service URLs here.
-app = "cindral-atlas-dashboard-dev"
+app = "cindral-atlas-dashboard-staging"
 primary_region = "iad"
 
 [build]

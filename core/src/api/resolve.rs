@@ -98,14 +98,13 @@ pub async fn resolve_torbox_with_key(
     let client = http::client();
 
     // Feature 5: Automated Background Caching. The torrent is not cached on
-    // TorBox yet, so requesting a download link would fail — just add it so
-    // TorBox starts downloading, and redirect to a placeholder video so
-    // Stremio doesn't hang.
+    // TorBox yet, so requesting a download link would fail — just queue it so
+    // TorBox starts downloading, and tell the client to retry shortly.
     if !is_cached {
         if add_torbox_magnet(client, &hash, &api_key).await.is_some() {
             record_provider_playback(history_scope, "TorBox", &hash, true);
             crate::engines::telemetry::log_event(
-                "playback_started",
+                "playback_queued",
                 serde_json::json!({
                     "provider": "torbox",
                     "success": true,
@@ -114,8 +113,7 @@ pub async fn resolve_torbox_with_key(
                     "user_id": user_id
                 }),
             );
-            let placeholder_url = "https://www.w3schools.com/html/mov_bbb.mp4";
-            return (StatusCode::FOUND, [("Location", placeholder_url)]).into_response();
+            return preparing_response();
         }
     } else if let Some(url) =
         resolve_torbox_playback(client, &hash, &api_key, &scope, &cache_id, season, episode).await
@@ -148,6 +146,31 @@ pub async fn resolve_torbox_with_key(
     );
 
     fallback_redirect_for_hash(history_scope, &hash, "https://torbox.app")
+}
+
+/// The torrent was just queued on TorBox and has no playable link yet.
+///
+/// Atlas is a resolver, not an origin: it never serves media bytes itself and
+/// never hotlinks someone else's asset. Operators who want a "please wait"
+/// clip point `ATLAS_PLACEHOLDER_VIDEO_URL` at storage they control; otherwise
+/// the client is told to retry.
+fn preparing_response() -> axum::response::Response {
+    if let Ok(url) = std::env::var("ATLAS_PLACEHOLDER_VIDEO_URL") {
+        let url = url.trim();
+        if url.starts_with("http") {
+            return (StatusCode::FOUND, [("Location", url.to_string())]).into_response();
+        }
+    }
+
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        [("Retry-After", "30")],
+        axum::Json(serde_json::json!({
+            "status": "preparing",
+            "message": "Source is being cached by TorBox. Try again shortly."
+        })),
+    )
+        .into_response()
 }
 
 /// Resolves a hash to the final TorBox CDN URL server-side, so the client is

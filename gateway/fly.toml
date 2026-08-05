@@ -1,3 +1,4 @@
+# Development. Staging and production use fly.staging.toml / fly.production.toml.
 app = "cindral-atlas-gateway-dev"
 primary_region = "iad"
 
@@ -6,11 +7,14 @@ primary_region = "iad"
 
 [env]
   ATLAS_CORE_URL = "http://cindral-atlas-core-dev.internal:3000"
+  ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-dashboard-dev.fly.dev"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  # suspend keeps machine memory and resumes in well under a second, so a
+  # player seeking mid-stream never pays a full cold boot.
+  auto_stop_machines = "suspend"
   auto_start_machines = true
   min_machines_running = 0
   processes = ["app"]

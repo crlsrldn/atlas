@@ -1,0 +1,9 @@
+app = "cindral-atlas-core"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ATLAS_BIND_ADDR = "[::]:3000"
+  ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-gateway.fly.dev"

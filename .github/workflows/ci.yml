@@ -185,11 +185,11 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          cd core && flyctl deploy --app "cindral-atlas-core-staging" --local-only &
+          cd core && flyctl deploy --config fly.staging.toml --app "cindral-atlas-core-staging" --local-only &
           PID1=$!
-          cd gateway && flyctl deploy --app "cindral-atlas-gateway-staging" --local-only &
+          cd gateway && flyctl deploy --config fly.staging.toml --app "cindral-atlas-gateway-staging" --local-only &
           PID2=$!
-          cd dashboard && flyctl deploy --app "cindral-atlas-dashboard-staging" --local-only &
+          cd dashboard && flyctl deploy --config fly.staging.toml --app "cindral-atlas-dashboard-staging" --local-only &
           PID3=$!
           wait $PID1 || exit 1
           wait $PID2 || exit 1
@@ -212,11 +212,11 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          cd core && flyctl deploy --app "cindral-atlas-core" --local-only &
+          cd core && flyctl deploy --config fly.production.toml --app "cindral-atlas-core" --local-only &
           PID1=$!
-          cd gateway && flyctl deploy --app "cindral-atlas-gateway" --local-only &
+          cd gateway && flyctl deploy --config fly.production.toml --app "cindral-atlas-gateway" --local-only &
           PID2=$!
-          cd dashboard && flyctl deploy --app "cindral-atlas-dashboard" --local-only &
+          cd dashboard && flyctl deploy --config fly.production.toml --app "cindral-atlas-dashboard" --local-only &
           PID3=$!
           wait $PID1 || exit 1
           wait $PID2 || exit 1
