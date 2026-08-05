@@ -1,8 +1,9 @@
+use crate::engines::cache::{get_json, set_json, METADATA_TTL};
 use crate::engines::identity::AtlasID;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaMetadata {
     pub atlas_id: AtlasID,
     pub imdb_id: Option<String>,
@@ -17,7 +18,7 @@ pub struct MediaMetadata {
     pub torrents: Vec<YTSTorrent>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct YTSTorrent {
     pub hash: String,
     pub quality: String,
@@ -82,7 +83,43 @@ struct CinemetaVideo {
     runtime: Option<String>,
 }
 
+/// Metadata is identical for every user, so it is cached process-wide.
+/// Without this, each stream request re-fetches Cinemeta and Torrentio.
 pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
+    let cache_key = metadata_cache_key(atlas_id);
+
+    if let Some(cached) = get_json(&cache_key) {
+        if let Ok(metadata) = serde_json::from_value::<MediaMetadata>(cached) {
+            return metadata;
+        }
+    }
+
+    let metadata = fetch_metadata(atlas_id).await;
+
+    // Only cache a useful answer: an upstream blip would otherwise pin an
+    // empty source list in front of this title for a day.
+    if !metadata.torrents.is_empty() {
+        if let Ok(value) = serde_json::to_value(&metadata) {
+            set_json(cache_key, value, METADATA_TTL);
+        }
+    }
+
+    metadata
+}
+
+fn metadata_cache_key(atlas_id: &AtlasID) -> String {
+    match atlas_id {
+        AtlasID::IMDb {
+            id,
+            season: Some(season),
+            episode: Some(episode),
+        } => format!("metadata:{}:{}:{}", id, season, episode),
+        AtlasID::IMDb { id, .. } => format!("metadata:{}", id),
+        AtlasID::TMDB(id) => format!("metadata:tmdb:{}", id),
+    }
+}
+
+async fn fetch_metadata(atlas_id: &AtlasID) -> MediaMetadata {
     match atlas_id {
         AtlasID::IMDb {
             id,
@@ -95,7 +132,6 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                 "movie"
             };
 
-            let normalized = fetch_cinemeta_metadata(id, media_type, *season, *episode).await;
             let torrentio_url = match (season, episode) {
                 (Some(season), Some(episode)) => {
                     format!(
@@ -106,12 +142,17 @@ pub async fn get_metadata(atlas_id: &AtlasID) -> MediaMetadata {
                 _ => format!("https://torrentio.strem.fun/stream/movie/{}.json", id),
             };
 
-            let torrents = fetch_torrentio_sources(&torrentio_url)
-                .await
-                .unwrap_or_else(|| {
-                    warn!("Torrentio fetch failed or returned no results for {}", id);
-                    vec![]
-                });
+            // Independent upstreams — fetch them at the same time rather than
+            // paying both round trips back to back.
+            let (normalized, torrents) = tokio::join!(
+                fetch_cinemeta_metadata(id, media_type, *season, *episode),
+                fetch_torrentio_sources(&torrentio_url)
+            );
+
+            let torrents = torrents.unwrap_or_else(|| {
+                warn!("Torrentio fetch failed or returned no results for {}", id);
+                vec![]
+            });
 
             MediaMetadata {
                 atlas_id: atlas_id.clone(),
@@ -345,7 +386,34 @@ fn estimate_bitrate_mbps(size_bytes: u64, runtime_minutes: Option<u32>) -> Optio
 
 #[cfg(test)]
 mod tests {
-    use super::{infer_audio_codec, parse_runtime_minutes, parse_size_bytes, parse_year};
+    use super::{
+        infer_audio_codec, metadata_cache_key, parse_runtime_minutes, parse_size_bytes, parse_year,
+    };
+    use crate::engines::identity::AtlasID;
+
+    #[test]
+    fn metadata_cache_keys_separate_episodes_and_titles() {
+        let movie = AtlasID::IMDb {
+            id: "tt0133093".to_string(),
+            season: None,
+            episode: None,
+        };
+        let s1e1 = AtlasID::IMDb {
+            id: "tt0903747".to_string(),
+            season: Some(1),
+            episode: Some(1),
+        };
+        let s1e2 = AtlasID::IMDb {
+            id: "tt0903747".to_string(),
+            season: Some(1),
+            episode: Some(2),
+        };
+
+        assert_eq!(metadata_cache_key(&movie), "metadata:tt0133093");
+        assert_ne!(metadata_cache_key(&s1e1), metadata_cache_key(&s1e2));
+        assert_ne!(metadata_cache_key(&movie), metadata_cache_key(&s1e1));
+        assert_eq!(metadata_cache_key(&AtlasID::TMDB(603)), "metadata:tmdb:603");
+    }
 
     #[test]
     fn parses_cinemeta_year_and_runtime() {

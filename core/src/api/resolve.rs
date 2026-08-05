@@ -66,7 +66,16 @@ pub async fn resolve_torbox_with_key(
     user_id: Option<String>,
 ) -> axum::response::Response {
     if api_key.is_empty() {
-        return (StatusCode::FOUND, [("Location", "https://torbox.app")]).into_response();
+        // Redirecting here would hand a video player torbox.app's HTML. Say
+        // what actually happened instead.
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(serde_json::json!({
+                "status": "not_configured",
+                "message": "No TorBox API key is configured for this profile."
+            })),
+        )
+            .into_response();
     }
 
     let scope = user_id

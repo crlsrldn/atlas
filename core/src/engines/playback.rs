@@ -1,11 +1,12 @@
 use crate::api::config::{current_preferences, UserPreferences};
+use crate::engines::cache::{
+    get_json, scoped_key, set_json, FAILED_PROVIDER_TTL, PROVIDER_HEALTH_TTL, SOURCE_RESULTS_TTL,
+};
 use crate::engines::history::{remember_candidates, stats_for, PlaybackCandidate};
 use crate::engines::identity::AtlasID;
 use crate::engines::metadata::get_metadata;
 use crate::engines::ranking::rank_sources;
-use crate::engines::sources::{
-    torbox::TorBoxProvider, ProviderHealthStatus, SourceProvider, SourceResult,
-};
+use crate::engines::sources::{torbox::TorBoxProvider, SourceProvider, SourceResult};
 
 use crate::engines::verification::verify_source;
 use futures::future::join_all;
@@ -57,6 +58,112 @@ pub fn media_key(atlas_id: &AtlasID) -> String {
     }
 }
 
+/// Reads cached provider search results.
+///
+/// Redis is shared across machines and preferred when configured. It is
+/// optional though — `get_redis()` yields None when UPSTASH_REDIS_URL is unset,
+/// and previously that made this cache silently do nothing — so the in-process
+/// cache backs it up and keeps a single machine from re-searching on every
+/// request.
+async fn cached_source_results(cache_key: &str) -> Option<Vec<SourceResult>> {
+    if let Some(mut redis_client) = crate::engines::redis::get_redis() {
+        let cached: Result<String, _> = redis::cmd("GET")
+            .arg(cache_key)
+            .query_async(&mut redis_client)
+            .await;
+
+        if let Ok(cached_json) = cached {
+            if let Ok(results) = serde_json::from_str::<Vec<SourceResult>>(&cached_json) {
+                return Some(results);
+            }
+        }
+    }
+
+    let cached = get_json(cache_key)?;
+    serde_json::from_value::<Vec<SourceResult>>(cached).ok()
+}
+
+async fn store_source_results(cache_key: &str, results: &[SourceResult]) {
+    if let Ok(value) = serde_json::to_value(results) {
+        set_json(cache_key.to_string(), value, SOURCE_RESULTS_TTL);
+    }
+
+    let Some(mut redis_client) = crate::engines::redis::get_redis() else {
+        return;
+    };
+    let Ok(json) = serde_json::to_string(results) else {
+        return;
+    };
+
+    let stored: Result<(), redis::RedisError> = redis::cmd("SETEX")
+        .arg(cache_key)
+        .arg(SOURCE_RESULTS_TTL.as_secs())
+        .arg(json)
+        .query_async(&mut redis_client)
+        .await;
+
+    if let Err(e) = stored {
+        tracing::error!("Redis SETEX failed for {}: {:?}", cache_key, e);
+    }
+}
+
+/// Checks a provider's health, reusing a recent verdict rather than probing the
+/// provider's API before every single search.
+///
+/// A healthy verdict is cached for PROVIDER_HEALTH_TTL. An unhealthy one is
+/// cached for the shorter FAILED_PROVIDER_TTL, so a provider that recovers is
+/// picked back up quickly while a broken one stops being retried on every
+/// request. The key includes a fingerprint of the credential so that fixing a
+/// bad API key takes effect immediately instead of waiting out the TTL.
+async fn provider_is_healthy(provider: &dyn SourceProvider, api_key: &str) -> bool {
+    let cache_key = scoped_key(
+        "provider_health",
+        provider.name(),
+        &credential_fingerprint(api_key),
+    );
+
+    if let Some(cached) = get_json(&cache_key) {
+        if let Some(healthy) = cached.as_bool() {
+            return healthy;
+        }
+    }
+
+    let health = provider.health().await;
+    let healthy = health.is_healthy();
+
+    crate::engines::telemetry::log_event(
+        "provider_health",
+        serde_json::json!({
+            "provider": health.provider_name,
+            "configured": health.configured,
+            "healthy": healthy,
+            "latency_ms": health.latency_ms,
+            "priority": health.priority,
+            "message": health.message
+        }),
+    );
+
+    let ttl = if healthy {
+        PROVIDER_HEALTH_TTL
+    } else {
+        FAILED_PROVIDER_TTL
+    };
+    set_json(cache_key, serde_json::Value::Bool(healthy), ttl);
+
+    healthy
+}
+
+/// A short, non-reversible tag for a credential, so cache keys can change when
+/// the key changes without ever holding the key itself.
+fn credential_fingerprint(api_key: &str) -> String {
+    let mut hash: u64 = 14_695_981_039_346_656_037;
+    for byte in api_key.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    format!("{:016x}", hash)
+}
+
 pub async fn resolve_detailed_streams(atlas_id: AtlasID) -> Vec<DetailedStream> {
     let prefs = current_preferences();
     resolve_detailed_streams_with_preferences(atlas_id, prefs, false, "local", None).await
@@ -86,20 +193,7 @@ pub async fn resolve_detailed_streams_with_preferences(
 
     let mut search_futures = Vec::new();
     for provider in providers {
-        let health = provider.health().await;
-        crate::engines::telemetry::log_event(
-            "provider_health",
-            serde_json::json!({
-                "provider": health.provider_name,
-                "configured": health.configured,
-                "healthy": health.is_healthy(),
-                "latency_ms": health.latency_ms,
-                "priority": health.priority,
-                "message": health.message
-            }),
-        );
-
-        if !matches!(health.status, ProviderHealthStatus::Ok) {
+        if !provider_is_healthy(provider, &prefs.torbox_api_key).await {
             continue;
         }
 
@@ -108,7 +202,6 @@ pub async fn resolve_detailed_streams_with_preferences(
         let atlas_id_clone = atlas_id.clone();
         let metadata_clone = metadata.clone();
 
-        // Push an async block that checks cache, then falls back to search
         search_futures.push(async move {
             let cache_key = format!(
                 "atlas:sources:{}:{}",
@@ -116,39 +209,14 @@ pub async fn resolve_detailed_streams_with_preferences(
                 atlas_id_str
             );
 
-            if let Some(mut redis_client) = crate::engines::redis::get_redis() {
-                let get_result: Result<String, _> = redis::cmd("GET")
-                    .arg(&cache_key)
-                    .query_async(&mut redis_client)
-                    .await;
-
-                if let Ok(cached_json) = get_result {
-                    if let Ok(results) = serde_json::from_str::<Vec<SourceResult>>(&cached_json) {
-                        tracing::info!("✅ Redis cache HIT for {}", cache_key);
-                        return results;
-                    }
-                }
+            if let Some(results) = cached_source_results(&cache_key).await {
+                return results;
             }
 
-            // Await the provider's search implementation
             let results = provider.search(&atlas_id_clone, &metadata_clone).await;
 
             if !results.is_empty() {
-                if let Some(mut redis_client) = crate::engines::redis::get_redis() {
-                    if let Ok(json) = serde_json::to_string(&results) {
-                        let set_res: Result<(), redis::RedisError> = redis::cmd("SETEX")
-                            .arg(&cache_key)
-                            .arg(900) // 15 mins TTL
-                            .arg(json)
-                            .query_async(&mut redis_client)
-                            .await;
-                        if let Err(e) = set_res {
-                            tracing::error!("Redis SETEX failed for {}: {:?}", cache_key, e);
-                        } else {
-                            tracing::info!("✅ Redis cache SET for {}", cache_key);
-                        }
-                    }
-                }
+                store_source_results(&cache_key, &results).await;
             }
 
             results
@@ -398,5 +466,19 @@ fn stremio_stream_from_detail(stream: DetailedStream) -> StremioStream {
         name: Some(name),
         description: Some(description),
         url: stream.url,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::credential_fingerprint;
+
+    #[test]
+    fn credential_fingerprint_changes_with_the_key_and_hides_it() {
+        let fingerprint = credential_fingerprint("tb_live_secret");
+
+        assert_ne!(fingerprint, credential_fingerprint("tb_live_rotated"));
+        assert_eq!(fingerprint, credential_fingerprint("tb_live_secret"));
+        assert!(!fingerprint.contains("secret"));
     }
 }
