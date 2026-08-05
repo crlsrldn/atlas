@@ -102,7 +102,7 @@ pub async fn resolve_torbox_with_key(
     // TorBox starts downloading, and tell the client to retry shortly.
     if !is_cached {
         if add_torbox_magnet(client, &hash, &api_key).await.is_some() {
-            record_provider_playback(history_scope, "TorBox", &hash, true);
+            record_provider_outcome(history_scope, "TorBox", &hash, ResolveOutcome::Queued);
             crate::engines::telemetry::log_event(
                 "playback_queued",
                 serde_json::json!({
@@ -118,7 +118,7 @@ pub async fn resolve_torbox_with_key(
     } else if let Some(url) =
         resolve_torbox_playback(client, &hash, &api_key, &scope, &cache_id, season, episode).await
     {
-        record_provider_playback(history_scope, "TorBox", &hash, true);
+        record_provider_outcome(history_scope, "TorBox", &hash, ResolveOutcome::Played);
         crate::engines::telemetry::log_event(
             "playback_started",
             serde_json::json!({
@@ -132,7 +132,7 @@ pub async fn resolve_torbox_with_key(
         return (StatusCode::FOUND, [("Location", url)]).into_response();
     }
 
-    record_provider_playback(history_scope, "TorBox", &hash, false);
+    record_provider_outcome(history_scope, "TorBox", &hash, ResolveOutcome::Failed);
     crate::engines::telemetry::log_event(
         "playback_started",
         serde_json::json!({
@@ -543,12 +543,42 @@ fn fallback_redirect_for_hash(
     (StatusCode::FOUND, [("Location", provider_home)]).into_response()
 }
 
-fn record_provider_playback(
+/// What a resolve attempt produced, for playback-history purposes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResolveOutcome {
+    /// A playable link was handed to the client.
+    Played,
+    /// The torrent was queued on TorBox for caching. Nothing played.
+    Queued,
+    /// No playable link could be produced.
+    Failed,
+}
+
+impl ResolveOutcome {
+    /// Playback history only tracks whether a source actually played, because
+    /// ranking scores sources by their success and failure counts. Queuing is
+    /// neither: counting it a success would boost sources that merely made the
+    /// user wait, and counting it a failure would bury sources that are fine
+    /// once cached.
+    fn history_record(self) -> Option<bool> {
+        match self {
+            ResolveOutcome::Played => Some(true),
+            ResolveOutcome::Failed => Some(false),
+            ResolveOutcome::Queued => None,
+        }
+    }
+}
+
+fn record_provider_outcome(
     history_scope: Option<&str>,
     provider: &str,
     hash: &str,
-    success: bool,
+    outcome: ResolveOutcome,
 ) {
+    let Some(success) = outcome.history_record() else {
+        return;
+    };
+
     match history_scope {
         Some(scope) => record_playback_scope(scope, provider, hash, success),
         None => record_playback(provider, hash, success),
@@ -559,9 +589,40 @@ fn record_provider_playback(
 mod tests {
     use super::{
         cached_playback_url, cached_torrent_handle, extract_torbox_download_url, playback_cache_id,
-        store_playback_url, store_torrent_handle,
+        record_provider_outcome, store_playback_url, store_torrent_handle, ResolveOutcome,
     };
+    use crate::engines::history::stats_for_scope;
     use serde_json::json;
+
+    #[test]
+    fn only_real_playbacks_reach_history() {
+        assert_eq!(ResolveOutcome::Played.history_record(), Some(true));
+        assert_eq!(ResolveOutcome::Failed.history_record(), Some(false));
+        assert_eq!(ResolveOutcome::Queued.history_record(), None);
+    }
+
+    #[test]
+    fn queuing_a_source_does_not_count_as_a_playback() {
+        // Ranking adds playback_successes * 180 to a source's score, so a
+        // queued-but-never-played source must not gain a success.
+        let scope = "test-queue-outcome";
+        let hash = "b1946ac92492d2347c6235b4d2611184";
+        let before = stats_for_scope(scope, "TorBox", Some(hash));
+
+        record_provider_outcome(Some(scope), "TorBox", hash, ResolveOutcome::Queued);
+        let after_queue = stats_for_scope(scope, "TorBox", Some(hash));
+
+        assert_eq!(after_queue.successes, before.successes);
+        assert_eq!(after_queue.failures, before.failures);
+
+        // A real playback on the same source still counts, so the queue path
+        // is skipping the record rather than history being broken.
+        record_provider_outcome(Some(scope), "TorBox", hash, ResolveOutcome::Played);
+        let after_play = stats_for_scope(scope, "TorBox", Some(hash));
+
+        assert_eq!(after_play.successes, before.successes + 1);
+        assert_eq!(after_play.failures, before.failures);
+    }
 
     #[test]
     fn extracts_cdn_url_from_requestdl_string_payload() {
