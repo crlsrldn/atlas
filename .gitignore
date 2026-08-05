@@ -4,8 +4,6 @@ build/
 .env
 .env.local
 preferences.json
-backend/preferences.json
-backend/playback_history.json
 .svelte-kit/
 target/
 .DS_Store
@@ -18,7 +16,14 @@ IMPLEMENTATION_PLAN.md
 
 core/playback_history.json
 core/preferences.json
+
+# Gateway build output — CI builds Linux binaries in Docker, so local ones
+# (and stray pid files) must never be committed.
 gateway/atlas-gateway
+gateway/gateway-bin
+gateway/gateway_bin
+gateway/gateway_test
+gateway/*.pid
 
 # macOS AppleDouble metadata (created on exFAT/network volumes)
 ._*
