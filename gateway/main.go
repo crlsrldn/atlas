@@ -241,6 +241,54 @@ func handleManifest(w http.ResponseWriter, r *http.Request, token string) {
 	json.NewEncoder(w).Encode(manifest)
 }
 
+// defaultPreferences is what Atlas acts on when a token's preferences cannot be
+// loaded. Everything is inert so the Rust core has well-formed input, and the
+// tier is free so a Supabase outage can never hand out premium.
+func defaultPreferences() map[string]interface{} {
+	return map[string]interface{}{
+		"torbox_api_key":  "",
+		"trakt_client_id": "",
+		"trakt_username":  "",
+		"max_resolution":  "4K",
+		"exclude_av1":     false,
+		"sort_preference": "balanced",
+		"stream_limit":    5,
+		"is_premium":      false,
+	}
+}
+
+// loadPreferences resolves the preferences Atlas will act on for an install
+// token, with entitlement decided server-side.
+//
+// prefs_json is user-writable — Supabase RLS lets a user update their own
+// preferences row, and nothing validates the blob's contents — so an
+// is_premium found in there is untrusted input and is always overwritten with
+// the tier from app_users, which users can read but not write.
+//
+// Both the stream and resolve paths go through here so neither can forget the
+// override. The result is cached per token, entitlement included.
+func loadPreferences(token string) map[string]interface{} {
+	if cachedPrefs, ok := prefsCache.Get(token); ok {
+		return cachedPrefs
+	}
+
+	supabase := NewSupabaseClient()
+	doc, err := supabase.GetUserPreferences(token)
+	if err != nil {
+		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
+		return defaultPreferences()
+	}
+
+	prefs := doc.PrefsJson
+	if prefs == nil {
+		prefs = map[string]interface{}{}
+	}
+	prefs["is_premium"] = supabase.IsPremium(doc.UserId)
+
+	prefsCache.Add(token, prefs)
+	return prefs
+}
+
 func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 	parts := strings.Split(rest, "/")
 	if len(parts) != 3 {
@@ -255,32 +303,7 @@ func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
 	}
 	id := strings.TrimSuffix(idParam, ".json")
 
-	supabase := NewSupabaseClient()
-	var prefs map[string]interface{}
-
-	if cachedPrefs, ok := prefsCache.Get(token); ok {
-		prefs = cachedPrefs
-	} else {
-		doc, err := supabase.GetUserPreferences(token)
-		if err != nil {
-			log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
-			// Fallback to empty prefs or handle error appropriately.
-			// For MVP, we will send empty strings if fetch fails so the Rust core won't crash
-			prefs = map[string]interface{}{
-				"torbox_api_key":  "",
-				"trakt_client_id": "",
-				"trakt_username":  "",
-				"max_resolution":  "4K",
-				"exclude_av1":     false,
-				"sort_preference": "balanced",
-				"stream_limit":    5,
-				"is_premium":      false,
-			}
-		} else {
-			prefs = doc.PrefsJson
-			prefsCache.Add(token, prefs)
-		}
-	}
+	prefs := loadPreferences(token)
 
 	userAgent := r.Header.Get("User-Agent")
 
@@ -316,27 +339,7 @@ func handleResolve(w http.ResponseWriter, r *http.Request, token, rest string) {
 
 	url := fmt.Sprintf("%s/internal/resolve_hash/%s/%s", coreUrl, provider, hash)
 
-	var prefs map[string]interface{}
-	if cachedPrefs, ok := prefsCache.Get(token); ok {
-		prefs = cachedPrefs
-	} else {
-		supabase := NewSupabaseClient()
-		doc, err := supabase.GetUserPreferences(token)
-		if err != nil {
-			log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
-			// Fallback to empty prefs or handle error appropriately.
-			prefs = map[string]interface{}{
-				"torbox_api_key":  "",
-				"trakt_client_id": "",
-				"trakt_username":  "",
-				"max_resolution":  "4K",
-				"exclude_av1":     false,
-			}
-		} else {
-			prefs = doc.PrefsJson
-			prefsCache.Add(token, prefs)
-		}
-	}
+	prefs := loadPreferences(token)
 
 	userAgent := r.Header.Get("User-Agent")
 

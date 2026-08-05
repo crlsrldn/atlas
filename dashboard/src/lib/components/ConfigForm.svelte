@@ -38,7 +38,6 @@
   let excludeAv1 = $state(false);
   let streamLimit = $state(5);
   let maxSizeGb = $state(0);
-  let isPremium = $state(false);
   let monetizationEnabled = $state(false);
   let showTorboxKey = $state(false);
   let copiedLink = $state(false);
@@ -50,6 +49,9 @@
   } | null>(null);
 
   let userTier = $state('free');
+  // Entitlement comes from app_users.tier, which RLS makes read-only for users.
+  // It is never read from prefs_json, which users can write to freely.
+  let isPremium = $derived(userTier !== 'free');
 
   onMount(async () => {
     try {
@@ -118,7 +120,6 @@
       excludeAv1 = prefs.exclude_av1 || false;
       streamLimit = prefs.stream_limit !== undefined ? prefs.stream_limit : 5;
       maxSizeGb = prefs.max_size_gb || 0;
-      isPremium = prefs.is_premium || false;
     }
   }
 
@@ -205,6 +206,9 @@
       const currentProf = profiles.find(p => p.id === currentProfileId);
       const existingJson = currentProf?.prefs_json || {};
       const newJson = { ...existingJson, ...prefs_json };
+      // Entitlement lives in app_users.tier. Never persist it here, where a
+      // user could set it themselves.
+      delete newJson.is_premium;
 
       const { error } = await supabase
         .from('preferences')

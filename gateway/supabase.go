@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -43,6 +44,7 @@ func NewSupabaseClient() *SupabaseClient {
 type SupabasePreferenceDoc struct {
 	PrefsJson   map[string]interface{} `json:"prefs_json"`
 	ProfileName string                 `json:"profile_name"`
+	UserId      string                 `json:"user_id"`
 }
 
 func (s *SupabaseClient) GetUserPreferences(token string) (*SupabasePreferenceDoc, error) {
@@ -78,4 +80,54 @@ func (s *SupabaseClient) GetUserPreferences(token string) (*SupabasePreferenceDo
 	}
 
 	return &doc, nil
+}
+
+type supabaseUserTierDoc struct {
+	Tier string `json:"tier"`
+}
+
+// IsPremium reports whether a user is entitled to premium streams.
+//
+// The tier lives in app_users, which RLS lets a user read but not write. It is
+// deliberately NOT read from preferences.prefs_json: users can update their own
+// preferences row, so anything in that blob is user-controlled input.
+//
+// Fails closed — any lookup error yields free tier.
+func (s *SupabaseClient) IsPremium(userId string) bool {
+	if userId == "" || s.Endpoint == "" || s.ServiceRoleKey == "" {
+		return false
+	}
+
+	url := fmt.Sprintf("%s/rest/v1/app_users?id=eq.%s&select=tier", s.Endpoint, userId)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false
+	}
+
+	req.Header.Set("apikey", s.ServiceRoleKey)
+	req.Header.Set("Authorization", "Bearer "+s.ServiceRoleKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/vnd.pgrst.object+json")
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		log.Printf("Failed to fetch tier for user %s: %v", userId, err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// No app_users row yet is normal for a new signup, and means free.
+		if resp.StatusCode != http.StatusNotAcceptable && resp.StatusCode != http.StatusNotFound {
+			log.Printf("Unexpected status fetching tier for user %s: %d", userId, resp.StatusCode)
+		}
+		return false
+	}
+
+	var doc supabaseUserTierDoc
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		return false
+	}
+
+	return doc.Tier != "" && doc.Tier != "free"
 }
