@@ -236,6 +236,30 @@ func TestJellyfinTokenFromApiKeyQuery(t *testing.T) {
 	}
 }
 
+func TestAnonymizePathDropsQueryStrings(t *testing.T) {
+	// Jellyfin clients append api_key to image and stream URLs. Only a path
+	// reaches telemetry today, but a full request URI must not leak one.
+	got := anonymizePath("/jellyfin/Items/abc/Images/Primary?api_key=secret")
+
+	if strings.Contains(got, "secret") {
+		t.Fatalf("credential leaked into telemetry path: %s", got)
+	}
+	if got != "/jellyfin/Items/abc/Images/Primary" {
+		t.Fatalf("unexpected path: %s", got)
+	}
+}
+
+func TestAnonymizePathStillRedactsStremioTokensWithAQuery(t *testing.T) {
+	got := anonymizePath("/stremio/atl_secret/resolve/torbox/abc/play.mp4?cached=true")
+
+	if strings.Contains(got, "atl_secret") {
+		t.Fatalf("install token leaked: %s", got)
+	}
+	if strings.Contains(got, "cached=true") {
+		t.Fatalf("query survived: %s", got)
+	}
+}
+
 func TestJellyfinRouteStripsBothPrefixes(t *testing.T) {
 	for _, path := range []string{"/jellyfin/System/Info/Public", "/emby/System/Info/Public"} {
 		if got := jellyfinRoute(path); got != "/System/Info/Public" {

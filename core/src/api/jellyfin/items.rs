@@ -61,6 +61,29 @@ fn page(
     QueryResult::new(items, total, start as i32)
 }
 
+/// A row that explains why a Library Mode sync sees so little.
+///
+/// Atlas has no library to enumerate — the catalogue is fetched on demand — so
+/// a full sync walks a list with no natural end. Direct Mode is the mode this
+/// server is built for, and saying so where the viewer is looking beats a
+/// library that is quietly a hundred items long.
+fn library_mode_notice(server: &str) -> BaseItemDto {
+    let mut item = BaseItemDto::folder(
+        ItemId::root().to_hex(),
+        "Switch Infuse to Direct Mode".to_string(),
+        server.to_string(),
+    );
+    item.item_type = "Folder".to_string();
+    item.overview = Some(
+        "Atlas fetches titles on demand and has no fixed library to sync, so \
+         Library Mode only ever sees a small sample. Edit this server in \
+         Infuse, open the Advanced tab, and turn Library Mode off to browse \
+         everything."
+            .to_string(),
+    );
+    item
+}
+
 /// Turns stored item ids back into full items, dropping any that no longer
 /// resolve — a title can disappear from upstream between sessions.
 async fn hydrate(auth: &AuthContext, ids: &[String], server: &str) -> Vec<BaseItemDto> {
@@ -107,6 +130,15 @@ async fn items(
             LIBRARY_MODE_CAP as i32,
             start as i32,
         ));
+    }
+
+    // Library Mode is bounded rather than refused — mode is partly a user
+    // setting and a hard failure reads as a broken server — but a truncated
+    // library with no explanation reads as one too. Leading the first page with
+    // a note makes the cause visible where the viewer is already looking.
+    let mut notice = Vec::new();
+    if library_mode && start == 0 {
+        notice.push(library_mode_notice(&server));
     }
 
     // Asked only for things Atlas does not carry — music, photos, live TV.
@@ -192,11 +224,11 @@ async fn items(
     };
 
     // Attached last so every path gets it, in one snapshot for the page.
-    Json(QueryResult::new(
-        with_user_data(result.items, &auth.token).await,
-        result.total_record_count,
-        result.start_index,
-    ))
+    let mut items = with_user_data(result.items, &auth.token).await;
+    let total = result.total_record_count + notice.len() as i32;
+    notice.append(&mut items);
+
+    Json(QueryResult::new(notice, total, result.start_index))
 }
 
 async fn shelf(

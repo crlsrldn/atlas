@@ -109,6 +109,13 @@ func (rw *customResponseWriter) WriteHeader(code int) {
 }
 
 func anonymizePath(p string) string {
+	// Only a path is passed today, but Jellyfin clients put credentials in
+	// api_key query parameters, so a caller that ever hands over a full request
+	// URI must not leak one into telemetry.
+	if cut := strings.IndexByte(p, '?'); cut >= 0 {
+		p = p[:cut]
+	}
+
 	if strings.HasPrefix(p, "/stremio/") {
 		parts := strings.Split(p, "/")
 		if len(parts) >= 4 {

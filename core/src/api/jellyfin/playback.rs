@@ -213,6 +213,7 @@ async fn playback_info(
     Path(item_id): Path<String>,
     body: Option<Json<PlaybackInfoRequest>>,
 ) -> Json<PlaybackInfoResponse> {
+    let started = Instant::now();
     let session = auth.session_id();
 
     let parsed = ItemId::parse(&item_id);
@@ -245,12 +246,29 @@ async fn playback_info(
         .map(|stream| media_source(stream, &item_id, run_time_ticks, &base_url))
         .collect();
 
+    let cached = streams.iter().filter(|stream| stream.is_cached).count();
+
     tracing::info!(
         item = %item_id,
         sources = media_sources.len(),
-        cached = streams.iter().filter(|stream| stream.is_cached).count(),
+        cached,
         client = %auth.mode().label(),
         "Jellyfin playback info"
+    );
+
+    // Deliberately shaped like the Stremio surface's `streams_requested`, so
+    // the two can be compared directly — that comparison is how a Stremio
+    // regression becomes visible rather than inferred.
+    crate::engines::telemetry::log_event(
+        "jellyfin_playback_info",
+        serde_json::json!({
+            "surface": "jellyfin",
+            "client": auth.mode().label(),
+            "streams_count": media_sources.len(),
+            "cached_count": cached,
+            "latency_ms": started.elapsed().as_millis() as u64,
+            "install_token": auth.token,
+        }),
     );
 
     Json(PlaybackInfoResponse {

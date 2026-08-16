@@ -41,6 +41,13 @@
   let monetizationEnabled = $state(false);
   let showTorboxKey = $state(false);
   let copiedLink = $state(false);
+  let copiedJellyfinField = $state('');
+
+  function copyJellyfinField(field: string, value: string) {
+    navigator.clipboard.writeText(value);
+    copiedJellyfinField = field;
+    setTimeout(() => (copiedJellyfinField = ''), 2000);
+  }
   
   let testingKeys = $state(false);
   let testResults = $state<{
@@ -246,6 +253,10 @@
 
   let baseDomain = $derived(gatewayUrl.replace('https://', '').replace('http://', ''));
   let installLink = $derived(currentProfileId ? `stremio://${baseDomain}/stremio/${currentProfileId}/manifest.json` : '#');
+
+  // Infuse is pointed at the prefix as its server URL; the install token is the
+  // password, so it never appears in a path.
+  let jellyfinUrl = $derived(`${gatewayUrl}/jellyfin`);
 </script>
 
 {#if showNewProfileModal}
@@ -679,5 +690,60 @@
         </div>
       </div>
     </div>
+
+    <!-- Infuse (Jellyfin) Section -->
+    {#if userId && currentProfileId}
+      <div class="relative overflow-hidden rounded-2xl mt-6">
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-600/15 via-teal-600/10 to-transparent"></div>
+        <div class="absolute inset-0 border border-emerald-500/20 rounded-2xl"></div>
+
+        <div class="relative p-6 sm:p-8">
+          <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Use with Infuse</h3>
+          <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            In Infuse, add a source, choose <span class="font-medium">Jellyfin</span>, and enter the
+            details below. Leave <span class="font-medium">Library Mode</span> off in the Advanced
+            tab — Atlas fetches titles on demand and has no fixed library to sync.
+          </p>
+
+          <dl class="mt-6 space-y-3">
+            {#each [
+              { label: 'Server URL', value: jellyfinUrl, secret: false },
+              { label: 'Username', value: 'atlas', secret: false, hint: 'Anything works; Infuse just requires the field.' },
+              { label: 'Password', value: currentProfileId, secret: true, hint: 'Your profile’s install token.' }
+            ] as field (field.label)}
+              <div class="flex flex-col gap-1.5">
+                <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500">{field.label}</dt>
+                <dd class="flex items-center gap-2">
+                  <code
+                    class="flex-1 min-w-0 truncate rounded-lg bg-black/5 dark:bg-white/5 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-200"
+                  >{field.secret ? '•'.repeat(24) : field.value}</code>
+                  <button
+                    type="button"
+                    onclick={() => copyJellyfinField(field.label, field.value)}
+                    class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+                  >
+                    {#if copiedJellyfinField === field.label}
+                      <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied
+                    {:else}
+                      Copy
+                    {/if}
+                  </button>
+                </dd>
+                {#if field.hint}
+                  <p class="text-xs text-zinc-500">{field.hint}</p>
+                {/if}
+              </div>
+            {/each}
+          </dl>
+
+          <p class="mt-5 text-xs text-zinc-500">
+            Anyone with this password can stream using your profile. Treat it like a key.
+          </p>
+        </div>
+      </div>
+    {/if}
   </div>
 {/if}
