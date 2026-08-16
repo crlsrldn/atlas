@@ -1,0 +1,458 @@
+//! Jellyfin wire types.
+//!
+//! Field names are Jellyfin's, so everything is `PascalCase`. Note the absence
+//! of `skip_serializing_if`: real Jellyfin emits explicit nulls, and several
+//! clients decode into types that require the key to be present, so an omitted
+//! field is not the same as a null one here.
+
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+/// Advertised to clients. Atlas is not Jellyfin, but a client that does not
+/// recognise the version may refuse to talk to it at all.
+pub const JELLYFIN_VERSION: &str = "10.10.3";
+pub const PRODUCT_NAME: &str = "Atlas";
+
+pub fn now_iso8601() -> String {
+    chrono::Utc::now().to_rfc3339()
+}
+
+/// The unauthenticated probe a client uses to decide whether a URL is a
+/// Jellyfin server at all.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PublicSystemInfo {
+    pub local_address: String,
+    pub server_name: String,
+    pub version: String,
+    pub product_name: String,
+    pub operating_system: String,
+    pub id: String,
+    pub startup_wizard_completed: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SystemInfo {
+    pub local_address: String,
+    pub server_name: String,
+    pub version: String,
+    pub product_name: String,
+    pub operating_system: String,
+    pub id: String,
+    pub startup_wizard_completed: bool,
+    pub has_pending_restart: bool,
+    pub is_shutting_down: bool,
+    pub supports_library_monitor: bool,
+    pub has_update_available: bool,
+    pub can_launch_web_browser: bool,
+    pub transcoding_temp_path: Option<String>,
+    pub cache_path: Option<String>,
+    pub package_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EndpointInfo {
+    pub is_local: bool,
+    pub is_in_network: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BrandingOptions {
+    pub login_disclaimer: Option<String>,
+    pub custom_css: Option<String>,
+    pub splashscreen_enabled: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserPolicy {
+    pub is_administrator: bool,
+    pub is_hidden: bool,
+    pub is_disabled: bool,
+    pub enable_media_playback: bool,
+    pub enable_audio_playback_transcoding: bool,
+    pub enable_video_playback_transcoding: bool,
+    pub enable_playback_remuxing: bool,
+    pub enable_content_downloading: bool,
+    pub enable_sync_transcoding: bool,
+    pub enable_all_devices: bool,
+    pub enable_all_folders: bool,
+    pub enable_all_channels: bool,
+    pub enable_remote_access: bool,
+    pub enabled_folders: Vec<String>,
+    pub blocked_tags: Vec<String>,
+    pub access_schedules: Vec<serde_json::Value>,
+    pub remote_client_bitrate_limit: i64,
+}
+
+impl Default for UserPolicy {
+    fn default() -> Self {
+        UserPolicy {
+            is_administrator: false,
+            is_hidden: false,
+            is_disabled: false,
+            enable_media_playback: true,
+            // Atlas never transcodes: it hands back a redirect to a CDN. Saying
+            // otherwise invites a client to ask for a transcode that cannot be
+            // produced.
+            enable_audio_playback_transcoding: false,
+            enable_video_playback_transcoding: false,
+            enable_playback_remuxing: false,
+            enable_content_downloading: true,
+            enable_sync_transcoding: false,
+            enable_all_devices: true,
+            enable_all_folders: true,
+            enable_all_channels: false,
+            enable_remote_access: true,
+            enabled_folders: Vec::new(),
+            blocked_tags: Vec::new(),
+            access_schedules: Vec::new(),
+            remote_client_bitrate_limit: 0,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserConfiguration {
+    pub play_default_audio_track: bool,
+    pub subtitle_language_preference: String,
+    pub display_missing_episodes: bool,
+    pub grouped_folders: Vec<String>,
+    pub subtitle_mode: String,
+    pub display_collections_view: bool,
+    pub enable_local_password: bool,
+    pub ordered_views: Vec<String>,
+    pub latest_items_excludes: Vec<String>,
+    pub my_media_excludes: Vec<String>,
+    pub hide_played_in_latest: bool,
+    pub remember_audio_selections: bool,
+    pub remember_subtitle_selections: bool,
+    pub enable_next_episode_auto_play: bool,
+}
+
+impl Default for UserConfiguration {
+    fn default() -> Self {
+        UserConfiguration {
+            play_default_audio_track: true,
+            subtitle_language_preference: String::new(),
+            display_missing_episodes: false,
+            grouped_folders: Vec::new(),
+            subtitle_mode: "Default".to_string(),
+            display_collections_view: false,
+            enable_local_password: false,
+            ordered_views: Vec::new(),
+            latest_items_excludes: Vec::new(),
+            my_media_excludes: Vec::new(),
+            hide_played_in_latest: true,
+            remember_audio_selections: true,
+            remember_subtitle_selections: true,
+            enable_next_episode_auto_play: true,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserDto {
+    pub name: String,
+    pub server_id: String,
+    pub id: String,
+    pub has_password: bool,
+    pub has_configured_password: bool,
+    pub has_configured_easy_password: bool,
+    pub enable_auto_login: bool,
+    pub last_login_date: Option<String>,
+    pub last_activity_date: Option<String>,
+    pub configuration: UserConfiguration,
+    pub policy: UserPolicy,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SessionInfoDto {
+    pub id: String,
+    pub user_id: String,
+    pub user_name: String,
+    pub client: String,
+    pub device_name: String,
+    pub device_id: String,
+    pub application_version: String,
+    pub server_id: String,
+    pub supports_remote_control: bool,
+    pub is_active: bool,
+    pub has_custom_device_name: bool,
+    pub now_playing_queue: Vec<serde_json::Value>,
+    pub playable_media_types: Vec<String>,
+    pub supported_commands: Vec<String>,
+    pub last_activity_date: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AuthenticationResult {
+    pub user: UserDto,
+    pub session_info: SessionInfoDto,
+    pub access_token: String,
+    pub server_id: String,
+}
+
+/// Infuse requires a username field when adding a server even though Atlas
+/// authenticates on the install token alone, so `username` is accepted and
+/// ignored.
+#[derive(Debug, Deserialize)]
+pub struct AuthenticateByNameRequest {
+    #[serde(alias = "Username", alias = "username")]
+    pub username: Option<String>,
+    #[serde(alias = "Pw", alias = "pw", alias = "Password", alias = "password")]
+    pub pw: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserItemDataDto {
+    pub playback_position_ticks: i64,
+    pub play_count: i32,
+    pub is_favorite: bool,
+    pub played: bool,
+    pub played_percentage: Option<f64>,
+    pub key: String,
+}
+
+/// The subset of Jellyfin's `BaseItemDto` Atlas can populate honestly. Grows as
+/// later phases add real catalogue data.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BaseItemDto {
+    pub name: String,
+    pub server_id: String,
+    pub id: String,
+    pub etag: Option<String>,
+    pub date_created: Option<String>,
+    pub can_delete: bool,
+    pub can_download: bool,
+    pub sort_name: Option<String>,
+    pub premiere_date: Option<String>,
+    pub external_urls: Vec<serde_json::Value>,
+    pub path: Option<String>,
+    pub overview: Option<String>,
+    pub taglines: Vec<String>,
+    pub genres: Vec<String>,
+    pub community_rating: Option<f32>,
+    pub run_time_ticks: Option<i64>,
+    pub production_year: Option<i32>,
+    pub index_number: Option<i32>,
+    pub parent_index_number: Option<i32>,
+    pub is_folder: bool,
+    pub parent_id: Option<String>,
+    #[serde(rename = "Type")]
+    pub item_type: String,
+    pub studios: Vec<serde_json::Value>,
+    pub genre_items: Vec<serde_json::Value>,
+    pub series_name: Option<String>,
+    pub series_id: Option<String>,
+    pub season_id: Option<String>,
+    pub season_name: Option<String>,
+    pub user_data: Option<UserItemDataDto>,
+    pub child_count: Option<i32>,
+    pub display_preferences_id: Option<String>,
+    pub tags: Vec<String>,
+    pub primary_image_aspect_ratio: Option<f64>,
+    pub collection_type: Option<String>,
+    pub image_tags: HashMap<String, String>,
+    pub backdrop_image_tags: Vec<String>,
+    pub location_type: String,
+    pub media_type: String,
+    pub provider_ids: HashMap<String, String>,
+    /// Always empty while browsing. Sources are resolved only by
+    /// `PlaybackInfo`; filling this during enumeration would fire a provider
+    /// search for every tile on screen.
+    pub media_sources: Vec<serde_json::Value>,
+    pub media_streams: Vec<serde_json::Value>,
+}
+
+impl BaseItemDto {
+    /// A folder-shaped item with every collection field empty rather than
+    /// absent, ready for a caller to fill in the parts it knows.
+    pub fn folder(id: String, name: String, server_id: String) -> Self {
+        BaseItemDto {
+            sort_name: Some(name.to_lowercase()),
+            name,
+            server_id,
+            id,
+            etag: None,
+            date_created: None,
+            can_delete: false,
+            can_download: false,
+            premiere_date: None,
+            external_urls: Vec::new(),
+            path: None,
+            overview: None,
+            taglines: Vec::new(),
+            genres: Vec::new(),
+            community_rating: None,
+            run_time_ticks: None,
+            production_year: None,
+            index_number: None,
+            parent_index_number: None,
+            is_folder: true,
+            parent_id: None,
+            item_type: "Folder".to_string(),
+            studios: Vec::new(),
+            genre_items: Vec::new(),
+            series_name: None,
+            series_id: None,
+            season_id: None,
+            season_name: None,
+            user_data: Some(UserItemDataDto::default()),
+            child_count: None,
+            display_preferences_id: None,
+            tags: Vec::new(),
+            primary_image_aspect_ratio: None,
+            collection_type: None,
+            image_tags: HashMap::new(),
+            backdrop_image_tags: Vec::new(),
+            location_type: "Virtual".to_string(),
+            media_type: "Unknown".to_string(),
+            provider_ids: HashMap::new(),
+            media_sources: Vec::new(),
+            media_streams: Vec::new(),
+        }
+    }
+}
+
+/// Jellyfin's paged envelope. `TotalRecordCount` drives client scrollbars and,
+/// crucially, tells a client when to stop paging.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct QueryResult<T> {
+    pub items: Vec<T>,
+    pub total_record_count: i32,
+    pub start_index: i32,
+}
+
+impl<T> QueryResult<T> {
+    pub fn new(items: Vec<T>, total: i32, start_index: i32) -> Self {
+        QueryResult {
+            items,
+            total_record_count: total,
+            start_index,
+        }
+    }
+
+    /// A whole, unpaged result. Also the shape every handler returns instead of
+    /// an error: clients degrade gracefully on an empty list and badly on a 500.
+    pub fn complete(items: Vec<T>) -> Self {
+        let total = items.len() as i32;
+        QueryResult::new(items, total, 0)
+    }
+
+    pub fn empty() -> Self {
+        QueryResult::new(Vec::new(), 0, 0)
+    }
+}
+
+/// Must be well-formed rather than `{}` — a malformed or missing response here
+/// is a long-standing cause of client crashes at startup.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DisplayPreferencesDto {
+    pub id: String,
+    pub view_type: Option<String>,
+    pub sort_by: String,
+    pub index_by: Option<String>,
+    pub remember_indexing: bool,
+    pub primary_image_height: i32,
+    pub primary_image_width: i32,
+    pub custom_prefs: HashMap<String, String>,
+    pub scroll_direction: String,
+    pub show_backdrop: bool,
+    pub remember_sorting: bool,
+    pub sort_order: String,
+    pub show_sidebar: bool,
+    pub client: String,
+}
+
+impl DisplayPreferencesDto {
+    pub fn defaults(id: String, client: String) -> Self {
+        DisplayPreferencesDto {
+            id,
+            view_type: None,
+            sort_by: "SortName".to_string(),
+            index_by: None,
+            remember_indexing: false,
+            primary_image_height: 250,
+            primary_image_width: 250,
+            custom_prefs: HashMap::new(),
+            scroll_direction: "Horizontal".to_string(),
+            show_backdrop: true,
+            remember_sorting: false,
+            sort_order: "Ascending".to_string(),
+            show_sidebar: false,
+            client,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BaseItemDto, QueryResult, UserItemDataDto};
+
+    #[test]
+    fn items_serialize_with_jellyfin_field_names() {
+        let item = BaseItemDto::folder(
+            "abc".to_string(),
+            "Movies".to_string(),
+            "server".to_string(),
+        );
+        let json = serde_json::to_value(&item).expect("item must serialize");
+
+        assert_eq!(json["Name"], "Movies");
+        assert_eq!(json["Id"], "abc");
+        assert_eq!(json["IsFolder"], true);
+        assert_eq!(json["Type"], "Folder");
+    }
+
+    #[test]
+    fn absent_values_serialize_as_explicit_nulls() {
+        // Clients decode into types that require the key to exist, so a missing
+        // key is not interchangeable with a null one.
+        let item = BaseItemDto::folder("abc".to_string(), "M".to_string(), "s".to_string());
+        let json = serde_json::to_value(&item).expect("item must serialize");
+
+        assert!(json.get("Overview").is_some());
+        assert!(json["Overview"].is_null());
+        assert!(json.get("RunTimeTicks").is_some());
+        assert!(json["RunTimeTicks"].is_null());
+    }
+
+    #[test]
+    fn browsing_never_advertises_media_sources() {
+        let item = BaseItemDto::folder("abc".to_string(), "M".to_string(), "s".to_string());
+        let json = serde_json::to_value(&item).expect("item must serialize");
+
+        assert_eq!(json["MediaSources"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn query_results_report_their_own_length() {
+        let result = QueryResult::complete(vec![UserItemDataDto::default(); 3]);
+        let json = serde_json::to_value(&result).expect("result must serialize");
+
+        assert_eq!(json["TotalRecordCount"], 3);
+        assert_eq!(json["StartIndex"], 0);
+        assert_eq!(json["Items"].as_array().map(Vec::len), Some(3));
+    }
+
+    #[test]
+    fn empty_results_are_well_formed() {
+        let result: QueryResult<UserItemDataDto> = QueryResult::empty();
+        let json = serde_json::to_value(&result).expect("result must serialize");
+
+        assert_eq!(json["Items"], serde_json::json!([]));
+        assert_eq!(json["TotalRecordCount"], 0);
+    }
+}

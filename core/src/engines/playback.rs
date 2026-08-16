@@ -24,6 +24,13 @@ pub struct StremioStream {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DetailedStream {
     pub title: String,
+    /// The provider's release name. Kept because it is the only place a
+    /// container or a precise release string survives; `title` is synthesized.
+    #[serde(default)]
+    pub raw_title: String,
+    /// Container extension ("mkv", "mp4"), when known.
+    #[serde(default)]
+    pub container: Option<String>,
     pub provider_name: String,
     pub url: String,
     pub hash: Option<String>,
@@ -319,6 +326,8 @@ pub async fn resolve_detailed_streams_with_preferences(
             let url = hosted_or_local_url(&atlas_id, &entry.source, install_token)?;
             Some(DetailedStream {
                 title: entry.source.title.clone(),
+                raw_title: entry.source.raw_title.clone(),
+                container: entry.source.container.clone(),
                 provider_name: entry.source.provider_name.clone(),
                 url,
                 hash: entry.source.hash.clone(),

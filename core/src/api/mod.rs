@@ -3,6 +3,7 @@ pub mod config;
 pub mod health;
 pub mod inspect;
 pub mod internal;
+pub mod jellyfin;
 pub mod providers;
 pub mod resolve;
 pub mod secret_store;

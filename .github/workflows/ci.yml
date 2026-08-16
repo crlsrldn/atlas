@@ -113,9 +113,10 @@ jobs:
           # Build Gateway
           cd ../gateway && go build -o atlas-gateway .
           
-          # Start Core
+          # Start Core. The Jellyfin surface is opt-in and off in every
+          # deployment; CI turns it on so the handshake is covered regardless.
           cd ../core
-          ATLAS_BIND_ADDR=127.0.0.1:3000 ./target/debug/backend > /tmp/atlas-core.log 2>&1 &
+          ATLAS_BIND_ADDR=127.0.0.1:3000 ATLAS_JELLYFIN_ENABLED=1 ./target/debug/backend > /tmp/atlas-core.log 2>&1 &
           echo $! > /tmp/atlas-core.pid
           
           # Wait for Core
@@ -136,6 +137,19 @@ jobs:
           done
       - name: Check manifest
         run: curl -fsS http://127.0.0.1:8080/stremio/demo-install-token/manifest.json
+      - name: Check Jellyfin handshake
+        run: |
+          # The unauthenticated probe a client uses to decide this URL is a
+          # media server at all. If it stops answering, nobody can even log in.
+          curl -fsS http://127.0.0.1:8080/jellyfin/System/Info/Public | tee /tmp/jellyfin-info.json
+          for field in Id ServerName Version; do
+            grep -q "\"$field\"" /tmp/jellyfin-info.json \
+              || { echo "System/Info/Public is missing $field"; exit 1; }
+          done
+          # An empty user list is what makes clients ask for a password.
+          test "$(curl -fsS http://127.0.0.1:8080/jellyfin/Users/Public)" = "[]"
+          # Browsing without a credential must be refused, not served.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/jellyfin/Users/x/Views)" = "401"
       - name: Stop services
         if: always()
         run: |

@@ -33,6 +33,9 @@ pub struct YTSTorrent {
     pub has_subtitles: bool,
     pub raw_title: String,
     pub release_group: Option<String>,
+    /// Defaulted so metadata cached before this field existed still deserializes.
+    #[serde(default)]
+    pub container: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -288,6 +291,7 @@ async fn fetch_torrentio_sources(url: &str) -> Option<Vec<YTSTorrent>> {
                 has_subtitles: has_subtitle_evidence(&title_lower),
                 raw_title: title_str.clone(),
                 release_group: infer_release_group(&title_str),
+                container: infer_container(&title_str),
             });
 
             if torrents.len() >= 100 {
@@ -330,6 +334,22 @@ fn parse_size_bytes(value: &str) -> Option<u64> {
     }
 
     None
+}
+
+/// Torrentio titles usually lead with the real filename, so its extension is the
+/// only container evidence available at search time — TorBox is asked for a file
+/// list only once a stream is actually resolved, which is far too late to
+/// describe the source to a client.
+fn infer_container(title: &str) -> Option<String> {
+    const CONTAINERS: [&str; 6] = ["mkv", "mp4", "avi", "mov", "m4v", "webm"];
+
+    title.to_lowercase().split_whitespace().find_map(|token| {
+        let candidate = token.trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
+        let (_, extension) = candidate.rsplit_once('.')?;
+        CONTAINERS
+            .contains(&extension)
+            .then(|| extension.to_string())
+    })
 }
 
 fn infer_release_group(title: &str) -> Option<String> {
@@ -387,7 +407,8 @@ fn estimate_bitrate_mbps(size_bytes: u64, runtime_minutes: Option<u32>) -> Optio
 #[cfg(test)]
 mod tests {
     use super::{
-        infer_audio_codec, metadata_cache_key, parse_runtime_minutes, parse_size_bytes, parse_year,
+        infer_audio_codec, infer_container, metadata_cache_key, parse_runtime_minutes,
+        parse_size_bytes, parse_year,
     };
     use crate::engines::identity::AtlasID;
 
@@ -434,5 +455,26 @@ mod tests {
             Some("TrueHD".to_string())
         );
         assert_eq!(infer_audio_codec("movie aac 2.0"), Some("AAC".to_string()));
+    }
+
+    #[test]
+    fn infers_container_from_a_torrentio_title() {
+        // Torrentio puts the filename on the first line and seeder/size junk below.
+        assert_eq!(
+            infer_container("The.Matrix.1999.2160p.UHD.BluRay.x265-TERMINAL.mkv\n👤 42 💾 24.3 GB"),
+            Some("mkv".to_string())
+        );
+        assert_eq!(
+            infer_container("Some Movie 1080p WEB-DL.mp4"),
+            Some("mp4".to_string())
+        );
+    }
+
+    #[test]
+    fn container_inference_ignores_non_extensions() {
+        // "7.1" and "5.1" must not read as containers, and a title with no
+        // filename at all yields nothing rather than a guess.
+        assert_eq!(infer_container("Movie 2160p TrueHD 7.1 Atmos"), None);
+        assert_eq!(infer_container("Movie\n👤 42 💾 24.3 GB"), None);
     }
 }

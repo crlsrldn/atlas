@@ -33,7 +33,14 @@ async fn main() {
         .nest("/", api::config::router().layer(internal_cors.clone()))
         .nest("/", api::health::router().layer(internal_cors.clone()))
         .nest("/", api::providers::router().layer(internal_cors.clone()))
-        .nest("/", api::telemetry::router().layer(internal_cors));
+        .nest("/", api::telemetry::router().layer(internal_cors.clone()));
+
+    // Opt-in, and mounted as a whole or not at all so an unconfigured deploy
+    // carries none of it.
+    let app = match api::jellyfin::router() {
+        Some(jellyfin) => app.merge(jellyfin.layer(internal_cors)),
+        None => app,
+    };
 
     // Run it
     let addr = std::env::var("ATLAS_BIND_ADDR")

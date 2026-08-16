@@ -154,6 +154,7 @@ mod tests {
             provider_latency_ms: Some(100),
             title: raw_title.to_string(),
             raw_title: raw_title.to_string(),
+            container: None,
             hash: Some("1234567890abcdef1234567890abcdef".to_string()),
             size_bytes: Some(1_000_000_000),
             bitrate_mbps: Some(12.0),

@@ -208,6 +208,7 @@ mod tests {
             provider_latency_ms: Some(250),
             title: "Test Source".to_string(),
             raw_title: "Test Source".to_string(),
+            container: None,
             hash: Some("abc".to_string()),
             size_bytes: Some(1),
             bitrate_mbps: Some(12.0),
@@ -315,6 +316,7 @@ mod tests2 {
             provider_latency_ms: Some(200),
             title: "Movie".to_string(),
             raw_title: "Movie".to_string(),
+            container: None,
             hash: Some("abc".to_string()),
             size_bytes: Some(1_000_000_000), // 1GB
             bitrate_mbps: None,

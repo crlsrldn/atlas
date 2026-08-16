@@ -100,6 +100,7 @@ impl SourceProvider for TorBoxProvider {
                 bitrate_mbps: t.bitrate_mbps,
                 resolution: t.quality.clone(),
                 codec: t.video_codec.clone(),
+                container: t.container.clone(),
                 audio_codec: t.audio_codec.clone(),
                 audio_channels: t.audio_channels.clone(),
                 has_hdr: t.has_hdr,

@@ -78,6 +78,13 @@ pub struct SourceResult {
     pub bitrate_mbps: Option<f32>,
     pub resolution: String, // e.g. "4K", "1080p"
     pub codec: String,      // e.g. "HEVC", "H264", "AV1"
+    /// Container extension ("mkv", "mp4"), when the release name reveals one.
+    ///
+    /// Defaulted because these results are cached in Redis for 20 minutes: a
+    /// deploy that added this field without a default would fail to deserialize
+    /// every warm entry and send each request back to a live provider search.
+    #[serde(default)]
+    pub container: Option<String>,
     pub audio_codec: Option<String>,
     pub audio_channels: Option<String>,
     pub has_hdr: bool,
@@ -107,4 +114,47 @@ pub trait SourceProvider: Send + Sync {
 
     /// Returns 1-100 priority score
     fn priority(&self) -> u8;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SourceResult;
+
+    /// Source results live in Redis for 20 minutes, so a deploy always reads
+    /// back entries written by the previous build. A new field that cannot
+    /// deserialize from an older entry would silently send every warm request
+    /// back to a live provider search until the cache turned over.
+    #[test]
+    fn deserializes_results_cached_before_container_existed() {
+        let cached = serde_json::json!({
+            "provider_name": "TorBox",
+            "provider_priority": 90,
+            "provider_latency_ms": 250,
+            "title": "The Matrix (4K)",
+            "raw_title": "The.Matrix.1999.2160p.mkv",
+            "hash": "abc123",
+            "size_bytes": 24_300_000_000u64,
+            "bitrate_mbps": 32.4,
+            "resolution": "4K",
+            "codec": "HEVC",
+            "audio_codec": "TrueHD",
+            "audio_channels": "7.1",
+            "has_hdr": true,
+            "has_dolby_vision": true,
+            "has_subtitles": false,
+            "is_cached": true,
+            "url": "https://example.invalid/play",
+            "release_group": "TERMINAL",
+            "verification_score": 85,
+            "verification_reasons": ["✨ Verified Hash"],
+            "playback_successes": 3,
+            "playback_failures": 0
+        });
+
+        let parsed: SourceResult =
+            serde_json::from_value(cached).expect("entry without `container` must still parse");
+
+        assert_eq!(parsed.container, None);
+        assert_eq!(parsed.resolution, "4K");
+    }
 }

@@ -25,7 +25,14 @@ var globalConfigCache struct {
 	LastFetched         time.Time
 }
 
-var prefsCache = expirable.NewLRU[string, map[string]interface{}](10000, nil, time.Minute*10)
+// resolvedProfile is everything an install token buys: the preferences Atlas
+// will act on, and the profile's display name.
+type resolvedProfile struct {
+	Prefs       map[string]interface{}
+	ProfileName string
+}
+
+var prefsCache = expirable.NewLRU[string, resolvedProfile](10000, nil, time.Minute*10)
 
 func getMonetizationEnabled() bool {
 	globalConfigCache.RLock()
@@ -80,6 +87,10 @@ func main() {
 	http.HandleFunc("/health", handleRoot)
 	http.HandleFunc("/logo.svg", handleLogo)
 	http.HandleFunc("/stremio/", handleStremio)
+	// Jellyfin clients are configured with the prefix as part of the server URL,
+	// so the token never appears in a path. Official Jellyfin answers on both.
+	http.HandleFunc("/jellyfin/", handleJellyfin)
+	http.HandleFunc("/emby/", handleJellyfin)
 
 	log.Println("Starting API gateway on :8080")
 	if err := http.ListenAndServe(":8080", telemetryMiddleware(http.DefaultServeMux)); err != nil {
@@ -123,6 +134,14 @@ func telemetryMiddleware(next http.Handler) http.Handler {
 		uaType := "unknown"
 		if strings.Contains(strings.ToLower(ua), "stremio") {
 			uaType = "stremio"
+		} else if strings.Contains(strings.ToLower(ua), "infuse") {
+			// Infuse announces its connection mode here (Infuse-Direct,
+			// Infuse-Library, Infuse-Download), so keep it whole: comparing the
+			// two surfaces is how a Stremio regression becomes visible.
+			uaType = strings.ToLower(ua)
+			if index := strings.Index(uaType, "/"); index > 0 {
+				uaType = uaType[:index]
+			}
 		} else if strings.Contains(strings.ToLower(ua), "mozilla") || strings.Contains(strings.ToLower(ua), "chrome") || strings.Contains(strings.ToLower(ua), "safari") {
 			uaType = "browser"
 		} else if ua != "" {
@@ -157,6 +176,198 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status": "ok", "service": "cindral-atlas-gateway"}`))
+}
+
+// jellyfinPublicRoutes are answered before a client holds any credential.
+// /System/Info/Public in particular is how a client decides the URL it was given
+// is a media server at all — gate it and the user never reaches a login form.
+var jellyfinPublicRoutes = map[string]bool{
+	"/system/info/public":     true,
+	"/users/public":           true,
+	"/quickconnect/enabled":   true,
+	"/system/endpoint":        true,
+	"/branding/configuration": true,
+	"/branding/css":           true,
+}
+
+// Headers the gateway alone may set. Any client-supplied copy is discarded
+// before forwarding, so a caller cannot present itself as a resolved profile.
+var atlasInjectedHeaders = []string{"X-Atlas-Token", "X-Atlas-Prefs", "X-Atlas-Profile-Name"}
+
+func jellyfinRoute(path string) string {
+	for _, prefix := range []string{"/jellyfin", "/emby"} {
+		if strings.HasPrefix(path, prefix) {
+			return strings.TrimPrefix(path, prefix)
+		}
+	}
+	return path
+}
+
+// jellyfinToken finds the install token a client is presenting. Infuse sends it
+// as a header once authenticated, and inside the body on the login call itself.
+func jellyfinToken(r *http.Request, body []byte) string {
+	for _, header := range []string{"X-Emby-Token", "X-MediaBrowser-Token"} {
+		if value := strings.TrimSpace(r.Header.Get(header)); value != "" {
+			return value
+		}
+	}
+
+	for _, header := range []string{"X-Emby-Authorization", "Authorization"} {
+		if token := tokenFromAuthorization(r.Header.Get(header)); token != "" {
+			return token
+		}
+	}
+
+	// Jellyfin clients append api_key to image and stream URLs.
+	if value := strings.TrimSpace(r.URL.Query().Get("api_key")); value != "" {
+		return value
+	}
+
+	if len(body) > 0 {
+		var login struct {
+			Pw       string `json:"Pw"`
+			Password string `json:"Password"`
+		}
+		if err := json.Unmarshal(body, &login); err == nil {
+			if token := strings.TrimSpace(login.Pw); token != "" {
+				return token
+			}
+			if token := strings.TrimSpace(login.Password); token != "" {
+				return token
+			}
+		}
+	}
+
+	return ""
+}
+
+// tokenFromAuthorization reads Token="…" out of
+// `MediaBrowser Client="Infuse-Direct", Device="Apple TV", Token="…"`.
+func tokenFromAuthorization(value string) string {
+	if value == "" {
+		return ""
+	}
+	for _, pair := range strings.Split(value, ",") {
+		key, raw, found := strings.Cut(pair, "=")
+		if !found {
+			continue
+		}
+		if !strings.EqualFold(strings.TrimSpace(key), "Token") {
+			continue
+		}
+		if token := strings.TrimSpace(strings.Trim(strings.TrimSpace(raw), `"`)); token != "" {
+			return token
+		}
+	}
+	return ""
+}
+
+func writeJellyfinCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, HEAD, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers",
+		"Content-Type, Authorization, X-Emby-Token, X-Emby-Authorization, X-MediaBrowser-Token, Range")
+}
+
+func respondJellyfinUnauthorized(w http.ResponseWriter) {
+	writeJellyfinCORS(w)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(`{"Error":"Unauthorized","Message":"Enter your Atlas install token as the password."}`))
+}
+
+// handleJellyfin proxies the Jellyfin surface to core, resolving the install
+// token here so core never needs to know about Supabase. It mirrors
+// handleResolve in refusing to follow redirects: a 302 is the answer, and the
+// player has to receive it in order to fetch bytes straight from the CDN.
+func handleJellyfin(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		writeJellyfinCORS(w)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	var body []byte
+	if r.Body != nil {
+		read, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err != nil {
+			http.Error(w, "Unable to read request body", http.StatusBadRequest)
+			return
+		}
+		r.Body.Close()
+		body = read
+	}
+
+	route := strings.ToLower(jellyfinRoute(r.URL.Path))
+	token := jellyfinToken(r, body)
+
+	profile := resolvedProfile{Prefs: defaultPreferences(), ProfileName: "Atlas"}
+	if token != "" {
+		resolved, ok := resolveProfile(token)
+		if !ok {
+			respondJellyfinUnauthorized(w)
+			return
+		}
+		profile = resolved
+	} else if !jellyfinPublicRoutes[route] {
+		respondJellyfinUnauthorized(w)
+		return
+	}
+
+	target := coreUrl + r.URL.Path
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+
+	req, err := http.NewRequest(r.Method, target, bytes.NewReader(body))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for name, values := range r.Header {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
+	for _, header := range atlasInjectedHeaders {
+		req.Header.Del(header)
+	}
+
+	if token != "" {
+		prefsJson, err := json.Marshal(profile.Prefs)
+		if err != nil {
+			http.Error(w, "Unable to encode preferences", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("X-Atlas-Token", token)
+		req.Header.Set("X-Atlas-Prefs", string(prefsJson))
+		if profile.ProfileName != "" {
+			req.Header.Set("X-Atlas-Profile-Name", profile.ProfileName)
+		}
+	}
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	for name, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(name, value)
+		}
+	}
+	writeJellyfinCORS(w)
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 }
 
 func handleStremio(w http.ResponseWriter, r *http.Request) {
@@ -276,15 +487,27 @@ func defaultPreferences() map[string]interface{} {
 // Both the stream and resolve paths go through here so neither can forget the
 // override. The result is cached per token, entitlement included.
 func loadPreferences(token string) map[string]interface{} {
-	if cachedPrefs, ok := prefsCache.Get(token); ok {
-		return cachedPrefs
+	resolved, ok := resolveProfile(token)
+	if !ok {
+		return defaultPreferences()
+	}
+	return resolved.Prefs
+}
+
+// resolveProfile is the one place an install token turns into preferences, so
+// the entitlement override below cannot be forgotten by a caller. It reports
+// whether the token resolved at all, which the Jellyfin surface needs in order
+// to reject a bad password rather than quietly serving a free-tier profile.
+func resolveProfile(token string) (resolvedProfile, bool) {
+	if cached, ok := prefsCache.Get(token); ok {
+		return cached, true
 	}
 
 	supabase := NewSupabaseClient()
 	doc, err := supabase.GetUserPreferences(token)
 	if err != nil {
 		log.Printf("Failed to fetch user preferences from Supabase for token %s: %v", token, err)
-		return defaultPreferences()
+		return resolvedProfile{}, false
 	}
 
 	prefs := doc.PrefsJson
@@ -293,8 +516,9 @@ func loadPreferences(token string) map[string]interface{} {
 	}
 	prefs["is_premium"] = supabase.IsPremium(doc.UserId)
 
-	prefsCache.Add(token, prefs)
-	return prefs
+	resolved := resolvedProfile{Prefs: prefs, ProfileName: doc.ProfileName}
+	prefsCache.Add(token, resolved)
+	return resolved, true
 }
 
 func handleStream(w http.ResponseWriter, r *http.Request, token, rest string) {
