@@ -241,7 +241,7 @@ async fn item_detail(
     auth: AuthContext,
     Path((_user_id, item_id)): Path<(String, String)>,
 ) -> Json<Option<BaseItemDto>> {
-    Json(build_item_detail(&item_id, &auth.server_id()).await)
+    Json(detail_with_prewarm(&auth, &item_id).await)
 }
 
 /// The newer flat form, delegating to the same lookup so both work.
@@ -249,7 +249,20 @@ async fn item_detail_flat(
     auth: AuthContext,
     Path(item_id): Path<String>,
 ) -> Json<Option<BaseItemDto>> {
-    Json(build_item_detail(&item_id, &auth.server_id()).await)
+    Json(detail_with_prewarm(&auth, &item_id).await)
+}
+
+/// Opening an item page usually means Play is seconds away, so source
+/// resolution starts now rather than behind a spinner later.
+///
+/// Note the call goes through `jellyfin::playback`, not `engines::playback`:
+/// this module must stay unable to resolve anything of its own accord.
+async fn detail_with_prewarm(auth: &AuthContext, item_id: &str) -> Option<BaseItemDto> {
+    if let Some(id) = ItemId::parse(item_id) {
+        crate::api::jellyfin::playback::prewarm(auth, &id);
+    }
+
+    build_item_detail(item_id, &auth.server_id()).await
 }
 
 async fn build_item_detail(item_id: &str, server: &str) -> Option<BaseItemDto> {

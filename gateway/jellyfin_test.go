@@ -144,6 +144,23 @@ func TestJellyfinDiscardsClientSuppliedAtlasHeaders(t *testing.T) {
 	}
 }
 
+func TestJellyfinForwardsTheMonetizationFlag(t *testing.T) {
+	// It is an input to rank_sources, so a client that could set it would be
+	// choosing its own ranking.
+	core := newFakeCore(t)
+
+	request := jellyfinRequest(t, http.MethodGet, "/jellyfin/Users/abc/Views", "")
+	request.Header.Set("X-Emby-Token", "token-premium")
+	request.Header.Set("X-Atlas-Monetization", "true")
+
+	recorder := httptest.NewRecorder()
+	handleJellyfin(recorder, request)
+
+	if got := core.lastReq.Header.Get("X-Atlas-Monetization"); got != "false" {
+		t.Fatalf("the gateway decides monetization, not the client: got %q", got)
+	}
+}
+
 func TestJellyfinReadsTheTokenFromTheLoginBody(t *testing.T) {
 	core := newFakeCore(t)
 

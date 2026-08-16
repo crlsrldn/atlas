@@ -192,7 +192,12 @@ var jellyfinPublicRoutes = map[string]bool{
 
 // Headers the gateway alone may set. Any client-supplied copy is discarded
 // before forwarding, so a caller cannot present itself as a resolved profile.
-var atlasInjectedHeaders = []string{"X-Atlas-Token", "X-Atlas-Prefs", "X-Atlas-Profile-Name"}
+var atlasInjectedHeaders = []string{
+	"X-Atlas-Token",
+	"X-Atlas-Prefs",
+	"X-Atlas-Profile-Name",
+	"X-Atlas-Monetization",
+}
 
 func jellyfinRoute(path string) string {
 	for _, prefix := range []string{"/jellyfin", "/emby"} {
@@ -342,6 +347,8 @@ func handleJellyfin(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Header.Set("X-Atlas-Token", token)
 		req.Header.Set("X-Atlas-Prefs", string(prefsJson))
+		// Ranking takes this as an input, so both surfaces have to agree on it.
+		req.Header.Set("X-Atlas-Monetization", strconv.FormatBool(getMonetizationEnabled()))
 		if profile.ProfileName != "" {
 			req.Header.Set("X-Atlas-Profile-Name", profile.ProfileName)
 		}

@@ -7,3 +7,8 @@ primary_region = "iad"
 [env]
   ATLAS_BIND_ADDR = "[::]:3000"
   ATLAS_PUBLIC_BASE_URL = "https://cindral-atlas-gateway-staging.fly.dev"
+  # Shown when a viewer picks a source TorBox has not cached yet: selecting one
+  # queues it, and there is nothing to play for about thirty seconds. Unset, the
+  # player gets a 503 and shows a generic failure. Point this at a short MP4
+  # saying "preparing, try again shortly" and the wait explains itself.
+  ATLAS_PLACEHOLDER_VIDEO_URL = ""

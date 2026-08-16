@@ -29,6 +29,7 @@ use axum::{
 const HEADER_TOKEN: &str = "x-atlas-token";
 const HEADER_PREFS: &str = "x-atlas-prefs";
 const HEADER_PROFILE: &str = "x-atlas-profile-name";
+const HEADER_MONETIZATION: &str = "x-atlas-monetization";
 
 /// Sent by Jellyfin clients themselves.
 const HEADER_EMBY_TOKEN: &str = "x-emby-token";
@@ -40,6 +41,9 @@ pub struct AuthContext {
     pub token: String,
     pub prefs: UserPreferences,
     pub profile_name: String,
+    /// Forwarded by the gateway so ranking behaves identically on both
+    /// surfaces; it is an input to `rank_sources`.
+    pub monetization_enabled: bool,
     pub client: Option<String>,
     pub device: Option<String>,
     pub device_id: Option<String>,
@@ -88,6 +92,23 @@ impl AuthContext {
             .clone()
             .unwrap_or_else(|| self.user_agent.clone().unwrap_or_default())
     }
+
+    /// The device name rewritten into the shape `ai_decision` looks for.
+    ///
+    /// Those rules match User-Agent fragments like `appletv`, while Infuse
+    /// reports a human name with a space in it, so "Apple TV" would slip past
+    /// the very rule written for it.
+    pub fn capability_hint(&self) -> String {
+        let device = self
+            .device
+            .clone()
+            .unwrap_or_default()
+            .to_lowercase()
+            .replace([' ', '-', '_'], "");
+        let agent = self.user_agent.clone().unwrap_or_default().to_lowercase();
+
+        format!("{device} {agent}")
+    }
 }
 
 pub struct AuthRejection;
@@ -133,17 +154,32 @@ where
             .filter(|token| !token.is_empty())
             .ok_or(AuthRejection)?;
 
-        // The gateway sends resolved preferences alongside the token. Falling
-        // back to defaults keeps the surface usable in development, where the
-        // gateway is not in the path.
+        // The gateway resolves preferences and sends them with the token.
+        //
+        // Defaulting when the header is absent is deliberate and fails closed:
+        // default preferences carry no provider credential, so a request that
+        // somehow bypassed the gateway resolves nothing rather than borrowing
+        // whatever key the server itself holds.
+        //
+        // Permissive mode is the exception, and only that. It is the
+        // development flag — off in production and in CI — and there it falls
+        // back to the server's own preferences so the surface can be exercised
+        // without Supabase in the path.
         let prefs = header(HEADER_PREFS)
             .and_then(|raw| serde_json::from_str::<UserPreferences>(&raw).ok())
-            .unwrap_or_default();
+            .unwrap_or_else(|| {
+                if super::permissive() {
+                    crate::api::config::current_preferences()
+                } else {
+                    UserPreferences::default()
+                }
+            });
 
         Ok(AuthContext {
             token,
             prefs,
             profile_name: header(HEADER_PROFILE).unwrap_or_else(|| "Atlas".to_string()),
+            monetization_enabled: matches!(header(HEADER_MONETIZATION).as_deref(), Some("true")),
             client: declared.client,
             device: declared.device,
             device_id: declared.device_id,
@@ -208,6 +244,7 @@ mod tests {
             token: "token-abc".to_string(),
             prefs: UserPreferences::default(),
             profile_name: "Atlas".to_string(),
+            monetization_enabled: false,
             client: client.map(str::to_string),
             device: Some("Apple TV".to_string()),
             device_id: Some("device-1".to_string()),

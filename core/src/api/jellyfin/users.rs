@@ -189,6 +189,7 @@ mod tests {
             token: "token-abc".to_string(),
             prefs: UserPreferences::default(),
             profile_name: "Living Room".to_string(),
+            monetization_enabled: false,
             client: Some("Infuse-Direct".to_string()),
             device: Some("Apple TV".to_string()),
             device_id: Some("device-1".to_string()),

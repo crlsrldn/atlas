@@ -1,8 +1,9 @@
 //! Turning catalogue entries into Jellyfin items.
 
-use crate::api::jellyfin::dto::{BaseItemDto, UserItemDataDto};
+use crate::api::jellyfin::dto::{BaseItemDto, MediaSourceInfo, MediaStream, UserItemDataDto};
 use crate::api::jellyfin::ids::{ItemId, Library, Namespace};
 use crate::engines::catalog::{CatalogEntry, EpisodeMeta};
+use crate::engines::playback::DetailedStream;
 
 /// Jellyfin measures time in 100-nanosecond ticks. Getting this wrong does not
 /// fail loudly — it silently breaks every scrubber and resume point.
@@ -165,6 +166,188 @@ pub fn episode_item(series: &CatalogEntry, episode: &EpisodeMeta, server: &str) 
     item.parent_id = item.season_id.clone();
     item.primary_image_aspect_ratio = Some(1.777_777_8);
     item
+}
+
+/// Cached sources first, ranking order preserved within each group.
+///
+/// Ranking already rewards a cached source but does not guarantee it sorts
+/// first, and clients auto-select index 0. That entry has to be one that plays
+/// immediately whenever any such source exists.
+pub fn cached_first(streams: Vec<DetailedStream>) -> Vec<DetailedStream> {
+    let (cached, uncached): (Vec<_>, Vec<_>) =
+        streams.into_iter().partition(|stream| stream.is_cached);
+    cached.into_iter().chain(uncached).collect()
+}
+
+fn dimensions(resolution: &str) -> Option<(i32, i32)> {
+    match resolution {
+        "4K" => Some((3840, 2160)),
+        "1080p" => Some((1920, 1080)),
+        "720p" => Some((1280, 720)),
+        _ => None,
+    }
+}
+
+/// Atlas only ever infers these three, and clients expect ffmpeg spellings.
+fn video_codec_name(codec: &str) -> Option<String> {
+    match codec.to_ascii_uppercase().as_str() {
+        "HEVC" => Some("hevc".to_string()),
+        "AV1" => Some("av1".to_string()),
+        "H264" => Some("h264".to_string()),
+        _ => None,
+    }
+}
+
+fn audio_codec_name(codec: &str) -> (Option<String>, Option<String>) {
+    match codec.to_ascii_uppercase().as_str() {
+        "TRUEHD" => (Some("truehd".to_string()), None),
+        "DTS" => (Some("dts".to_string()), None),
+        "AAC" => (Some("aac".to_string()), None),
+        "DOLBY DIGITAL" | "AC3" => (Some("ac3".to_string()), None),
+        // Atmos is a metadata layer carried on EAC3 or TrueHD, not a codec of
+        // its own, so it is named in the title instead.
+        "ATMOS" => (Some("eac3".to_string()), Some("Atmos".to_string())),
+        "EAC3" => (Some("eac3".to_string()), None),
+        _ => (None, None),
+    }
+}
+
+fn channel_count(layout: &str) -> Option<i32> {
+    match layout.trim() {
+        "7.1" => Some(8),
+        "6.1" => Some(7),
+        "5.1" => Some(6),
+        "2.0" | "stereo" => Some(2),
+        "1.0" | "mono" => Some(1),
+        _ => None,
+    }
+}
+
+fn gigabytes(size_bytes: u64) -> String {
+    // Decimal, matching how the figure was parsed out of the release name.
+    format!("{:.1} GB", size_bytes as f64 / 1_000_000_000.0)
+}
+
+/// The line a viewer actually chooses between.
+pub fn version_label(stream: &DetailedStream) -> String {
+    let mut parts = vec![stream.resolution.clone(), stream.video_codec.clone()];
+
+    if stream.has_dolby_vision {
+        parts.push("DV".to_string());
+    } else if stream.has_hdr {
+        parts.push("HDR".to_string());
+    }
+
+    if let Some(codec) = &stream.audio_codec {
+        let channels = stream
+            .audio_channels
+            .as_deref()
+            .map(|layout| format!(" {layout}"))
+            .unwrap_or_default();
+        parts.push(format!("{codec}{channels}"));
+    }
+
+    if let Some(size) = stream.size_bytes.filter(|size| *size > 0) {
+        parts.push(gigabytes(size));
+    }
+
+    if let Some(group) = &stream.release_group {
+        parts.push(group.clone());
+    }
+
+    let prefix = if stream.is_cached {
+        "⚡ "
+    } else {
+        // Selecting this queues the torrent instead of playing it.
+        "⬇ Not cached — "
+    };
+
+    format!("{prefix}{}", parts.join(" · "))
+}
+
+fn media_streams(stream: &DetailedStream) -> Vec<MediaStream> {
+    let mut video = MediaStream::video(0);
+    video.codec = video_codec_name(&stream.video_codec);
+    if let Some((width, height)) = dimensions(&stream.resolution) {
+        video.width = Some(width);
+        video.height = Some(height);
+    }
+    video.bit_rate = stream
+        .bitrate_mbps
+        .map(|mbps| (f64::from(mbps) * 1_000_000.0) as i64);
+    video.video_range = Some(if stream.has_hdr { "HDR" } else { "SDR" }.to_string());
+    video.video_range_type = Some(
+        if stream.has_dolby_vision {
+            "DOVI"
+        } else if stream.has_hdr {
+            "HDR10"
+        } else {
+            "SDR"
+        }
+        .to_string(),
+    );
+    video.display_title = Some(format!(
+        "{} {}",
+        stream.resolution,
+        stream.video_codec.to_uppercase()
+    ));
+
+    // Always emitted, even when nothing is known: omitting it reads as a file
+    // with no audio at all.
+    let mut audio = MediaStream::audio(1);
+    if let Some(codec) = &stream.audio_codec {
+        let (name, title) = audio_codec_name(codec);
+        audio.codec = name;
+        audio.title = title;
+    }
+    if let Some(layout) = &stream.audio_channels {
+        audio.channels = channel_count(layout);
+        audio.channel_layout = Some(layout.clone());
+    }
+    audio.display_title = stream.audio_codec.clone();
+
+    // No subtitle stream. `has_subtitles` matches bare substrings like "sub"
+    // and "cc" against the title, so it fires on titles such as Succession;
+    // advertising a track that is not in the container shows a broken entry.
+    vec![video, audio]
+}
+
+/// Builds the entry a client sees in its version picker.
+///
+/// `Path` points back at Atlas rather than at the gateway or the CDN: those
+/// URLs carry the install token, and the client must not hold one.
+pub fn media_source(
+    stream: &DetailedStream,
+    item_id: &str,
+    run_time_ticks: Option<i64>,
+    base_url: &str,
+) -> MediaSourceInfo {
+    let hash = stream.hash.clone().unwrap_or_default();
+
+    let mut source = MediaSourceInfo::direct_play(hash.clone(), version_label(stream));
+    source.path = Some(format!(
+        "{}/Videos/{item_id}/stream?MediaSourceId={hash}&Static=true",
+        base_url.trim_end_matches('/')
+    ));
+    source.container = Some(
+        stream
+            .container
+            .clone()
+            // Most releases are mkv, and claiming mp4 while serving mkv makes
+            // some players fail on the first range response. The reverse is
+            // harmless because the container is probed on open.
+            .unwrap_or_else(|| "mkv".to_string()),
+    );
+    source.size = stream
+        .size_bytes
+        .filter(|size| *size > 0)
+        .map(|size| size as i64);
+    source.bitrate = stream
+        .bitrate_mbps
+        .map(|mbps| (f64::from(mbps) * 1_000_000.0) as i64);
+    source.run_time_ticks = run_time_ticks;
+    source.media_streams = media_streams(stream);
+    source
 }
 
 #[cfg(test)]
@@ -334,5 +517,185 @@ mod tests {
         // Filling these during enumeration would fire a provider search per tile.
         assert!(catalog_item(&film(), "server").media_sources.is_empty());
         assert!(catalog_item(&show(), "server").media_sources.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // Playback sources
+    // -----------------------------------------------------------------------
+
+    use super::{cached_first, media_source, version_label};
+    use crate::engines::playback::DetailedStream;
+
+    fn stream(hash: &str, cached: bool) -> DetailedStream {
+        DetailedStream {
+            title: "The Matrix (4K)".to_string(),
+            raw_title: "The.Matrix.1999.2160p.mkv".to_string(),
+            container: Some("mkv".to_string()),
+            provider_name: "TorBox".to_string(),
+            url: "https://gateway.invalid/stremio/tok/resolve/torbox/abc/play.mp4".to_string(),
+            hash: Some(hash.to_string()),
+            score: 100,
+            confidence: 80,
+            reasons: vec![],
+            resolution: "4K".to_string(),
+            video_codec: "HEVC".to_string(),
+            audio_codec: Some("TrueHD".to_string()),
+            audio_channels: Some("7.1".to_string()),
+            bitrate_mbps: Some(32.4),
+            has_hdr: true,
+            has_dolby_vision: true,
+            has_subtitles: true,
+            provider_latency_ms: Some(120),
+            playback_successes: 2,
+            playback_failures: 0,
+            is_cached: cached,
+            release_group: Some("TERMINAL".to_string()),
+            size_bytes: Some(24_300_000_000),
+        }
+    }
+
+    #[test]
+    fn cached_sources_sort_ahead_without_disturbing_ranking_order() {
+        // Clients auto-select index 0, so it must play immediately.
+        let ordered = cached_first(vec![
+            stream("uncached-1", false),
+            stream("cached-1", true),
+            stream("uncached-2", false),
+            stream("cached-2", true),
+        ]);
+
+        let hashes: Vec<_> = ordered.iter().filter_map(|s| s.hash.clone()).collect();
+        assert_eq!(hashes, ["cached-1", "cached-2", "uncached-1", "uncached-2"]);
+    }
+
+    #[test]
+    fn the_version_label_leads_with_whether_it_will_play_now() {
+        let cached = version_label(&stream("a", true));
+        let uncached = version_label(&stream("a", false));
+
+        assert!(cached.starts_with('⚡'), "got {cached}");
+        assert!(uncached.contains("Not cached"), "got {uncached}");
+        assert!(cached.contains("4K"));
+        assert!(cached.contains("TrueHD 7.1"));
+        assert!(cached.contains("24.3 GB"));
+        assert!(cached.contains("TERMINAL"));
+    }
+
+    #[test]
+    fn dolby_vision_wins_over_the_plain_hdr_marker() {
+        let mut sdr = stream("a", true);
+        sdr.has_hdr = false;
+        sdr.has_dolby_vision = false;
+        let mut hdr = stream("a", true);
+        hdr.has_dolby_vision = false;
+
+        assert!(version_label(&stream("a", true)).contains("DV"));
+        assert!(version_label(&hdr).contains("HDR"));
+        assert!(!version_label(&sdr).contains("HDR"));
+    }
+
+    #[test]
+    fn a_source_points_back_at_atlas_never_at_a_url_holding_a_token() {
+        let source = media_source(
+            &stream("abc123", true),
+            "item-1",
+            Some(1_000),
+            "https://atlas.invalid",
+        );
+
+        let path = source.path.expect("a source must be playable");
+        assert_eq!(
+            path,
+            "https://atlas.invalid/Videos/item-1/stream?MediaSourceId=abc123&Static=true"
+        );
+        // The gateway URL carries the install token and must not leak.
+        assert!(!path.contains("stremio"));
+        assert!(!path.contains("play.mp4"));
+    }
+
+    #[test]
+    fn sources_declare_direct_play_and_refuse_transcoding() {
+        // Claiming transcoding makes a client that cannot direct-play ask for a
+        // transcode URL Atlas has no way to produce.
+        let source = media_source(&stream("abc", true), "item", None, "https://atlas.invalid");
+
+        assert!(source.supports_direct_play);
+        assert!(source.supports_direct_stream);
+        assert!(!source.supports_transcoding);
+        assert!(source.transcoding_url.is_none());
+        assert!(source.is_remote);
+    }
+
+    #[test]
+    fn a_missing_container_falls_back_to_mkv_not_mp4() {
+        let mut unknown = stream("abc", true);
+        unknown.container = None;
+
+        let source = media_source(&unknown, "item", None, "https://atlas.invalid");
+        assert_eq!(source.container.as_deref(), Some("mkv"));
+    }
+
+    #[test]
+    fn synthesised_tracks_describe_the_release() {
+        let source = media_source(&stream("abc", true), "item", None, "https://atlas.invalid");
+        let video = &source.media_streams[0];
+        let audio = &source.media_streams[1];
+
+        assert_eq!(video.codec.as_deref(), Some("hevc"));
+        assert_eq!((video.width, video.height), (Some(3840), Some(2160)));
+        assert_eq!(video.video_range_type.as_deref(), Some("DOVI"));
+        // A guessed profile can make a client reject a playable source.
+        assert!(video.profile.is_none());
+
+        assert_eq!(audio.codec.as_deref(), Some("truehd"));
+        assert_eq!(audio.channels, Some(8));
+    }
+
+    #[test]
+    fn audio_is_always_present_even_when_nothing_is_known() {
+        // No audio track at all reads as a silent file.
+        let mut bare = stream("abc", true);
+        bare.audio_codec = None;
+        bare.audio_channels = None;
+
+        let source = media_source(&bare, "item", None, "https://atlas.invalid");
+        assert_eq!(source.media_streams.len(), 2);
+        assert_eq!(source.media_streams[1].stream_type, "Audio");
+        assert!(source.media_streams[1].codec.is_none());
+    }
+
+    #[test]
+    fn no_subtitle_track_is_advertised() {
+        // has_subtitles matches substrings like "sub" and "cc" in a title, so it
+        // fires on shows such as Succession. Advertising a track that is not in
+        // the container shows a broken entry the viewer cannot select.
+        let source = media_source(&stream("abc", true), "item", None, "https://atlas.invalid");
+
+        assert!(!source
+            .media_streams
+            .iter()
+            .any(|track| track.stream_type == "Subtitle"));
+        assert!(source.default_subtitle_stream_index.is_none());
+    }
+
+    #[test]
+    fn a_zero_size_is_reported_as_unknown_rather_than_as_zero() {
+        // Sizes are scraped from release names and Some(0) is common.
+        let mut sizeless = stream("abc", true);
+        sizeless.size_bytes = Some(0);
+
+        let source = media_source(&sizeless, "item", None, "https://atlas.invalid");
+        assert_eq!(source.size, None);
+        assert!(!version_label(&sizeless).contains("0.0 GB"));
+    }
+
+    #[test]
+    fn atmos_is_carried_as_eac3_with_a_title() {
+        let mut atmos = stream("abc", true);
+        atmos.audio_codec = Some("Atmos".to_string());
+
+        let source = media_source(&atmos, "item", None, "https://atlas.invalid");
+        assert_eq!(source.media_streams[1].codec.as_deref(), Some("eac3"));
+        assert_eq!(source.media_streams[1].title.as_deref(), Some("Atmos"));
     }
 }

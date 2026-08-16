@@ -12,6 +12,7 @@ pub mod ids;
 pub mod images;
 pub mod items;
 pub mod map;
+pub mod playback;
 pub mod query;
 pub mod sessions;
 pub mod shows;
@@ -83,6 +84,7 @@ pub fn router() -> Option<Router> {
         .merge(items::router())
         .merge(shows::router())
         .merge(images::router())
+        .merge(playback::router())
         .merge(sessions::router())
         .fallback(trace::unmatched);
 

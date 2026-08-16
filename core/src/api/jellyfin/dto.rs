@@ -397,6 +397,213 @@ impl DisplayPreferencesDto {
     }
 }
 
+/// One track inside a source. Atlas never opens the file, so these are
+/// synthesised from the release name and are advisory: the client parses the
+/// real container once playback starts. They decide which version a viewer
+/// picks, not whether it plays.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct MediaStream {
+    #[serde(rename = "Type")]
+    pub stream_type: String,
+    pub index: i32,
+    pub codec: Option<String>,
+    pub language: Option<String>,
+    pub title: Option<String>,
+    pub display_title: Option<String>,
+    pub is_default: bool,
+    pub is_forced: bool,
+    pub is_external: bool,
+    pub is_interlaced: bool,
+    pub bit_rate: Option<i64>,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub aspect_ratio: Option<String>,
+    pub video_range: Option<String>,
+    pub video_range_type: Option<String>,
+    pub channels: Option<i32>,
+    pub channel_layout: Option<String>,
+    /// Left null on purpose. A wrong profile makes a client pre-emptively
+    /// reject a source it could have played.
+    pub profile: Option<String>,
+}
+
+impl MediaStream {
+    pub fn video(index: i32) -> Self {
+        MediaStream {
+            stream_type: "Video".to_string(),
+            index,
+            codec: None,
+            language: None,
+            title: None,
+            display_title: None,
+            is_default: true,
+            is_forced: false,
+            is_external: false,
+            is_interlaced: false,
+            bit_rate: None,
+            width: None,
+            height: None,
+            aspect_ratio: Some("16:9".to_string()),
+            video_range: None,
+            video_range_type: None,
+            channels: None,
+            channel_layout: None,
+            profile: None,
+        }
+    }
+
+    pub fn audio(index: i32) -> Self {
+        MediaStream {
+            stream_type: "Audio".to_string(),
+            ..MediaStream::video(index)
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct MediaSourceInfo {
+    /// The infohash. Jellyfin's media source id is a free-form string, not a
+    /// GUID, so keeping it whole makes the stream URL self-describing.
+    pub id: String,
+    pub name: String,
+    pub path: Option<String>,
+    pub protocol: String,
+    #[serde(rename = "Type")]
+    pub source_type: String,
+    pub container: Option<String>,
+    pub size: Option<i64>,
+    pub bitrate: Option<i64>,
+    pub run_time_ticks: Option<i64>,
+    pub is_remote: bool,
+    pub supports_direct_play: bool,
+    pub supports_direct_stream: bool,
+    /// Always false. Atlas hands back a redirect; a client told transcoding is
+    /// available will ask for a transcode URL that cannot be produced.
+    pub supports_transcoding: bool,
+    pub supports_probing: bool,
+    pub requires_opening: bool,
+    pub requires_closing: bool,
+    pub requires_looping: bool,
+    pub is_infinite_stream: bool,
+    pub read_at_native_framerate: bool,
+    pub ignore_dts: bool,
+    pub ignore_index: bool,
+    pub gen_pts_input: bool,
+    pub video_type: String,
+    pub media_streams: Vec<MediaStream>,
+    pub media_attachments: Vec<serde_json::Value>,
+    pub formats: Vec<String>,
+    pub default_audio_stream_index: Option<i32>,
+    pub default_subtitle_stream_index: Option<i32>,
+    pub transcoding_url: Option<String>,
+    pub transcoding_container: Option<String>,
+    pub transcoding_sub_protocol: Option<String>,
+    pub etag: Option<String>,
+}
+
+impl MediaSourceInfo {
+    pub fn direct_play(id: String, name: String) -> Self {
+        MediaSourceInfo {
+            id,
+            name,
+            path: None,
+            protocol: "Http".to_string(),
+            source_type: "Default".to_string(),
+            container: None,
+            size: None,
+            bitrate: None,
+            run_time_ticks: None,
+            is_remote: true,
+            supports_direct_play: true,
+            supports_direct_stream: true,
+            supports_transcoding: false,
+            supports_probing: false,
+            requires_opening: false,
+            requires_closing: false,
+            requires_looping: false,
+            is_infinite_stream: false,
+            read_at_native_framerate: false,
+            ignore_dts: false,
+            ignore_index: false,
+            gen_pts_input: false,
+            video_type: "VideoFile".to_string(),
+            media_streams: Vec::new(),
+            media_attachments: Vec::new(),
+            formats: Vec::new(),
+            default_audio_stream_index: Some(1),
+            default_subtitle_stream_index: None,
+            transcoding_url: None,
+            transcoding_container: None,
+            transcoding_sub_protocol: None,
+            etag: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PlaybackInfoResponse {
+    pub media_sources: Vec<MediaSourceInfo>,
+    pub play_session_id: String,
+    pub error_code: Option<String>,
+}
+
+/// What a client posts to `PlaybackInfo`. The device profile is the part worth
+/// having: it states real codec support and a bitrate ceiling, which is far
+/// better evidence than guessing from a User-Agent.
+#[derive(Debug, Default, Deserialize)]
+pub struct PlaybackInfoRequest {
+    #[serde(default, alias = "DeviceProfile", alias = "deviceProfile")]
+    pub device_profile: Option<DeviceProfile>,
+    #[serde(default, alias = "MaxStreamingBitrate", alias = "maxStreamingBitrate")]
+    pub max_streaming_bitrate: Option<i64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct DeviceProfile {
+    #[serde(default, alias = "MaxStreamingBitrate", alias = "maxStreamingBitrate")]
+    pub max_streaming_bitrate: Option<i64>,
+    #[serde(default, alias = "DirectPlayProfiles", alias = "directPlayProfiles")]
+    pub direct_play_profiles: Vec<DirectPlayProfile>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct DirectPlayProfile {
+    #[serde(default, alias = "Container", alias = "container")]
+    pub container: Option<String>,
+    #[serde(default, alias = "VideoCodec", alias = "videoCodec")]
+    pub video_codec: Option<String>,
+    #[serde(default, alias = "AudioCodec", alias = "audioCodec")]
+    pub audio_codec: Option<String>,
+}
+
+impl DeviceProfile {
+    /// Whether the client listed a video codec at all, and if so whether this
+    /// one is among them. An empty profile claims nothing, so nothing is
+    /// excluded on its behalf.
+    pub fn supports_video_codec(&self, codec: &str) -> Option<bool> {
+        let listed: Vec<String> = self
+            .direct_play_profiles
+            .iter()
+            .filter_map(|profile| profile.video_codec.as_ref())
+            .flat_map(|codecs| codecs.split(','))
+            .map(|codec| codec.trim().to_ascii_lowercase())
+            .filter(|codec| !codec.is_empty())
+            .collect();
+
+        if listed.is_empty() {
+            return None;
+        }
+        Some(
+            listed
+                .iter()
+                .any(|listed| listed == &codec.to_ascii_lowercase()),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{BaseItemDto, QueryResult, UserItemDataDto};
