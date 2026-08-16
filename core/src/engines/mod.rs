@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod ai_decision;
 pub mod cache;
+pub mod catalog;
 pub mod history;
 pub mod http;
 pub mod identity;

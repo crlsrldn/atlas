@@ -9,7 +9,12 @@
 pub mod auth;
 pub mod dto;
 pub mod ids;
+pub mod images;
+pub mod items;
+pub mod map;
+pub mod query;
 pub mod sessions;
+pub mod shows;
 pub mod system;
 pub mod trace;
 pub mod ua;
@@ -75,6 +80,9 @@ pub fn router() -> Option<Router> {
     let routes = Router::new()
         .merge(system::router())
         .merge(users::router())
+        .merge(items::router())
+        .merge(shows::router())
+        .merge(images::router())
         .merge(sessions::router())
         .fallback(trace::unmatched);
 
