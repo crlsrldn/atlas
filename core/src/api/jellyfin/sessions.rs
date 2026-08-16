@@ -1,24 +1,23 @@
-//! Session and playback-state endpoints.
+//! Session reports, watched state, and favourites.
 //!
-//! Phase 1 accepts and discards. Infuse posts progress every few seconds and
-//! marks items watched or favourite, and a 404 on any of these produces error
-//! toasts and log spam even though nothing is broken. Persisting the reports is
-//! Phase 4.
-//!
-//! One thing these must never do is feed `engines::history`. A stop report fires
-//! when the viewer presses stop, when the app backgrounds, *and* when a stream
-//! dies — Infuse does not distinguish them — so treating stops as playback
-//! failures would corrupt the source-health statistics that Stremio's ranking
-//! depends on.
+//! One thing here must never happen: feeding [`crate::engines::history`]. A stop
+//! report fires when the viewer presses stop, when the app goes to the
+//! background, *and* when a stream dies — Infuse does not distinguish them — so
+//! treating stops as playback failures would corrupt the source-health figures
+//! that Stremio's ranking depends on. Only a genuine fetch error is evidence
+//! about a source, and that is observed on the resolve path, not here.
 
 use crate::api::jellyfin::auth::AuthContext;
 use crate::api::jellyfin::dto::UserItemDataDto;
+use crate::api::jellyfin::ids::ItemId;
+use crate::engines::playstate;
 use axum::{
     extract::Path,
     http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
+use serde::Deserialize;
 
 pub fn router() -> Router {
     Router::new()
@@ -28,6 +27,10 @@ pub fn router() -> Router {
         .route("/Sessions/Playing/Progress", post(progress))
         .route("/Sessions/Playing/Stopped", post(stopped))
         .route(
+            "/Users/:user_id/PlayingItems/:item_id/Progress",
+            post(item_progress),
+        )
+        .route(
             "/Users/:user_id/PlayedItems/:item_id",
             post(mark_played).delete(clear_played),
         )
@@ -35,6 +38,18 @@ pub fn router() -> Router {
             "/Users/:user_id/FavoriteItems/:item_id",
             post(mark_favorite).delete(clear_favorite),
         )
+}
+
+/// What clients send with a playback report. Casing varies between them, so
+/// both spellings of each field are accepted.
+#[derive(Debug, Default, Deserialize)]
+struct PlaybackReport {
+    #[serde(default, alias = "ItemId", alias = "itemId")]
+    item_id: Option<String>,
+    #[serde(default, alias = "PositionTicks", alias = "positionTicks")]
+    position_ticks: Option<i64>,
+    #[serde(default, alias = "RunTimeTicks", alias = "runTimeTicks")]
+    run_time_ticks: Option<i64>,
 }
 
 async fn sessions(_auth: AuthContext) -> Json<Vec<serde_json::Value>> {
@@ -46,75 +61,125 @@ async fn capabilities() -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
-async fn playing(auth: AuthContext, body: Option<Json<serde_json::Value>>) -> StatusCode {
-    log_session_event("started", &auth, body);
-    StatusCode::NO_CONTENT
+/// The Atlas media key an item names, for rows that are easier to read in a
+/// console than a packed id.
+fn atlas_key_for(item_id: &str) -> Option<String> {
+    let item = ItemId::parse(item_id)?;
+    item.to_playable_atlas_id()
+        .map(|atlas_id| crate::engines::playback::media_key(&atlas_id))
 }
 
-async fn progress(auth: AuthContext, body: Option<Json<serde_json::Value>>) -> StatusCode {
-    log_session_event("progress", &auth, body);
-    StatusCode::NO_CONTENT
-}
+fn record(auth: &AuthContext, report: &PlaybackReport) {
+    let Some(item_id) = report.item_id.as_deref() else {
+        return;
+    };
+    let Some(atlas_key) = atlas_key_for(item_id) else {
+        return;
+    };
 
-async fn stopped(auth: AuthContext, body: Option<Json<serde_json::Value>>) -> StatusCode {
-    log_session_event("stopped", &auth, body);
-    StatusCode::NO_CONTENT
-}
-
-fn log_session_event(kind: &str, auth: &AuthContext, body: Option<Json<serde_json::Value>>) {
-    let position = body
-        .as_ref()
-        .and_then(|Json(value)| value.get("PositionTicks"))
-        .and_then(serde_json::Value::as_i64);
-
-    tracing::debug!(
-        event = kind,
-        client = %auth.mode().label(),
-        position_ticks = position,
-        "Jellyfin playback report (not yet persisted)"
+    playstate::record_progress(
+        &auth.token,
+        item_id,
+        &atlas_key,
+        report.position_ticks.unwrap_or(0),
+        report.run_time_ticks,
     );
 }
 
-fn echo_state(played: bool, is_favorite: bool, item_id: &str) -> Json<UserItemDataDto> {
+async fn playing(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> StatusCode {
+    if let Some(Json(report)) = body {
+        record(&auth, &report);
+    }
+    StatusCode::NO_CONTENT
+}
+
+async fn progress(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> StatusCode {
+    if let Some(Json(report)) = body {
+        record(&auth, &report);
+    }
+    StatusCode::NO_CONTENT
+}
+
+/// A stop is a position report and nothing more. It carries no information
+/// about whether the source was healthy — see the note at the top of this file.
+async fn stopped(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> StatusCode {
+    if let Some(Json(report)) = body {
+        record(&auth, &report);
+    }
+    StatusCode::NO_CONTENT
+}
+
+/// The per-item form some clients use instead of `/Sessions/Playing/Progress`.
+async fn item_progress(
+    auth: AuthContext,
+    Path((_user_id, item_id)): Path<(String, String)>,
+    body: Option<Json<PlaybackReport>>,
+) -> StatusCode {
+    let mut report = body.map(|Json(report)| report).unwrap_or_default();
+    report.item_id = Some(item_id);
+    record(&auth, &report);
+    StatusCode::NO_CONTENT
+}
+
+async fn state_response(auth: &AuthContext, item_id: &str) -> Json<UserItemDataDto> {
+    let state = playstate::state_for(&auth.token, item_id).await;
+
     Json(UserItemDataDto {
-        played,
-        is_favorite,
+        playback_position_ticks: state.position_ticks,
+        play_count: state.play_count,
+        is_favorite: state.is_favorite,
+        played: state.played,
+        played_percentage: state.played_percentage(),
         key: item_id.to_string(),
-        ..UserItemDataDto::default()
     })
 }
 
+async fn set_played(auth: &AuthContext, item_id: &str, played: bool) -> Json<UserItemDataDto> {
+    if let Some(atlas_key) = atlas_key_for(item_id) {
+        playstate::set_played(&auth.token, item_id, &atlas_key, played);
+    }
+    state_response(auth, item_id).await
+}
+
+async fn set_favorite(auth: &AuthContext, item_id: &str, favorite: bool) -> Json<UserItemDataDto> {
+    if let Some(atlas_key) = atlas_key_for(item_id) {
+        playstate::set_favorite(&auth.token, item_id, &atlas_key, favorite);
+    }
+    state_response(auth, item_id).await
+}
+
 async fn mark_played(
-    _auth: AuthContext,
+    auth: AuthContext,
     Path((_user_id, item_id)): Path<(String, String)>,
 ) -> Json<UserItemDataDto> {
-    echo_state(true, false, &item_id)
+    set_played(&auth, &item_id, true).await
 }
 
 async fn clear_played(
-    _auth: AuthContext,
+    auth: AuthContext,
     Path((_user_id, item_id)): Path<(String, String)>,
 ) -> Json<UserItemDataDto> {
-    echo_state(false, false, &item_id)
+    set_played(&auth, &item_id, false).await
 }
 
 async fn mark_favorite(
-    _auth: AuthContext,
+    auth: AuthContext,
     Path((_user_id, item_id)): Path<(String, String)>,
 ) -> Json<UserItemDataDto> {
-    echo_state(false, true, &item_id)
+    set_favorite(&auth, &item_id, true).await
 }
 
 async fn clear_favorite(
-    _auth: AuthContext,
+    auth: AuthContext,
     Path((_user_id, item_id)): Path<(String, String)>,
 ) -> Json<UserItemDataDto> {
-    echo_state(false, false, &item_id)
+    set_favorite(&auth, &item_id, false).await
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{capabilities, echo_state};
+    use super::{atlas_key_for, capabilities, PlaybackReport};
+    use crate::api::jellyfin::ids::{ItemId, Library, Namespace};
     use axum::http::StatusCode;
 
     #[tokio::test]
@@ -123,12 +188,50 @@ mod tests {
     }
 
     #[test]
-    fn state_changes_echo_the_item_back_to_the_client() {
-        let marked = echo_state(true, false, "abc").0;
+    fn reports_are_read_whatever_casing_a_client_uses() {
+        let pascal: PlaybackReport =
+            serde_json::from_str(r#"{"ItemId":"abc","PositionTicks":1234}"#).expect("valid");
+        let camel: PlaybackReport =
+            serde_json::from_str(r#"{"itemId":"abc","positionTicks":1234}"#).expect("valid");
 
-        assert!(marked.played);
-        assert!(!marked.is_favorite);
-        assert_eq!(marked.key, "abc");
-        assert_eq!(marked.playback_position_ticks, 0);
+        assert_eq!(pascal.item_id.as_deref(), Some("abc"));
+        assert_eq!(camel.position_ticks, Some(1234));
+    }
+
+    #[test]
+    fn a_report_missing_everything_is_still_accepted() {
+        // Clients send sparse reports; refusing them produces error toasts for
+        // something that is not an error.
+        let empty: PlaybackReport = serde_json::from_str("{}").expect("valid");
+
+        assert!(empty.item_id.is_none());
+        assert_eq!(empty.position_ticks, None);
+    }
+
+    #[test]
+    fn playable_items_resolve_to_an_atlas_key() {
+        let episode = ItemId::episode(Namespace::Imdb, 944_947, 1, 2).to_hex();
+        let movie = ItemId::from_atlas_id(&crate::engines::identity::AtlasID::IMDb {
+            id: "tt0133093".to_string(),
+            season: None,
+            episode: None,
+        })
+        .to_hex();
+
+        assert_eq!(atlas_key_for(&episode).as_deref(), Some("tt0944947:1:2"));
+        assert_eq!(atlas_key_for(&movie).as_deref(), Some("tt0133093"));
+    }
+
+    #[test]
+    fn navigational_items_have_no_progress_to_record() {
+        assert_eq!(
+            atlas_key_for(&ItemId::series(Namespace::Imdb, 944_947).to_hex()),
+            None
+        );
+        assert_eq!(
+            atlas_key_for(&ItemId::library(Library::Movies).to_hex()),
+            None
+        );
+        assert_eq!(atlas_key_for("not-an-atlas-id"), None);
     }
 }

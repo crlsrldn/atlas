@@ -7,6 +7,7 @@ pub mod http;
 pub mod identity;
 pub mod metadata;
 pub mod playback;
+pub mod playstate;
 pub mod privacy;
 pub mod ranking;
 pub mod redis;

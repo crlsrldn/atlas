@@ -7,7 +7,9 @@
 use crate::api::jellyfin::auth::AuthContext;
 use crate::api::jellyfin::dto::{BaseItemDto, QueryResult};
 use crate::api::jellyfin::ids::{ItemId, ItemKind, Library};
-use crate::api::jellyfin::map::{catalog_item, episode_item, season_item};
+use crate::api::jellyfin::map::{
+    apply_user_data, catalog_item, episode_item, season_item, with_user_data,
+};
 use crate::api::jellyfin::query::JellyfinQuery;
 use crate::api::jellyfin::shows::{episodes_for, seasons_for};
 use crate::engines::catalog::{
@@ -59,6 +61,20 @@ fn page(
     QueryResult::new(items, total, start as i32)
 }
 
+/// Turns stored item ids back into full items, dropping any that no longer
+/// resolve — a title can disappear from upstream between sessions.
+async fn hydrate(auth: &AuthContext, ids: &[String], server: &str) -> Vec<BaseItemDto> {
+    let lookups = ids.iter().map(|item_id| build_item_detail(item_id, server));
+
+    let items: Vec<BaseItemDto> = futures::future::join_all(lookups)
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+
+    with_user_data(items, &auth.token).await
+}
+
 /// Slices an already-materialised list, used wherever the whole set is known
 /// up front (seasons, episodes) rather than paged from upstream.
 fn slice(all: Vec<BaseItemDto>, start: usize, limit: usize) -> QueryResult<BaseItemDto> {
@@ -96,6 +112,16 @@ async fn items(
     // Asked only for things Atlas does not carry — music, photos, live TV.
     if query.wants_none_of(&SERVED_TYPES) {
         return Json(QueryResult::empty());
+    }
+
+    // The Favorites row, which Direct Mode surfaces on the home screen.
+    if query
+        .list("Filters")
+        .iter()
+        .any(|filter| filter.eq_ignore_ascii_case("IsFavorite"))
+    {
+        let ids = crate::engines::playstate::favorite_items(&auth.token, limit).await;
+        return Json(QueryResult::complete(hydrate(&auth, &ids, &server).await));
     }
 
     if let Some(term) = query.search_term() {
@@ -165,7 +191,12 @@ async fn items(
         }
     };
 
-    Json(result)
+    // Attached last so every path gets it, in one snapshot for the page.
+    Json(QueryResult::new(
+        with_user_data(result.items, &auth.token).await,
+        result.total_record_count,
+        result.start_index,
+    ))
 }
 
 async fn shelf(
@@ -231,10 +262,15 @@ async fn latest(
 
 /// Empty until playback state is stored.
 async fn resume(
-    _auth: AuthContext,
+    auth: AuthContext,
     Path(_user_id): Path<String>,
+    Query(raw): Query<HashMap<String, String>>,
 ) -> Json<QueryResult<BaseItemDto>> {
-    Json(QueryResult::empty())
+    let query = JellyfinQuery::from_map(raw);
+    let ids = crate::engines::playstate::resumable(&auth.token, query.limit()).await;
+    let server = auth.server_id();
+
+    Json(QueryResult::complete(hydrate(&auth, &ids, &server).await))
 }
 
 async fn item_detail(
@@ -262,7 +298,11 @@ async fn detail_with_prewarm(auth: &AuthContext, item_id: &str) -> Option<BaseIt
         crate::api::jellyfin::playback::prewarm(auth, &id);
     }
 
-    build_item_detail(item_id, &auth.server_id()).await
+    let mut item = build_item_detail(item_id, &auth.server_id()).await?;
+    let state = crate::engines::playstate::state_for(&auth.token, item_id).await;
+    apply_user_data(&mut item, &state);
+
+    Some(item)
 }
 
 async fn build_item_detail(item_id: &str, server: &str) -> Option<BaseItemDto> {

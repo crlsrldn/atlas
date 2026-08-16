@@ -233,6 +233,10 @@ async fn playback_info(
 
     let streams = sources_for(&auth, &item, atlas_id.clone(), prefs).await;
     let run_time_ticks = run_time_for(&atlas_id).await;
+
+    // Progress reports carry no runtime, so this is the moment to learn it —
+    // without one there is no telling "ten minutes in" from "finished".
+    crate::engines::playstate::note_runtime(&auth.token, &item_id, run_time_ticks);
     let base_url = public_base_url();
 
     let media_sources: Vec<MediaSourceInfo> = streams

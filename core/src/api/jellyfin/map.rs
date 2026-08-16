@@ -4,6 +4,7 @@ use crate::api::jellyfin::dto::{BaseItemDto, MediaSourceInfo, MediaStream, UserI
 use crate::api::jellyfin::ids::{ItemId, Library, Namespace};
 use crate::engines::catalog::{CatalogEntry, EpisodeMeta};
 use crate::engines::playback::DetailedStream;
+use crate::engines::playstate::PlaybackState;
 
 /// Jellyfin measures time in 100-nanosecond ticks. Getting this wrong does not
 /// fail loudly — it silently breaks every scrubber and resume point.
@@ -166,6 +167,36 @@ pub fn episode_item(series: &CatalogEntry, episode: &EpisodeMeta, server: &str) 
     item.parent_id = item.season_id.clone();
     item.primary_image_aspect_ratio = Some(1.777_777_8);
     item
+}
+
+/// Attaches what the viewer has already done with an item.
+///
+/// `UserData` is what drives the resume prompt, the watched tick, and the
+/// favourite heart; an item without it always looks untouched.
+pub fn apply_user_data(item: &mut BaseItemDto, state: &PlaybackState) {
+    item.user_data = Some(UserItemDataDto {
+        playback_position_ticks: state.position_ticks,
+        play_count: state.play_count,
+        is_favorite: state.is_favorite,
+        played: state.played,
+        played_percentage: state.played_percentage(),
+        key: item.id.clone(),
+    });
+}
+
+/// Attaches state to a whole page at once — one snapshot for the profile
+/// rather than a lookup per row.
+pub async fn with_user_data(mut items: Vec<BaseItemDto>, profile_id: &str) -> Vec<BaseItemDto> {
+    let ids: Vec<String> = items.iter().map(|item| item.id.clone()).collect();
+    let states = crate::engines::playstate::states_for(profile_id, &ids).await;
+
+    for item in items.iter_mut() {
+        if let Some(state) = states.get(&item.id) {
+            apply_user_data(item, state);
+        }
+    }
+
+    items
 }
 
 /// Cached sources first, ranking order preserved within each group.
