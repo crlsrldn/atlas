@@ -268,6 +268,46 @@ func TestJellyfinRouteStripsBothPrefixes(t *testing.T) {
 	}
 }
 
+func TestJellyfinTrailingSlashesAreNormalized(t *testing.T) {
+	// Infuse lists a container's children with "/Items/?ParentId=…". The core
+	// router treats that as a different route from "/Items", so the request
+	// fell through — which emptied the Movies library and broke opening a
+	// series, both being the same request.
+	cases := map[string]string{
+		"/jellyfin/Items/":  "/jellyfin/Items",
+		"/jellyfin/Items//": "/jellyfin/Items",
+		"/jellyfin/Items":   "/jellyfin/Items",
+		"/":                 "/",
+	}
+
+	for input, want := range cases {
+		if got := normalizeJellyfinPath(input); got != want {
+			t.Fatalf("%s: got %q, want %q", input, got, want)
+		}
+	}
+
+	if got := jellyfinRoute("/jellyfin/Items/"); got != "/Items" {
+		t.Fatalf("route with a trailing slash: got %q", got)
+	}
+}
+
+func TestJellyfinForwardsTheNormalizedPath(t *testing.T) {
+	core := newFakeCore(t)
+
+	request := jellyfinRequest(t, http.MethodGet, "/jellyfin/Items/?ParentId=abc", "")
+	request.Header.Set("X-Emby-Token", "token-premium")
+
+	recorder := httptest.NewRecorder()
+	handleJellyfin(recorder, request)
+
+	if got := core.lastReq.URL.Path; got != "/jellyfin/Items" {
+		t.Fatalf("core should receive the normalized path, got %q", got)
+	}
+	if got := core.lastReq.URL.RawQuery; got != "ParentId=abc" {
+		t.Fatalf("the query must survive normalization, got %q", got)
+	}
+}
+
 func TestJellyfinPreflightNeedsNoCredential(t *testing.T) {
 	newFakeCore(t)
 

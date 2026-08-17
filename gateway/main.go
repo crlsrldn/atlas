@@ -206,7 +206,21 @@ var atlasInjectedHeaders = []string{
 	"X-Atlas-Monetization",
 }
 
+// normalizeJellyfinPath drops a trailing slash.
+//
+// Infuse asks for a container's children with "/Items/?ParentId=…", and the
+// core router treats "/Items/" and "/Items" as different routes, so the request
+// fell through to the not-implemented fallback. That one difference emptied the
+// Movies library and broke opening a series, which are the same request.
+func normalizeJellyfinPath(path string) string {
+	for len(path) > 1 && strings.HasSuffix(path, "/") {
+		path = path[:len(path)-1]
+	}
+	return path
+}
+
 func jellyfinRoute(path string) string {
+	path = normalizeJellyfinPath(path)
 	for _, prefix := range []string{"/jellyfin", "/emby"} {
 		if strings.HasPrefix(path, prefix) {
 			return strings.TrimPrefix(path, prefix)
@@ -326,7 +340,7 @@ func handleJellyfin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target := coreUrl + r.URL.Path
+	target := coreUrl + normalizeJellyfinPath(r.URL.Path)
 	if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
 	}

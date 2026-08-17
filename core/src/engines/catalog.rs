@@ -213,6 +213,35 @@ pub fn logo_url(imdb_id: &str) -> String {
     format!("{METAHUB}/logo/medium/{imdb_id}/img")
 }
 
+/// Fetches artwork, returning its content type and bytes.
+///
+/// Uses the catalogue's own client, so a slow image host cannot consume
+/// connections the playback path needs. Posters are small enough to hold whole
+/// rather than stream, and a size cap keeps that true even if the host misbehaves.
+pub async fn image_bytes(url: &str) -> Option<(String, Vec<u8>)> {
+    const MAX_IMAGE_BYTES: usize = 8 * 1024 * 1024;
+
+    let response = CATALOG_CLIENT.get(url).send().await.ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("image/jpeg")
+        .to_string();
+
+    let bytes = response.bytes().await.ok()?;
+    if bytes.len() > MAX_IMAGE_BYTES {
+        tracing::warn!(url, size = bytes.len(), "artwork larger than expected");
+        return None;
+    }
+
+    Some((content_type, bytes.to_vec()))
+}
+
 // ---------------------------------------------------------------------------
 // Cinemeta wire types
 // ---------------------------------------------------------------------------
