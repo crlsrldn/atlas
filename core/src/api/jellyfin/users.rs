@@ -22,6 +22,11 @@ pub fn router() -> Router {
         .route("/Users/:user_id", get(user_by_id))
         .route("/Users/:user_id/Views", get(views))
         .route("/Users/:user_id/Items/Root", get(root_item))
+        // Jellyfin 10.9 moved these off the user path and onto a userId query.
+        // Infuse 8.5 uses the newer shape; older clients use the one above, so
+        // both are served.
+        .route("/UserViews", get(views_flat))
+        .route("/UserItems/Root", get(root_item_flat))
 }
 
 fn header(headers: &HeaderMap, name: &str) -> Option<String> {
@@ -151,23 +156,39 @@ fn library_view(library: Library, server: String) -> BaseItemDto {
     item
 }
 
-async fn views(auth: AuthContext, Path(_user_id): Path<String>) -> Json<QueryResult<BaseItemDto>> {
+fn user_views(auth: &AuthContext) -> QueryResult<BaseItemDto> {
     let server = auth.server_id();
 
-    Json(QueryResult::complete(vec![
+    QueryResult::complete(vec![
         library_view(Library::Movies, server.clone()),
         library_view(Library::Shows, server),
-    ]))
+    ])
 }
 
-async fn root_item(auth: AuthContext, Path(_user_id): Path<String>) -> Json<BaseItemDto> {
+async fn views(auth: AuthContext, Path(_user_id): Path<String>) -> Json<QueryResult<BaseItemDto>> {
+    Json(user_views(&auth))
+}
+
+async fn views_flat(auth: AuthContext) -> Json<QueryResult<BaseItemDto>> {
+    Json(user_views(&auth))
+}
+
+fn root(auth: &AuthContext) -> BaseItemDto {
     let mut item = BaseItemDto::folder(
         ItemId::root().to_hex(),
         "Atlas".to_string(),
         auth.server_id(),
     );
     item.item_type = "Folder".to_string();
-    Json(item)
+    item
+}
+
+async fn root_item(auth: AuthContext, Path(_user_id): Path<String>) -> Json<BaseItemDto> {
+    Json(root(&auth))
+}
+
+async fn root_item_flat(auth: AuthContext) -> Json<BaseItemDto> {
+    Json(root(&auth))
 }
 
 #[cfg(test)]

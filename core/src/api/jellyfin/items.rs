@@ -37,7 +37,15 @@ pub fn router() -> Router {
         .route("/Users/:user_id/Items/Latest", get(latest))
         .route("/Users/:user_id/Items/Resume", get(resume))
         .route("/Users/:user_id/Items/:item_id", get(item_detail))
+        // Jellyfin 10.9 moved these off the user path onto a userId query, and
+        // Infuse 8.5 uses the newer shape. Static segments win over `:item_id`,
+        // so Latest and Resume still route correctly.
+        .route("/Items", get(items_flat))
+        .route("/Items/Latest", get(latest_flat))
+        .route("/Items/Resume", get(resume_flat))
+        .route("/UserItems/Resume", get(resume_flat))
         .route("/Items/:item_id", get(item_detail_flat))
+        .route("/UserItems/:item_id", get(item_detail_flat))
 }
 
 /// Jellyfin has no "there may be more" flag, so the count carries that meaning:
@@ -111,6 +119,19 @@ async fn items(
     Path(_user_id): Path<String>,
     Query(raw): Query<HashMap<String, String>>,
 ) -> Json<QueryResult<BaseItemDto>> {
+    browse(auth, raw).await
+}
+
+/// The 10.9 shape, which names the user in a query rather than the path. The
+/// value is ignored either way: identity comes from the token.
+async fn items_flat(
+    auth: AuthContext,
+    Query(raw): Query<HashMap<String, String>>,
+) -> Json<QueryResult<BaseItemDto>> {
+    browse(auth, raw).await
+}
+
+async fn browse(auth: AuthContext, raw: HashMap<String, String>) -> Json<QueryResult<BaseItemDto>> {
     let query = JellyfinQuery::from_map(raw);
     let server = auth.server_id();
     let start = query.start_index();
@@ -263,6 +284,17 @@ async fn latest(
     Path(_user_id): Path<String>,
     Query(raw): Query<HashMap<String, String>>,
 ) -> Json<Vec<BaseItemDto>> {
+    latest_items(auth, raw).await
+}
+
+async fn latest_flat(
+    auth: AuthContext,
+    Query(raw): Query<HashMap<String, String>>,
+) -> Json<Vec<BaseItemDto>> {
+    latest_items(auth, raw).await
+}
+
+async fn latest_items(auth: AuthContext, raw: HashMap<String, String>) -> Json<Vec<BaseItemDto>> {
     let query = JellyfinQuery::from_map(raw);
     let server = auth.server_id();
     let limit = query.limit();
@@ -297,6 +329,20 @@ async fn resume(
     auth: AuthContext,
     Path(_user_id): Path<String>,
     Query(raw): Query<HashMap<String, String>>,
+) -> Json<QueryResult<BaseItemDto>> {
+    resume_items(auth, raw).await
+}
+
+async fn resume_flat(
+    auth: AuthContext,
+    Query(raw): Query<HashMap<String, String>>,
+) -> Json<QueryResult<BaseItemDto>> {
+    resume_items(auth, raw).await
+}
+
+async fn resume_items(
+    auth: AuthContext,
+    raw: HashMap<String, String>,
 ) -> Json<QueryResult<BaseItemDto>> {
     let query = JellyfinQuery::from_map(raw);
     let ids = crate::engines::playstate::resumable(&auth.token, query.limit()).await;

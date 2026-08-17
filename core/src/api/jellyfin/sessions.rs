@@ -37,6 +37,16 @@ pub fn router() -> Router {
             "/Users/:user_id/FavoriteItems/:item_id",
             post(mark_favorite).delete(clear_favorite),
         )
+        // The 10.9 shape Infuse 8.5 uses.
+        .route(
+            "/UserPlayedItems/:item_id",
+            post(mark_played_flat).delete(clear_played_flat),
+        )
+        .route(
+            "/UserFavoriteItems/:item_id",
+            post(mark_favorite_flat).delete(clear_favorite_flat),
+        )
+        .route("/UserItems/:item_id/UserData", get(user_data))
 }
 
 async fn sessions(_auth: AuthContext) -> Json<Vec<serde_json::Value>> {
@@ -166,6 +176,35 @@ async fn clear_favorite(
     Path((_user_id, item_id)): Path<(String, String)>,
 ) -> Json<UserItemDataDto> {
     set_favorite(&auth, &item_id, false).await
+}
+
+async fn mark_played_flat(auth: AuthContext, Path(item_id): Path<String>) -> Json<UserItemDataDto> {
+    set_played(&auth, &item_id, true).await
+}
+
+async fn clear_played_flat(
+    auth: AuthContext,
+    Path(item_id): Path<String>,
+) -> Json<UserItemDataDto> {
+    set_played(&auth, &item_id, false).await
+}
+
+async fn mark_favorite_flat(
+    auth: AuthContext,
+    Path(item_id): Path<String>,
+) -> Json<UserItemDataDto> {
+    set_favorite(&auth, &item_id, true).await
+}
+
+async fn clear_favorite_flat(
+    auth: AuthContext,
+    Path(item_id): Path<String>,
+) -> Json<UserItemDataDto> {
+    set_favorite(&auth, &item_id, false).await
+}
+
+async fn user_data(auth: AuthContext, Path(item_id): Path<String>) -> Json<UserItemDataDto> {
+    state_response(&auth, &item_id).await
 }
 
 #[cfg(test)]
