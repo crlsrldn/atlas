@@ -2,8 +2,8 @@
 
 use crate::api::jellyfin::auth::{parse_authorization, AuthContext};
 use crate::api::jellyfin::dto::{
-    now_iso8601, AuthenticateByNameRequest, AuthenticationResult, BaseItemDto, QueryResult,
-    SessionInfoDto, UserConfiguration, UserDto, UserPolicy,
+    now_iso8601, AuthenticationResult, BaseItemDto, JellyfinBody, QueryResult, SessionInfoDto,
+    UserConfiguration, UserDto, UserPolicy,
 };
 use crate::api::jellyfin::ids::{ItemId, Library};
 use crate::api::jellyfin::{server_id, stable_hex_id};
@@ -54,11 +54,8 @@ fn user_dto(name: String, user_id: String, server: String) -> UserDto {
 /// The token is validated at the gateway, which owns the Supabase lookup. By the
 /// time a request reaches core it has already been accepted, so this only has to
 /// mint the session Infuse will carry from here on.
-async fn authenticate_by_name(
-    headers: HeaderMap,
-    Json(request): Json<AuthenticateByNameRequest>,
-) -> Response {
-    let token = request.pw.unwrap_or_default().trim().to_string();
+async fn authenticate_by_name(headers: HeaderMap, Json(request): Json<JellyfinBody>) -> Response {
+    let token = request.password().unwrap_or_default().trim().to_string();
 
     if token.is_empty() {
         return (
@@ -178,7 +175,7 @@ mod tests {
     use super::{authenticate_by_name, library_view, views};
     use crate::api::config::UserPreferences;
     use crate::api::jellyfin::auth::AuthContext;
-    use crate::api::jellyfin::dto::AuthenticateByNameRequest;
+    use crate::api::jellyfin::dto::JellyfinBody;
     use crate::api::jellyfin::ids::{ItemId, Library};
     use axum::http::{HeaderMap, HeaderValue, StatusCode};
     use axum::response::IntoResponse;
@@ -202,15 +199,31 @@ mod tests {
     async fn authentication_requires_a_password() {
         let response = authenticate_by_name(
             HeaderMap::new(),
-            Json(AuthenticateByNameRequest {
-                username: Some("atlas".to_string()),
-                pw: None,
-            }),
+            Json(JellyfinBody::new(serde_json::json!({"Username": "atlas"}))),
         )
         .await
         .into_response();
 
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn a_password_sent_under_two_names_is_accepted() {
+        // Infuse sends both Pw and Password. Serde aliases cannot express that
+        // — two keys mapping to one field is a duplicate-field error — and this
+        // rejected every real login attempt with a 422 before the handler ran.
+        let response = authenticate_by_name(
+            HeaderMap::new(),
+            Json(JellyfinBody::new(serde_json::json!({
+                "Username": "atlas",
+                "Pw": "token-abc",
+                "Password": "token-abc"
+            }))),
+        )
+        .await
+        .into_response();
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
@@ -225,10 +238,10 @@ mod tests {
 
         let response = authenticate_by_name(
             headers,
-            Json(AuthenticateByNameRequest {
-                username: Some("anything at all".to_string()),
-                pw: Some("token-abc".to_string()),
-            }),
+            Json(JellyfinBody::new(serde_json::json!({
+                "Username": "anything at all",
+                "Pw": "token-abc"
+            }))),
         )
         .await
         .into_response();

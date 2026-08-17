@@ -8,7 +8,7 @@
 //! about a source, and that is observed on the resolve path, not here.
 
 use crate::api::jellyfin::auth::AuthContext;
-use crate::api::jellyfin::dto::UserItemDataDto;
+use crate::api::jellyfin::dto::{JellyfinBody, UserItemDataDto};
 use crate::api::jellyfin::ids::ItemId;
 use crate::engines::playstate;
 use axum::{
@@ -17,7 +17,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::Deserialize;
 
 pub fn router() -> Router {
     Router::new()
@@ -40,18 +39,6 @@ pub fn router() -> Router {
         )
 }
 
-/// What clients send with a playback report. Casing varies between them, so
-/// both spellings of each field are accepted.
-#[derive(Debug, Default, Deserialize)]
-struct PlaybackReport {
-    #[serde(default, alias = "ItemId", alias = "itemId")]
-    item_id: Option<String>,
-    #[serde(default, alias = "PositionTicks", alias = "positionTicks")]
-    position_ticks: Option<i64>,
-    #[serde(default, alias = "RunTimeTicks", alias = "runTimeTicks")]
-    run_time_ticks: Option<i64>,
-}
-
 async fn sessions(_auth: AuthContext) -> Json<Vec<serde_json::Value>> {
     Json(Vec::new())
 }
@@ -69,31 +56,31 @@ fn atlas_key_for(item_id: &str) -> Option<String> {
         .map(|atlas_id| crate::engines::playback::media_key(&atlas_id))
 }
 
-fn record(auth: &AuthContext, report: &PlaybackReport) {
-    let Some(item_id) = report.item_id.as_deref() else {
+fn record(auth: &AuthContext, report: &JellyfinBody) {
+    let Some(item_id) = report.item_id() else {
         return;
     };
-    let Some(atlas_key) = atlas_key_for(item_id) else {
+    let Some(atlas_key) = atlas_key_for(&item_id) else {
         return;
     };
 
     playstate::record_progress(
         &auth.token,
-        item_id,
+        &item_id,
         &atlas_key,
-        report.position_ticks.unwrap_or(0),
-        report.run_time_ticks,
+        report.position_ticks().unwrap_or(0),
+        report.run_time_ticks(),
     );
 }
 
-async fn playing(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> StatusCode {
+async fn playing(auth: AuthContext, body: Option<Json<JellyfinBody>>) -> StatusCode {
     if let Some(Json(report)) = body {
         record(&auth, &report);
     }
     StatusCode::NO_CONTENT
 }
 
-async fn progress(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> StatusCode {
+async fn progress(auth: AuthContext, body: Option<Json<JellyfinBody>>) -> StatusCode {
     if let Some(Json(report)) = body {
         record(&auth, &report);
     }
@@ -102,7 +89,7 @@ async fn progress(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> Stat
 
 /// A stop is a position report and nothing more. It carries no information
 /// about whether the source was healthy — see the note at the top of this file.
-async fn stopped(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> StatusCode {
+async fn stopped(auth: AuthContext, body: Option<Json<JellyfinBody>>) -> StatusCode {
     if let Some(Json(report)) = body {
         record(&auth, &report);
     }
@@ -113,11 +100,16 @@ async fn stopped(auth: AuthContext, body: Option<Json<PlaybackReport>>) -> Statu
 async fn item_progress(
     auth: AuthContext,
     Path((_user_id, item_id)): Path<(String, String)>,
-    body: Option<Json<PlaybackReport>>,
+    body: Option<Json<JellyfinBody>>,
 ) -> StatusCode {
-    let mut report = body.map(|Json(report)| report).unwrap_or_default();
-    report.item_id = Some(item_id);
-    record(&auth, &report);
+    // The item is named by the path here rather than in the body.
+    let mut fields = body
+        .map(|Json(report)| report.into_value())
+        .unwrap_or_else(|| serde_json::json!({}));
+    if let Some(object) = fields.as_object_mut() {
+        object.insert("ItemId".to_string(), serde_json::Value::String(item_id));
+    }
+    record(&auth, &JellyfinBody::new(fields));
     StatusCode::NO_CONTENT
 }
 
@@ -178,7 +170,8 @@ async fn clear_favorite(
 
 #[cfg(test)]
 mod tests {
-    use super::{atlas_key_for, capabilities, PlaybackReport};
+    use super::{atlas_key_for, capabilities};
+    use crate::api::jellyfin::dto::JellyfinBody;
     use crate::api::jellyfin::ids::{ItemId, Library, Namespace};
     use axum::http::StatusCode;
 
@@ -189,23 +182,21 @@ mod tests {
 
     #[test]
     fn reports_are_read_whatever_casing_a_client_uses() {
-        let pascal: PlaybackReport =
-            serde_json::from_str(r#"{"ItemId":"abc","PositionTicks":1234}"#).expect("valid");
-        let camel: PlaybackReport =
-            serde_json::from_str(r#"{"itemId":"abc","positionTicks":1234}"#).expect("valid");
+        let pascal = JellyfinBody::new(serde_json::json!({"ItemId":"abc","PositionTicks":1234}));
+        let camel = JellyfinBody::new(serde_json::json!({"itemId":"abc","positionTicks":1234}));
 
-        assert_eq!(pascal.item_id.as_deref(), Some("abc"));
-        assert_eq!(camel.position_ticks, Some(1234));
+        assert_eq!(pascal.item_id().as_deref(), Some("abc"));
+        assert_eq!(camel.position_ticks(), Some(1234));
     }
 
     #[test]
     fn a_report_missing_everything_is_still_accepted() {
         // Clients send sparse reports; refusing them produces error toasts for
         // something that is not an error.
-        let empty: PlaybackReport = serde_json::from_str("{}").expect("valid");
+        let empty = JellyfinBody::new(serde_json::json!({}));
 
-        assert!(empty.item_id.is_none());
-        assert_eq!(empty.position_ticks, None);
+        assert!(empty.item_id().is_none());
+        assert_eq!(empty.position_ticks(), None);
     }
 
     #[test]

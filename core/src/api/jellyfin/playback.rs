@@ -10,7 +10,7 @@
 
 use crate::api::config::UserPreferences;
 use crate::api::jellyfin::auth::AuthContext;
-use crate::api::jellyfin::dto::{MediaSourceInfo, PlaybackInfoRequest, PlaybackInfoResponse};
+use crate::api::jellyfin::dto::{JellyfinBody, MediaSourceInfo, PlaybackInfoResponse};
 use crate::api::jellyfin::ids::ItemId;
 use crate::api::jellyfin::map::{cached_first, media_source, ticks_from_minutes};
 use crate::api::jellyfin::query::JellyfinQuery;
@@ -172,7 +172,7 @@ async fn sources_for(
 /// better signal, and a posted device profile better still.
 fn capability_adjusted_preferences(
     auth: &AuthContext,
-    request: Option<&PlaybackInfoRequest>,
+    request: Option<&JellyfinBody>,
 ) -> UserPreferences {
     let mut prefs = crate::engines::ai_decision::infer_capabilities(
         &auth.capability_hint(),
@@ -185,18 +185,14 @@ fn capability_adjusted_preferences(
 
     // A profile that lists codecs is stating fact; trust it over inference in
     // both directions.
-    if let Some(profile) = &request.device_profile {
-        if let Some(supported) = profile.supports_video_codec("av1") {
-            prefs.exclude_av1 = !supported;
-        }
-        if let Some(supported) = profile.supports_video_codec("hevc") {
-            prefs.exclude_hevc = !supported;
-        }
+    if let Some(supported) = request.supports_video_codec("av1") {
+        prefs.exclude_av1 = !supported;
+    }
+    if let Some(supported) = request.supports_video_codec("hevc") {
+        prefs.exclude_hevc = !supported;
     }
 
-    let ceiling = request
-        .max_streaming_bitrate
-        .or_else(|| request.device_profile.as_ref()?.max_streaming_bitrate);
+    let ceiling = request.max_streaming_bitrate();
 
     if let Some(bits_per_second) = ceiling.filter(|value| *value > 0) {
         tracing::debug!(
@@ -211,7 +207,7 @@ fn capability_adjusted_preferences(
 async fn playback_info(
     auth: AuthContext,
     Path(item_id): Path<String>,
-    body: Option<Json<PlaybackInfoRequest>>,
+    body: Option<Json<JellyfinBody>>,
 ) -> Json<PlaybackInfoResponse> {
     let started = Instant::now();
     let session = auth.session_id();
@@ -346,7 +342,7 @@ mod tests {
     use super::{capability_adjusted_preferences, HISTORY_SCOPE};
     use crate::api::config::UserPreferences;
     use crate::api::jellyfin::auth::AuthContext;
-    use crate::api::jellyfin::dto::{DeviceProfile, DirectPlayProfile, PlaybackInfoRequest};
+    use crate::api::jellyfin::dto::JellyfinBody;
 
     fn auth(device: Option<&str>) -> AuthContext {
         AuthContext {
@@ -362,18 +358,15 @@ mod tests {
         }
     }
 
-    fn profile(video_codecs: &str) -> PlaybackInfoRequest {
-        PlaybackInfoRequest {
-            device_profile: Some(DeviceProfile {
-                max_streaming_bitrate: Some(120_000_000),
-                direct_play_profiles: vec![DirectPlayProfile {
-                    container: Some("mkv".to_string()),
-                    video_codec: Some(video_codecs.to_string()),
-                    audio_codec: None,
-                }],
-            }),
-            max_streaming_bitrate: None,
-        }
+    fn profile(video_codecs: &str) -> JellyfinBody {
+        JellyfinBody::new(serde_json::json!({
+            "DeviceProfile": {
+                "MaxStreamingBitrate": 120_000_000,
+                "DirectPlayProfiles": [
+                    { "Container": "mkv", "VideoCodec": video_codecs }
+                ]
+            }
+        }))
     }
 
     #[test]
@@ -401,10 +394,7 @@ mod tests {
 
     #[test]
     fn an_empty_profile_claims_nothing_and_excludes_nothing() {
-        let request = PlaybackInfoRequest {
-            device_profile: Some(DeviceProfile::default()),
-            max_streaming_bitrate: None,
-        };
+        let request = JellyfinBody::new(serde_json::json!({ "DeviceProfile": {} }));
 
         let adjusted = capability_adjusted_preferences(&auth(None), Some(&request));
         assert!(!adjusted.exclude_hevc);

@@ -200,15 +200,73 @@ pub struct AuthenticationResult {
     pub server_id: String,
 }
 
+/// A request body read case-insensitively, tolerating the same value arriving
+/// under more than one spelling.
+///
+/// Serde aliases cannot express this. Two keys that map to one field are a
+/// *duplicate field* error, so a client sending both `Pw` and `Password` —
+/// which Infuse does — has its entire login body rejected with a 422 before any
+/// handler sees it. Reading the object directly accepts whatever arrives, which
+/// is the same reasoning [`super::query`] applies to query parameters.
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(transparent)]
+pub struct JellyfinBody(serde_json::Value);
+
+impl JellyfinBody {
+    pub fn new(value: serde_json::Value) -> Self {
+        JellyfinBody(value)
+    }
+
+    pub fn into_value(self) -> serde_json::Value {
+        self.0
+    }
+
+    /// The first of `names` present, compared without regard to case.
+    pub fn get(&self, names: &[&str]) -> Option<&serde_json::Value> {
+        let object = self.0.as_object()?;
+
+        names.iter().find_map(|wanted| {
+            object.iter().find_map(|(key, value)| {
+                (key.eq_ignore_ascii_case(wanted) && !value.is_null()).then_some(value)
+            })
+        })
+    }
+
+    pub fn string(&self, names: &[&str]) -> Option<String> {
+        self.get(names)?.as_str().map(str::to_string)
+    }
+
+    pub fn integer(&self, names: &[&str]) -> Option<i64> {
+        let value = self.get(names)?;
+        value
+            .as_i64()
+            .or_else(|| value.as_f64().map(|number| number as i64))
+    }
+
+    /// A nested object, still read case-insensitively.
+    pub fn object(&self, names: &[&str]) -> Option<JellyfinBody> {
+        Some(JellyfinBody(self.get(names)?.clone()))
+    }
+
+    pub fn array(&self, names: &[&str]) -> Vec<JellyfinBody> {
+        self.get(names)
+            .and_then(serde_json::Value::as_array)
+            .map(|items| items.iter().cloned().map(JellyfinBody).collect())
+            .unwrap_or_default()
+    }
+}
+
 /// Infuse requires a username field when adding a server even though Atlas
-/// authenticates on the install token alone, so `username` is accepted and
+/// authenticates on the install token alone, so the username is read and
 /// ignored.
-#[derive(Debug, Deserialize)]
-pub struct AuthenticateByNameRequest {
-    #[serde(alias = "Username", alias = "username")]
-    pub username: Option<String>,
-    #[serde(alias = "Pw", alias = "pw", alias = "Password", alias = "password")]
-    pub pw: Option<String>,
+impl JellyfinBody {
+    pub fn username(&self) -> Option<String> {
+        self.string(&["Username", "User", "Name"])
+    }
+
+    pub fn password(&self) -> Option<String> {
+        self.string(&["Pw", "Password"])
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -553,43 +611,32 @@ pub struct PlaybackInfoResponse {
 /// What a client posts to `PlaybackInfo`. The device profile is the part worth
 /// having: it states real codec support and a bitrate ceiling, which is far
 /// better evidence than guessing from a User-Agent.
-#[derive(Debug, Default, Deserialize)]
-pub struct PlaybackInfoRequest {
-    #[serde(default, alias = "DeviceProfile", alias = "deviceProfile")]
-    pub device_profile: Option<DeviceProfile>,
-    #[serde(default, alias = "MaxStreamingBitrate", alias = "maxStreamingBitrate")]
-    pub max_streaming_bitrate: Option<i64>,
-}
+impl JellyfinBody {
+    pub fn device_profile(&self) -> Option<JellyfinBody> {
+        self.object(&["DeviceProfile"])
+    }
 
-#[derive(Debug, Default, Deserialize)]
-pub struct DeviceProfile {
-    #[serde(default, alias = "MaxStreamingBitrate", alias = "maxStreamingBitrate")]
-    pub max_streaming_bitrate: Option<i64>,
-    #[serde(default, alias = "DirectPlayProfiles", alias = "directPlayProfiles")]
-    pub direct_play_profiles: Vec<DirectPlayProfile>,
-}
+    /// A ceiling declared on the request itself or inside the profile.
+    pub fn max_streaming_bitrate(&self) -> Option<i64> {
+        self.integer(&["MaxStreamingBitrate"])
+            .or_else(|| self.device_profile()?.integer(&["MaxStreamingBitrate"]))
+    }
 
-#[derive(Debug, Default, Deserialize)]
-pub struct DirectPlayProfile {
-    #[serde(default, alias = "Container", alias = "container")]
-    pub container: Option<String>,
-    #[serde(default, alias = "VideoCodec", alias = "videoCodec")]
-    pub video_codec: Option<String>,
-    #[serde(default, alias = "AudioCodec", alias = "audioCodec")]
-    pub audio_codec: Option<String>,
-}
-
-impl DeviceProfile {
     /// Whether the client listed a video codec at all, and if so whether this
-    /// one is among them. An empty profile claims nothing, so nothing is
-    /// excluded on its behalf.
+    /// one is among them. A profile that lists none claims nothing, so nothing
+    /// is excluded on its behalf.
     pub fn supports_video_codec(&self, codec: &str) -> Option<bool> {
-        let listed: Vec<String> = self
-            .direct_play_profiles
+        let profile = self.device_profile()?;
+        let listed: Vec<String> = profile
+            .array(&["DirectPlayProfiles"])
             .iter()
-            .filter_map(|profile| profile.video_codec.as_ref())
-            .flat_map(|codecs| codecs.split(','))
-            .map(|codec| codec.trim().to_ascii_lowercase())
+            .filter_map(|entry| entry.string(&["VideoCodec"]))
+            .flat_map(|codecs| {
+                codecs
+                    .split(',')
+                    .map(|codec| codec.trim().to_ascii_lowercase())
+                    .collect::<Vec<_>>()
+            })
             .filter(|codec| !codec.is_empty())
             .collect();
 
@@ -599,8 +646,21 @@ impl DeviceProfile {
         Some(
             listed
                 .iter()
-                .any(|listed| listed == &codec.to_ascii_lowercase()),
+                .any(|entry| entry == &codec.to_ascii_lowercase()),
         )
+    }
+
+    /// Fields a playback report carries.
+    pub fn item_id(&self) -> Option<String> {
+        self.string(&["ItemId", "Id"])
+    }
+
+    pub fn position_ticks(&self) -> Option<i64> {
+        self.integer(&["PositionTicks"])
+    }
+
+    pub fn run_time_ticks(&self) -> Option<i64> {
+        self.integer(&["RunTimeTicks"])
     }
 }
 
@@ -652,6 +712,65 @@ mod tests {
         assert_eq!(json["TotalRecordCount"], 3);
         assert_eq!(json["StartIndex"], 0);
         assert_eq!(json["Items"].as_array().map(Vec::len), Some(3));
+    }
+
+    #[test]
+    fn a_value_arriving_under_two_spellings_does_not_reject_the_body() {
+        // The bug this type exists for: Infuse sends both Pw and Password, and
+        // serde aliases treat that as a duplicate field, failing the whole body
+        // with a 422 before any handler runs.
+        let body: super::JellyfinBody =
+            serde_json::from_str(r#"{"Username":"atlas","Pw":"secret","Password":"secret"}"#)
+                .expect("a body with both spellings must parse");
+
+        assert_eq!(body.password().as_deref(), Some("secret"));
+        assert_eq!(body.username().as_deref(), Some("atlas"));
+    }
+
+    #[test]
+    fn fields_are_found_whatever_casing_a_client_uses() {
+        let camel: super::JellyfinBody =
+            serde_json::from_str(r#"{"username":"atlas","pw":"secret"}"#).expect("valid");
+
+        assert_eq!(camel.username().as_deref(), Some("atlas"));
+        assert_eq!(camel.password().as_deref(), Some("secret"));
+    }
+
+    #[test]
+    fn nulls_and_missing_fields_read_the_same_way() {
+        let explicit: super::JellyfinBody =
+            serde_json::from_str(r#"{"Username":null,"Pw":null}"#).expect("valid");
+        let absent: super::JellyfinBody = serde_json::from_str("{}").expect("valid");
+
+        assert_eq!(explicit.password(), None);
+        assert_eq!(absent.password(), None);
+    }
+
+    #[test]
+    fn a_device_profile_is_read_through_the_same_tolerance() {
+        let body: super::JellyfinBody = serde_json::from_str(
+            r#"{"DeviceProfile":{"MaxStreamingBitrate":120000000,
+                "DirectPlayProfiles":[{"Container":"mkv","VideoCodec":"h264,hevc"}]}}"#,
+        )
+        .expect("valid");
+
+        assert_eq!(body.max_streaming_bitrate(), Some(120_000_000));
+        assert_eq!(body.supports_video_codec("hevc"), Some(true));
+        assert_eq!(body.supports_video_codec("av1"), Some(false));
+        // A profile listing nothing claims nothing.
+        let bare: super::JellyfinBody =
+            serde_json::from_str(r#"{"DeviceProfile":{}}"#).expect("valid");
+        assert_eq!(bare.supports_video_codec("hevc"), None);
+    }
+
+    #[test]
+    fn a_body_that_is_not_an_object_is_simply_empty() {
+        // Some clients post an empty string or a bare array; that is not worth
+        // an error response.
+        let list: super::JellyfinBody = serde_json::from_str("[]").expect("valid");
+
+        assert_eq!(list.item_id(), None);
+        assert_eq!(list.position_ticks(), None);
     }
 
     #[test]
