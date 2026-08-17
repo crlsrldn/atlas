@@ -22,10 +22,16 @@ primary_region = "iad"
   ATLAS_PLACEHOLDER_VIDEO_URL = ""
   # Development only for now. Staging and production deliberately leave this
   # unset, so they mount no Jellyfin routes at all.
-  #
-  # ATLAS_JELLYFIN_PERMISSIVE is intentionally NOT set: routes Atlas does not
-  # serve are logged either way, and permissive mode only changes the answer
-  # from an honest 404 to an empty 200. It also lets core fall back to its own
-  # preferences when the gateway is not in the path, which is a development
-  # affordance and nothing a deployment should carry.
   ATLAS_JELLYFIN_ENABLED = "1"
+  # TEMPORARY, for discovery only — remove once the route list settles.
+  #
+  # Every endpoint here was inferred from documentation rather than observed,
+  # and a single 404 stops a client mid-flow, so gaps surface one per deploy.
+  # With this on, unknown routes answer 200 with an empty body instead, letting
+  # a real client run to completion and record the whole list in one session.
+  #
+  # It also lets core fall back to its own preferences when the gateway is not
+  # in the path. That is safe here only because core has no public listener —
+  # it is reachable solely over 6PN from the gateway — and it is the reason
+  # this must not follow the surface to staging or production.
+  ATLAS_JELLYFIN_PERMISSIVE = "1"
