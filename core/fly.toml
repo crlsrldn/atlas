@@ -20,3 +20,12 @@ primary_region = "iad"
   # player gets a 503 and shows a generic failure. Point this at a short MP4
   # saying "preparing, try again shortly" and the wait explains itself.
   ATLAS_PLACEHOLDER_VIDEO_URL = ""
+  # Development only for now. Staging and production deliberately leave this
+  # unset, so they mount no Jellyfin routes at all.
+  #
+  # ATLAS_JELLYFIN_PERMISSIVE is intentionally NOT set: routes Atlas does not
+  # serve are logged either way, and permissive mode only changes the answer
+  # from an honest 404 to an empty 200. It also lets core fall back to its own
+  # preferences when the gateway is not in the path, which is a development
+  # affordance and nothing a deployment should carry.
+  ATLAS_JELLYFIN_ENABLED = "1"
